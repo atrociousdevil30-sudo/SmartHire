@@ -1,0 +1,335 @@
+<!-- Mood & Confidence Analytics Dashboard -->
+<div class="row mb-4">
+    <!-- Engagement Score -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Employee Engagement</h6>
+                <div class="display-4 fw-bold text-primary mb-2" id="engagementScore">--</div>
+                <div class="progress mb-3" style="height: 10px;">
+                    <div id="engagementBar" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                </div>
+                <p class="small text-muted mb-0">Based on mood and confidence ratings</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Average Mood -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Average Mood</h6>
+                <div class="display-4 fw-bold text-success mb-2" id="avgMood">--</div>
+                <div class="d-flex justify-content-center mb-2" id="moodEmoji">
+                    <span class="display-4">😐</span>
+                </div>
+                <p class="small text-muted mb-0">Out of 5.0 (7-day average)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Average Confidence -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Average Confidence</h6>
+                <div class="display-4 fw-bold text-info mb-2" id="avgConfidence">--</div>
+                <div class="progress mb-3" style="height: 10px;">
+                    <div id="confidenceBar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                </div>
+                <p class="small text-muted mb-0">Out of 5.0 (7-day average)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trends Chart -->
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Mood & Confidence Trends</h5>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-range="7">7d</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-range="14">14d</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary active" data-range="30">30d</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <canvas id="trendsChart" height="300"></canvas>
+    </div>
+</div>
+
+<!-- Alerts Section -->
+<div class="card mb-4" id="alertsCard" style="display: none;">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Attention Required</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="list-group list-group-flush" id="alertsList">
+            <!-- Alerts will be added here dynamically -->
+        </div>
+    </div>
+</div>
+
+<!-- Recent Feedback -->
+<div class="card">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Recent Feedback</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Mood</th>
+                        <th>Confidence</th>
+                        <th>Feedback</th>
+                    </tr>
+                </thead>
+                <tbody id="recentFeedback">
+                    <tr>
+                        <td colspan="4" class="text-center py-4">Loading feedback data...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Global chart instance
+let trendsChart;
+
+// Format date for display
+function formatDate(dateString) {
+    const options = { month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
+// Get emoji for mood rating
+function getMoodEmoji(rating) {
+    if (!rating) return '😐';
+    if (rating >= 4) return '😊';
+    if (rating >= 2.5) return '😐';
+    return '😞';
+}
+
+// Load feedback data
+async function loadFeedbackData(days = 7) {
+    try {
+        const response = await fetch(`/api/feedback/summary`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            updateDashboardUI(result.data);
+        } else {
+            console.error('Failed to load feedback data:', result.message);
+        }
+    } catch (error) {
+        console.error('Error loading feedback data:', error);
+    }
+}
+
+// Update dashboard UI with data
+function updateDashboardUI(data) {
+    // Update engagement score
+    const engagementScore = data.engagement_score || 0;
+    document.getElementById('engagementScore').textContent = engagementScore.toFixed(1);
+    document.getElementById('engagementBar').style.width = `${(engagementScore / 5) * 100}%`;
+    
+    // Update average mood
+    const avgMood = data.avg_mood || 0;
+    document.getElementById('avgMood').textContent = avgMood.toFixed(1);
+    document.getElementById('moodEmoji').innerHTML = `<span class="display-4">${getMoodEmoji(avgMood)}</span>`;
+    
+    // Update average confidence
+    const avgConfidence = data.avg_confidence || 0;
+    document.getElementById('avgConfidence').textContent = avgConfidence.toFixed(1);
+    document.getElementById('confidenceBar').style.width = `${(avgConfidence / 5) * 100}%`;
+    
+    // Update trends chart
+    updateTrendsChart(data);
+    
+    // Update alerts
+    updateAlerts(data.alerts);
+    
+    // Update recent feedback (you'll need to implement this API endpoint)
+    // updateRecentFeedback();
+}
+
+// Update trends chart
+function updateTrendsChart(data) {
+    const ctx = document.getElementById('trendsChart').getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (trendsChart) {
+        trendsChart.destroy();
+    }
+    
+    // Format dates for display
+    const labels = data.dates || [];
+    const moodData = data.mood_trend || [];
+    const confidenceData = data.confidence_trend || [];
+    
+    // Create new chart
+    trendsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Mood',
+                    data: moodData,
+                    borderColor: 'rgba(40, 167, 69, 0.8)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Confidence',
+                    data: confidenceData,
+                    borderColor: 'rgba(23, 162, 184, 0.8)',
+                    backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    min: 0,
+                    max: 5,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.raw.toFixed(1)}/5.0`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Update alerts section
+function updateAlerts(alerts) {
+    const alertsCard = document.getElementById('alertsCard');
+    const alertsList = document.getElementById('alertsList');
+    
+    if (!alerts || alerts.length === 0) {
+        alertsCard.style.display = 'none';
+        return;
+    }
+    
+    // Clear existing alerts
+    alertsList.innerHTML = '';
+    
+    // Add new alerts
+    alerts.forEach(alert => {
+        const alertItem = document.createElement('div');
+        alertItem.className = 'list-group-item list-group-item-warning';
+        
+        let alertText = '';
+        if (alert.type === 'low_confidence') {
+            alertText = `Low confidence detected on ${alert.date} (${alert.value}/5.0). Consider additional support.`;
+        } else {
+            alertText = `Alert: ${JSON.stringify(alert)}`;
+        }
+        
+        alertItem.innerHTML = `
+            <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">Attention Required</h6>
+                <small>${alert.date}</small>
+            </div>
+            <p class="mb-1">${alertText}</p>
+        `;
+        
+        alertsList.appendChild(alertItem);
+    });
+    
+    alertsCard.style.display = 'block';
+}
+
+// Initialize dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Load initial data
+    loadFeedbackData();
+    
+    // Set up range buttons
+    document.querySelectorAll('[data-range]').forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            document.querySelectorAll('[data-range]').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Reload data with new range
+            loadFeedbackData(parseInt(this.dataset.range));
+        });
+    });
+    
+    // Set up auto-refresh every 5 minutes
+    setInterval(() => loadFeedbackData(), 5 * 60 * 1000);
+});
+</script>
+
+<style>
+/* Custom styles for the analytics dashboard */
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+}
+
+.progress {
+    height: 10px;
+    border-radius: 5px;
+}
+
+.progress-bar {
+    border-radius: 5px;
+}
+
+.table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+.btn-group .btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.list-group-item-warning {
+    background-color: #fff3cd;
+}
+</style>

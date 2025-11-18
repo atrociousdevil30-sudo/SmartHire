@@ -1,0 +1,198 @@
+<!-- Mood & Confidence Feedback Form -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">How are you feeling today?</h5>
+    </div>
+    <div class="card-body">
+        <form id="moodFeedbackForm" aria-label="Mood and Confidence Feedback Form" onsubmit="event.preventDefault(); submitMoodFeedback();">
+            <div class="mb-4">
+                <label for="mood_rating" class="form-label">Mood Rating (1-5)</label>
+                <div class="rating-input mb-2" id="mood_rating">
+                    {% for i in range(1, 6) %}
+                    <input type="radio" 
+                           class="btn-check" 
+                           name="mood_rating" 
+                           id="mood{{ i }}" 
+                           value="{{ i }}" 
+                           required
+                           aria-label="Mood rating {{ i }} out of 5">
+                    <label class="btn btn-outline-primary me-2" for="mood{{ i }}">
+                        {% for _ in range(i) %}😊{% endfor %}
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between small text-muted">
+                    <span>Not great</span>
+                    <span>Very good</span>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label for="confidence_rating" class="form-label">Confidence Level (1-5)</label>
+                <div class="rating-input mb-2" id="confidence_rating">
+                    {% for i in range(1, 6) %}
+                    <input type="radio" 
+                           class="btn-check" 
+                           name="confidence_rating" 
+                           id="confidence{{ i }}" 
+                           value="{{ i }}" 
+                           required
+                           aria-label="Confidence level {{ i }} out of 5">
+                    <label class="btn btn-outline-info me-2" for="confidence{{ i }}">
+                        {{ i }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between small text-muted">
+                    <span>Low confidence</span>
+                    <span>Very confident</span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="feedback" class="form-label">Optional Feedback (anonymous)</label>
+                <textarea class="form-control" 
+                          id="feedback" 
+                          name="feedback" 
+                          rows="3"
+                          aria-describedby="feedbackHelp"
+                          placeholder="Share any feedback about your onboarding experience (optional)"></textarea>
+                <div id="feedbackHelp" class="form-text">Your feedback is anonymous and helps us improve the onboarding experience.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" aria-label="Submit feedback">
+                <i class="bi bi-send me-2" aria-hidden="true"></i>Submit Feedback
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Feedback Success Modal -->
+<div class="modal fade" id="feedbackSuccessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-5">
+                <div class="mb-4">
+                    <div class="text-success mb-3" style="font-size: 4rem;">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <h4>Thank You!</h4>
+                    <p class="text-muted">Your feedback has been submitted successfully.</p>
+                </div>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function submitMoodFeedback() {
+    const form = document.getElementById('moodFeedbackForm');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    
+    try {
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Submitting...';
+        
+        // Get form data
+        const formData = new FormData(form);
+        const data = {
+            mood_rating: formData.get('mood_rating'),
+            confidence_rating: formData.get('confidence_rating'),
+            feedback: formData.get('feedback') || ''
+        };
+        
+        const response = await fetch('/api/feedback/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to submit feedback');
+        }
+        
+        // Show success message
+        const successToast = new bootstrap.Toast(document.getElementById('feedbackToast'));
+        document.getElementById('toastMessage').textContent = 'Feedback submitted successfully!';
+        successToast.show();
+        
+        // Reset form
+        form.reset();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        const errorToast = new bootstrap.Toast(document.getElementById('errorToast'));
+        document.getElementById('errorMessage').textContent = error.message || 'An error occurred. Please try again.';
+        errorToast.show();
+    } finally {
+        // Restore button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+    }
+}
+
+// Add toast containers if they don't exist
+if (!document.getElementById('toastContainer')) {
+    const toastContainer = document.createElement('div');
+    toastContainer.id = 'toastContainer';
+    toastContainer.style.position = 'fixed';
+    toastContainer.style.top = '20px';
+    toastContainer.style.right = '20px';
+    toastContainer.style.zIndex = '1100';
+    document.body.appendChild(toastContainer);
+    
+    // Add success toast
+    toastContainer.innerHTML += `
+        <div class="toast align-items-center text-white bg-success border-0" id="feedbackToast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="toast align-items-center text-white bg-danger border-0 mt-2" id="errorToast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="errorMessage"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize any necessary event listeners here
+});
+</script>
+
+<style>
+.rating-input {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.rating-input .btn {
+    flex: 1;
+    padding: 0.5rem;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.rating-input .btn-check:checked + .btn {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.rating-input .btn-outline-primary:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.rating-input .btn-outline-info:hover {
+    background-color: rgba(13, 202, 240, 0.1);
+}
+</style>

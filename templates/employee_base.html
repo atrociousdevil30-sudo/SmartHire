@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    /* Timeline Styling */
+    .timeline {
+        position: relative;
+        padding-left: 2rem;
+        margin: 0 0 0 1rem;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+        border-left: 2px solid #444;
+        padding-left: 1.5rem;
+    }
+    
+    .timeline-item:last-child {
+        border-left: 2px solid transparent;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: -1.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    
+    .timeline-content {
+        padding: 0.5rem 0 0 0.5rem;
+    }
+    
+    /* Card Hover Effects */
+    .card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    /* List Group Item Hover */
+    .list-group-item-action:hover {
+        background-color: rgba(123, 44, 191, 0.1);
+    }
+    
+    /* Progress Bar Animation */
+    @keyframes progress-bar-stripes {
+        0% { background-position: 1rem 0; }
+        100% { background-position: 0 0; }
+    }
+    
+    .progress-bar-animated {
+        animation: progress-bar-stripes 1s linear infinite;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #4e73df;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('employee_dashboard') }}">
+            <i class="fas fa-user-tie me-2"></i>Employee Portal
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#employeeNavbar" 
+                aria-controls="employeeNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="employeeNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'employee_dashboard' %}active{% endif %}" 
+                       href="{{ url_for('employee_dashboard') }}">
+                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'onboarding_tasks' %}active{% endif %}" 
+                       href="{{ url_for('onboarding_tasks') }}">
+                        <i class="fas fa-tasks me-1"></i> Onboarding Tasks
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'offboarding_tasks' %}active{% endif %}" 
+                       href="{{ url_for('offboarding_tasks') }}">
+                        <i class="fas fa-sign-out-alt me-1"></i> Offboarding Tasks
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'onboarding_assistant' %}active{% endif %}" 
+                       href="{{ url_for('onboarding_assistant') }}">
+                        <i class="fas fa-robot me-1"></i> Onboarding Assistant
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'support' %}active{% endif %}" 
+                       href="{{ url_for('support') }}">
+                        <i class="fas fa-headset me-1"></i> Support
+                    </a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center ms-auto">
+                <!-- Quick Logout Button - Visible on all screen sizes -->
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm me-2" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="d-none d-md-inline ms-1">Logout</span>
+                </a>
+                
+                <!-- User Dropdown -->
+                <div class="dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
+                       role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle me-1"></i>
+                        <span class="d-none d-lg-inline">{{ session.get('username', 'Employee') }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user-cog me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Page Content -->
+<div class="container-fluid py-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block page_content %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add active class to current nav item
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentPage = window.location.pathname;
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.getAttribute('href') === currentPage) {
+                link.classList.add('active');
+            }
+        });
+    });
+</script>
+{% endblock %}

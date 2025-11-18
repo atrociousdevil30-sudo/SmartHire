@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.full_name }} - Employee Details - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header with Back Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('list_employees') }}" class="btn btn-outline-light btn-sm me-2">
+                <i class="fas fa-arrow-left me-1"></i> Back to Employees
+            </a>
+            <h1 class="h3 d-inline-block mb-0 text-light">
+                <i class="fas fa-user me-2"></i> Employee Details
+            </h1>
+        </div>
+        <div>
+            <div class="dropdown d-inline-block">
+                <button class="btn btn-outline-light dropdown-toggle" type="button" id="employeeActions" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v"></i> Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="employeeActions">
+                    <li>
+                        <a class="dropdown-item" href="#">
+                            <i class="fas fa-edit me-2"></i> Edit Profile
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#">
+                            <i class="fas fa-file-pdf me-2"></i> Export Profile
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item text-warning" href="#">
+                            <i class="fas fa-user-edit me-2"></i> Change Role
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deactivateModal">
+                            <i class="fas fa-user-slash me-2"></i> Deactivate
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column - Profile & Details -->
+        <div class="col-lg-4">
+            <!-- Profile Card -->
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-body text-center">
+                    <div class="avatar-xxl mb-3">
+                        <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle" style="width: 100px; height: 100px; line-height: 100px; font-size: 3rem;">
+                            {{ employee.full_name|first|upper }}
+                        </div>
+                    </div>
+                    <h4 class="mb-1 text-light">{{ employee.full_name }}</h4>
+                    <p class="text-muted mb-3">{{ employee.position or 'No position specified' }}</p>
+                    
+                    <!-- Status Badge -->
+                    {% if employee.status == 'Active' %}
+                        <span class="badge bg-success bg-opacity-25 text-success mb-3">
+                            <i class="fas fa-circle me-1 small"></i> Active
+                        </span>
+                    {% elif employee.status == 'Onboarding' %}
+                        <span class="badge bg-warning bg-opacity-25 text-warning mb-3">
+                            <i class="fas fa-user-clock me-1 small"></i> Onboarding
+                        </span>
+                    {% elif employee.status == 'On Leave' %}
+                        <span class="badge bg-info bg-opacity-25 text-info mb-3">
+                            <i class="fas fa-umbrella-beach me-1 small"></i> On Leave
+                        </span>
+                    {% elif employee.status == 'Offboarding' %}
+                        <span class="badge bg-danger bg-opacity-25 text-danger mb-3">
+                            <i class="fas fa-sign-out-alt me-1 small"></i> Offboarding
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary bg-opacity-25 text-secondary mb-3">
+                            <i class="fas fa-circle me-1 small"></i> {{ employee.status or 'N/A' }}
+                        </span>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        <a href="#" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-envelope me-1"></i> Message
+                        </a>
+                        <a href="#" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-phone-alt me-1"></i> Call
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Employee Details -->
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0 text-light">Employee ID</h6>
+                                <small class="text-muted">#{{ employee.id|string|rjust(6, '0') }}</small>
+                            </div>
+                            <i class="fas fa-id-card text-muted"></i>
+                        </div>
+                    </div>
+                    <div class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0 text-light">Department</h6>
+                                <small class="text-muted">{{ employee.department or 'N/A' }}</small>
+                            </div>
+                            <i class="fas fa-building text-muted"></i>
+                        </div>
+                    </div>
+                    <div class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0 text-light">Hire Date</h6>
+                                <small class="text-muted">
+                                    {{ employee.hire_date.strftime('%B %d, %Y') if employee.hire_date else 'N/A' }}
+                                </small>
+                            </div>
+                            <i class="fas fa-calendar-alt text-muted"></i>
+                        </div>
+                    </div>
+                    <div class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0 text-light">Manager</h6>
+                                <small class="text-muted">
+                                    {% if employee.manager %}
+                                        {{ employee.manager.full_name }}
+                                    {% else %}
+                                        No manager assigned
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <i class="fas fa-user-tie text-muted"></i>
+                        </div>
+                    </div>
+                    <div class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0 text-light">Email</h6>
+                                <small class="text-muted">{{ employee.email }}</small>
+                            </div>
+                            <i class="fas fa-envelope text-muted"></i>
+                        </div>
+                    </div>
+                    <div class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0 text-light">Phone</h6>
+                                <small class="text-muted">{{ employee.phone or 'N/A' }}</small>
+                            </div>
+                            <i class="fas fa-phone text-muted"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skills & Expertise -->
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-tools me-2"></i> Skills & Expertise
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if employee.skills %}
+                        {% for skill in employee.skills.split(',') %}
+                            <span class="badge bg-dark bg-opacity-50 text-light mb-2 me-1">
+                                {{ skill.strip() }}
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">No skills added yet.</p>
+                    {% endif %}
+                    <button class="btn btn-sm btn-outline-light w-100 mt-3">
+                        <i class="fas fa-plus me-1"></i> Add Skills
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Main Content -->
+        <div class="col-lg-8">
+            <!-- Onboarding Progress -->
+            {% if employee.status == 'Onboarding' and employee.onboarding_checklist %}
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-light">
+                            <i class="fas fa-clipboard-check me-2"></i> Onboarding Progress
+                        </h5>
+                        <span class="badge bg-warning bg-opacity-25 text-warning">
+                            {{ "%.0f"|format(employee.onboarding_checklist.get_progress()) }}% Complete
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="progress bg-dark bg-opacity-50 mb-4" style="height: 6px;">
+                        <div class="progress-bar bg-warning" role="progressbar" 
+                             style="width: {{ employee.onboarding_checklist.get_progress() }}%" 
+                             aria-valuenow="{{ employee.onboarding_checklist.get_progress() }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0 text-light">Paperwork</h6>
+                                        {% if employee.onboarding_checklist.paperwork_completed %}
+                                            <span class="badge bg-success bg-opacity-25 text-success">
+                                                <i class="fas fa-check-circle me-1"></i> Completed
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-25 text-muted">Pending</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="small text-muted mb-0">
+                                        Employment contracts, tax forms, and other required documents.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0 text-light">Equipment</h6>
+                                        {% if employee.onboarding_checklist.equipment_assigned %}
+                                            <span class="badge bg-success bg-opacity-25 text-success">
+                                                <i class="fas fa-check-circle me-1"></i> Completed
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-25 text-muted">Pending</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="small text-muted mb-0">
+                                        Laptop, access cards, and other necessary equipment.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0 text-light">Training</h6>
+                                        {% if employee.onboarding_checklist.training_completed %}
+                                            <span class="badge bg-success bg-opacity-25 text-success">
+                                                <i class="fas fa-check-circle me-1"></i> Completed
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-25 text-muted">Pending</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="small text-muted mb-0">
+                                        Required training sessions and compliance courses.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0 text-light">HR Orientation</h6>
+                                        {% if employee.onboarding_checklist.hr_orientation %}
+                                            <span class="badge bg-success bg-opacity-25 text-success">
+                                                <i class="fas fa-check-circle me-1"></i> Completed
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-25 text-muted">Pending</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="small text-muted mb-0">
+                                        HR policies, benefits, and company culture orientation.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="card bg-dark bg-opacity-25 border-secondary">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0 text-light">Team Introduction</h6>
+                                        {% if employee.onboarding_checklist.team_introduction %}
+                                            <span class="badge bg-success bg-opacity-25 text-success">
+                                                <i class="fas fa-check-circle me-1"></i> Completed
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-25 text-muted">Pending</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="small text-muted mb-3">
+                                        Introduction to team members and key stakeholders.
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            <i class="far fa-clock me-1"></i> 
+                                            Started {{ employee.onboarding_checklist.created_at.strftime('%b %d, %Y') }}
+                                        </small>
+                                        <button class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit me-1"></i> Update Progress
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Notes & Activity -->
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <ul class="nav nav-tabs card-header-tabs" id="profileTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="notes-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#notes" type="button" role="tab" 
+                                    aria-controls="notes" aria-selected="true">
+                                <i class="fas fa-sticky-note me-1"></i> Notes
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="activity-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#activity" type="button" role="tab" 
+                                    aria-controls="activity" aria-selected="false">
+                                <i class="fas fa-history me-1"></i> Activity
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="documents-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#documents" type="button" role="tab" 
+                                    aria-controls="documents" aria-selected="false">
+                                <i class="fas fa-file-alt me-1"></i> Documents
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="profileTabsContent">
+                        <!-- Notes Tab -->
+                        <div class="tab-pane fade show active" id="notes" role="tabpanel" aria-labelledby="notes-tab">
+                            <form>
+                                <div class="mb-3">
+                                    <label for="employeeNotes" class="form-label text-light">Add a note</label>
+                                    <textarea class="form-control bg-dark text-light border-secondary" 
+                                              id="employeeNotes" rows="3" 
+                                              placeholder="Add notes about this employee..."></textarea>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i> Save Note
+                                    </button>
+                                </div>
+                            </form>
+                            
+                            <div class="mt-4">
+                                <h6 class="text-light mb-3">Recent Notes</h6>
+                                <div class="list-group list-group-flush">
+                                    <div class="list-group-item bg-transparent border-secondary px-0">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-light">Completed initial paperwork and submitted all required documents.</span>
+                                            <small class="text-muted">Today, 10:30 AM</small>
+                                        </div>
+                                        <p class="small text-muted mb-0">
+                                            <i class="fas fa-user me-1"></i> You
+                                        </p>
+                                    </div>
+                                    <div class="list-group-item bg-transparent border-secondary px-0">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-light">First day orientation completed. Assigned a mentor.</span>
+                                            <small class="text-muted">Yesterday, 3:45 PM</small>
+                                        </div>
+                                        <p class="small text-muted mb-0">
+                                            <i class="fas fa-user me-1"></i> Sarah Johnson
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Activity Tab -->
+                        <div class="tab-pane fade" id="activity" role="tabpanel" aria-labelledby="activity-tab">
+                            <div class="timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-badge bg-primary">
+                                        <i class="fas fa-user-plus"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="text-light mb-1">Employee Added</h6>
+                                            <small class="text-muted">Today, 10:15 AM</small>
+                                        </div>
+                                        <p class="small mb-0">
+                                            {{ employee.full_name }} was added to the system by you.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-badge bg-success">
+                                        <i class="fas fa-envelope"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="text-light mb-1">Welcome Email Sent</h6>
+                                            <small class="text-muted">Today, 10:20 AM</small>
+                                        </div>
+                                        <p class="small mb-0">
+                                            Welcome email with login credentials sent to {{ employee.email }}.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-badge bg-warning">
+                                        <i class="fas fa-tasks"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="text-light mb-1">Onboarding Started</h6>
+                                            <small class="text-muted">Today, 10:25 AM</small>
+                                        </div>
+                                        <p class="small mb-0">
+                                            Onboarding checklist created and assigned to {{ employee.full_name }}.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Documents Tab -->
+                        <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="text-light mb-0">Employee Documents</h6>
+                                <button class="btn btn-sm btn-primary">
+                                    <i class="fas fa-upload me-1"></i> Upload Document
+                                </button>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-sm table-dark table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Document</th>
+                                            <th>Type</th>
+                                            <th>Uploaded</th>
+                                            <th>Status</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-file-pdf text-danger me-2"></i>
+                                                    <div>
+                                                        <div class="text-light">Employment_Contract.pdf</div>
+                                                        <small class="text-muted">1.2 MB</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>Contract</td>
+                                            <td>Today, 10:15 AM</td>
+                                            <td>
+                                                <span class="badge bg-success bg-opacity-25 text-success">
+                                                    <i class="fas fa-check-circle me-1"></i> Signed
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-light me-1">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger">
+                                                    <i class="far fa-trash-alt"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-file-word text-primary me-2"></i>
+                                                    <div>
+                                                        <div class="text-light">Tax_Form_W4.docx</div>
+                                                        <small class="text-muted">0.8 MB</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>Tax Form</td>
+                                            <td>Today, 10:18 AM</td>
+                                            <td>
+                                                <span class="badge bg-warning bg-opacity-25 text-warning">
+                                                    <i class="fas fa-exclamation-circle me-1"></i> Pending Review
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-light me-1">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger">
+                                                    <i class="far fa-trash-alt"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate Modal -->
+<div class="modal fade" id="deactivateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light">Deactivate Employee</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-light">
+                    Are you sure you want to deactivate {{ employee.full_name }}? 
+                    This will revoke their access to the system.
+                </p>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="confirmDeactivate">
+                    <label class="form-check-label text-light" for="confirmDeactivate">
+                        I understand this action cannot be undone
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="notifyEmployee" checked>
+                    <label class="form-check-label text-light" for="notifyEmployee">
+                        Notify employee via email
+                    </label>
+                </div>
+                <div class="mb-3">
+                    <label for="deactivationReason" class="form-label text-light">Reason for deactivation</label>
+                    <select class="form-select bg-dark text-light border-secondary" id="deactivationReason">
+                        <option value="">Select a reason</option>
+                        <option>Voluntary Resignation</option>
+                        <option>Termination</option>
+                        <option>Retirement</option>
+                        <option>End of Contract</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="deactivationNotes" class="form-label text-light">Additional Notes</label>
+                    <textarea class="form-control bg-dark text-light border-secondary" 
+                              id="deactivationNotes" rows="3" 
+                              placeholder="Add any additional notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeactivateBtn" disabled>
+                    <i class="fas fa-user-slash me-1"></i> Deactivate Employee
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Timeline Styles */
+    .timeline {
+        position: relative;
+        padding-left: 1.5rem;
+        margin: 0 0 0 1rem;
+    }
+    
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-badge {
+        position: absolute;
+        left: -2.25rem;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        z-index: 1;
+    }
+    
+    .timeline-content {
+        padding: 0.5rem 0 0 0;
+    }
+    
+    /* Status Badges */
+    .badge {
+        padding: 0.4em 0.65em;
+        font-weight: 500;
+    }
+    
+    /* Avatar Sizes */
+    .avatar-xxl {
+        width: 100px;
+        height: 100px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Custom Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Custom Checkbox */
+    .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    
+    .form-check-input:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Confirm deactivation checkbox
+        const confirmCheckbox = document.getElementById('confirmDeactivate');
+        const deactivateBtn = document.getElementById('confirmDeactivateBtn');
+        
+        if (confirmCheckbox && deactivateBtn) {
+            confirmCheckbox.addEventListener('change', function() {
+                deactivateBtn.disabled = !this.checked;
+            });
+        }
+        
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Tab functionality
+        const triggerTabList = [].slice.call(document.querySelectorAll('#profileTabs button'));
+        triggerTabList.forEach(function (triggerEl) {
+            const tabTrigger = new bootstrap.Tab(triggerEl);
+            
+            triggerEl.addEventListener('click', function (event) {
+                event.preventDefault();
+                tabTrigger.show();
+            });
+        });
+    });
+</script>
+{% endblock %}

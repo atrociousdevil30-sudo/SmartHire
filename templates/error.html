@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Error - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Error</h4>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-4x text-danger mb-4"></i>
+                    <h2>Something went wrong</h2>
+                    <p class="lead">{{ error }}</p>
+                    <a href="{{ url_for('analytics') }}" class="btn btn-primary mt-3">
+                        <i class="fas fa-sync-alt me-2"></i>Try Again
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

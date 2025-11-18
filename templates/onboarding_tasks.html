@@ -1,0 +1,367 @@
+{% extends "employee_base.html" %}
+
+{% block title %}Onboarding Tasks - SmartHire AI{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-clipboard2-check me-2"></i>Onboarding Tasks
+                </h1>
+                <a href="{{ url_for('employee_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+                </a>
+            </div>
+            <p class="text-muted mb-0">Complete these tasks to finish your onboarding process</p>
+        </div>
+    </div>
+
+    <!-- Task Categories -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="text-primary mb-2">
+                        <i class="bi bi-file-earmark-text fs-1"></i>
+                    </div>
+                    <h5 class="card-title">Documentation</h5>
+                    <p class="small text-muted">Upload and submit required documents</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="text-warning mb-2">
+                        <i class="bi bi-person-lines-fill fs-1"></i>
+                    </div>
+                    <h5 class="card-title">Personal Information</h5>
+                    <p class="small text-muted">Complete your personal details</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="text-info mb-2">
+                        <i class="bi bi-play-circle fs-1"></i>
+                    </div>
+                    <h5 class="card-title">Orientation</h5>
+                    <p class="small text-muted">Complete orientation materials</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task List -->
+    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+        <div class="card-header bg-transparent border-0">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">
+                    <i class="bi bi-list-check me-2"></i>Your Tasks
+                </h2>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-funnel me-1"></i> Filter
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="filterDropdown">
+                        <li><a class="dropdown-item" href="#">All Tasks</a></li>
+                        <li><a class="dropdown-item" href="#">Pending</a></li>
+                        <li><a class="dropdown-item" href="#">Completed</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#">Due Soon</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th width="40"></th>
+                            <th>Task</th>
+                            <th>Category</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Task 1 -->
+                        <tr>
+                            <td class="text-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task1" checked>
+                                </div>
+                            </td>
+                            <td>
+                                <label class="form-check-label" for="task1">
+                                    Upload Aadhaar Card
+                                </label>
+                            </td>
+                            <td>Documentation</td>
+                            <td>Nov 20, 2023</td>
+                            <td><span class="badge bg-success">Completed</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#uploadModal" data-task="Aadhaar Card">
+                                    <i class="bi bi-upload me-1"></i> View/Replace
+                                </button>
+                            </td>
+                        </tr>
+                        
+                        <!-- Task 2 -->
+                        <tr>
+                            <td class="text-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task2">
+                                </div>
+                            </td>
+                            <td>
+                                <label class="form-check-label" for="task2">
+                                    Upload PAN Card
+                                </label>
+                            </td>
+                            <td>Documentation</td>
+                            <td>Nov 20, 2023</td>
+                            <td><span class="badge bg-warning text-dark">Pending</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal" data-task="PAN Card">
+                                    <i class="bi bi-upload me-1"></i> Upload
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Task 3 -->
+                        <tr>
+                            <td class="text-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task3">
+                                </div>
+                            </td>
+                            <td>
+                                <label class="form-check-label" for="task3">
+                                    Complete Personal Information Form
+                                </label>
+                            </td>
+                            <td>Personal Information</td>
+                            <td>Nov 22, 2023</td>
+                            <td><span class="badge bg-warning text-dark">In Progress</span></td>
+                            <td class="text-end">
+                                <a href="#" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-pencil me-1"></i> Complete Form
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Task 4 -->
+                        <tr>
+                            <td class="text-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task4">
+                                </div>
+                            </td>
+                            <td>
+                                <label class="form-check-label" for="task4">
+                                    Submit Bank Details
+                                </label>
+                            </td>
+                            <td>Documentation</td>
+                            <td>Nov 25, 2023</td>
+                            <td><span class="badge bg-secondary">Not Started</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary" disabled>
+                                    <i class="bi bi-lock me-1"></i> Locked
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Task 5 -->
+                        <tr>
+                            <td class="text-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task5">
+                                </div>
+                            </td>
+                            <td>
+                                <label class="form-check-label" for="task5">
+                                    Sign Offer Letter
+                                </label>
+                            </td>
+                            <td>Documentation</td>
+                            <td>Nov 18, 2023</td>
+                            <td><span class="badge bg-danger">Overdue</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pen me-1"></i> Sign Now
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Task 6 -->
+                        <tr>
+                            <td class="text-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task6" checked>
+                                </div>
+                            </td>
+                            <td>
+                                <label class="form-check-label" for="task6">
+                                    Watch Company Introduction Video
+                                </label>
+                            </td>
+                            <td>Orientation</td>
+                            <td>Nov 30, 2023</td>
+                            <td><span class="badge bg-success">Completed</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-play-circle me-1"></i> Watch Again
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Task 7 -->
+                        <tr>
+                            <td class="text-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task7">
+                                </div>
+                            </td>
+                            <td>
+                                <label class="form-check-label" for="task7">
+                                    Acknowledge Company Policies
+                                </label>
+                            </td>
+                            <td>Orientation</td>
+                            <td>Nov 28, 2023</td>
+                            <td><span class="badge bg-warning text-dark">Pending</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-primary">
+                                    <i class="bi bi-file-text me-1"></i> Review & Acknowledge
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comments Section -->
+    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+        <div class="card-header bg-transparent border-0">
+            <h2 class="h5 mb-0">
+                <i class="bi bi-chat-left-text me-2"></i>Comments & Questions
+            </h2>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="card bg-dark bg-opacity-50 p-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <strong>HR Team</strong>
+                                <small class="text-muted">2 hours ago</small>
+                            </div>
+                            <p class="mb-0">Please make sure to upload high-quality scans of your documents. Blurry images will not be accepted.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <form>
+                <div class="mb-3">
+                    <label for="comment" class="form-label">Add a comment or question</label>
+                    <textarea class="form-control bg-dark text-light" id="comment" rows="3" placeholder="Type your message here..."></textarea>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <div class="form-text">Your message will be visible to the HR team</div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send me-1"></i> Send
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Document Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Upload Document</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="documentUploadForm">
+                    <div class="mb-3">
+                        <label for="documentType" class="form-label">Document Type</label>
+                        <input type="text" class="form-control bg-dark text-light" id="documentType" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fileInput" class="form-label">Choose file</label>
+                        <input class="form-control bg-dark text-light" type="file" id="fileInput">
+                        <div class="form-text">Accepted formats: PDF, JPG, PNG (Max size: 5MB)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="documentNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control bg-dark text-light" id="documentNotes" rows="3" placeholder="Add any additional information..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">
+                    <i class="bi bi-upload me-1"></i> Upload Document
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize the upload modal with task-specific data
+    document.addEventListener('DOMContentLoaded', function() {
+        const uploadModal = document.getElementById('uploadModal');
+        if (uploadModal) {
+            uploadModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const taskName = button.getAttribute('data-task');
+                const modalTitle = uploadModal.querySelector('.modal-title');
+                const documentType = uploadModal.querySelector('#documentType');
+                
+                modalTitle.textContent = `Upload ${taskName}`;
+                documentType.value = taskName;
+            });
+        }
+
+        // Handle task completion
+        const checkboxes = document.querySelectorAll('.form-check-input');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const row = this.closest('tr');
+                const statusBadge = row.querySelector('.badge');
+                
+                if (this.checked) {
+                    statusBadge.textContent = 'Completed';
+                    statusBadge.className = 'badge bg-success';
+                } else {
+                    statusBadge.textContent = 'Pending';
+                    statusBadge.className = 'badge bg-warning text-dark';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

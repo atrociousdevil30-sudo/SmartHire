@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center min-vh-80 align-items-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4 fw-bold mb-4">Welcome to SmartHire AI</h1>
+            <p class="lead mb-5">Streamline your HR processes with AI-powered recruitment and employee management.</p>
+            
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="mb-3">
+                                <i class="bi bi-person-plus-fill" style="font-size: 3rem; color: var(--primary-color);"></i>
+                            </div>
+                            <h3 class="h4 mb-3">Start Onboarding</h3>
+                            <p class="text-muted mb-4">Efficiently onboard new hires with our AI-powered system.</p>
+                            <a href="{{ url_for('onboarding') }}" class="btn btn-primary btn-lg w-100">Begin Onboarding</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="mb-3">
+                                <i class="bi bi-graph-up" style="font-size: 3rem; color: var(--secondary-color);"></i>
+                            </div>
+                            <h3 class="h4 mb-3">View Analytics</h3>
+                            <p class="text-muted mb-4">Gain insights into your hiring process and employee feedback.</p>
+                            <a href="{{ url_for('analytics') }}" class="btn btn-outline-primary btn-lg w-100">View Analytics</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-5">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h2 class="h4 mb-4">Why Choose SmartHire AI?</h2>
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <div class="d-flex">
+                                        <div class="me-3 text-primary">
+                                            <i class="bi bi-lightbulb" style="font-size: 1.5rem;"></i>
+                                        </div>
+                                        <div>
+                                            <h5 class="h6 mb-2">AI-Powered Screening</h5>
+                                            <p class="small text-muted mb-0">Automatically screen and rank candidates based on job requirements.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex">
+                                        <div class="me-3 text-primary">
+                                            <i class="bi bi-chat-left-text" style="font-size: 1.5rem;"></i>
+                                        </div>
+                                        <div>
+                                            <h5 class="h6 mb-2">Smart Interviews</h5>
+                                            <p class="small text-muted mb-0">Conduct AI-powered interviews with automated analysis.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex">
+                                        <div class="me-3 text-primary">
+                                            <i class="bi bi-graph-up-arrow" style="font-size: 1.5rem;"></i>
+                                        </div>
+                                        <div>
+                                            <h5 class="h6 mb-2">Data-Driven Insights</h5>
+                                            <p class="small text-muted mb-0">Make informed decisions with comprehensive analytics.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

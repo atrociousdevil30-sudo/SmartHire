@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Employee - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-0">
+                    <h4 class="text-light mb-0">
+                        <i class="fas fa-user-plus me-2"></i> Add New Employee
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('add_employee') }}">
+                        <div class="row">
+                            <!-- Personal Information -->
+                            <div class="col-md-6">
+                                <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                                    <div class="card-header bg-transparent border-0">
+                                        <h5 class="text-light mb-0">Personal Information</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="full_name" class="form-label text-light">Full Name <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="full_name" name="full_name" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="email" class="form-label text-light">Email <span class="text-danger">*</span></label>
+                                            <input type="email" class="form-control bg-dark text-light border-secondary" id="email" name="email" required>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="username" class="form-label text-light">Username <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control bg-dark text-light border-secondary" id="username" name="username" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="password" class="form-label text-light">Temporary Password <span class="text-danger">*</span></label>
+                                                    <input type="password" class="form-control bg-dark text-light border-secondary" id="password" name="password" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="phone" class="form-label text-light">Phone Number</label>
+                                            <input type="tel" class="form-control bg-dark text-light border-secondary" id="phone" name="phone">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Employment Details -->
+                            <div class="col-md-6">
+                                <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                                    <div class="card-header bg-transparent border-0">
+                                        <h5 class="text-light mb-0">Employment Details</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="department" class="form-label text-light">Department <span class="text-danger">*</span></label>
+                                            <select class="form-select bg-dark text-light border-secondary" id="department" name="department" required>
+                                                <option value="" selected disabled>Select Department</option>
+                                                <option value="Engineering">Engineering</option>
+                                                <option value="Marketing">Marketing</option>
+                                                <option value="Sales">Sales</option>
+                                                <option value="HR">Human Resources</option>
+                                                <option value="Finance">Finance</option>
+                                                <option value="Operations">Operations</option>
+                                                <option value="Product">Product</option>
+                                                <option value="Design">Design</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="position" class="form-label text-light">Position <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="position" name="position" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="hire_date" class="form-label text-light">Hire Date <span class="text-danger">*</span></label>
+                                            <input type="date" class="form-control bg-dark text-light border-secondary" id="hire_date" name="hire_date" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="manager_id" class="form-label text-light">Manager</label>
+                                            <select class="form-select bg-dark text-light border-secondary" id="manager_id" name="manager_id">
+                                                <option value="" selected>No Manager</option>
+                                                {% for manager in managers %}
+                                                <option value="{{ manager.id }}">{{ manager.full_name }} ({{ manager.department }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Onboarding Checklist Preview -->
+                        <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                            <div class="card-header bg-transparent border-0">
+                                <h5 class="text-light mb-0">
+                                    <i class="fas fa-clipboard-check me-2"></i> Onboarding Checklist
+                                </h5>
+                                <p class="text-muted small mb-0">A default onboarding checklist will be created for this employee.</p>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item bg-transparent text-light border-secondary">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="paperwork" checked disabled>
+                                            <label class="form-check-label" for="paperwork">
+                                                Complete Employment Paperwork
+                                            </label>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item bg-transparent text-light border-secondary">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="equipment" checked disabled>
+                                            <label class="form-check-label" for="equipment">
+                                                Assign Equipment
+                                            </label>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item bg-transparent text-light border-secondary">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="training" checked disabled>
+                                            <label class="form-check-label" for="training">
+                                                Complete Training
+                                            </label>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item bg-transparent text-light border-secondary">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orientation" checked disabled>
+                                            <label class="form-check-label" for="orientation">
+                                                HR Orientation
+                                            </label>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item bg-transparent text-light border-secondary">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="team_intro" checked disabled>
+                                            <label class="form-check-label" for="team_intro">
+                                                Team Introduction
+                                            </label>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('list_employees') }}" class="btn btn-outline-light">
+                                <i class="fas fa-arrow-left me-1"></i> Back to Employees
+                            </a>
+                            <div>
+                                <button type="reset" class="btn btn-outline-secondary me-2">
+                                    <i class="fas fa-undo me-1"></i> Reset
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-user-plus me-1"></i> Add Employee
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default hire date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('hire_date').value = today;
+        
+        // Generate username from email
+        const emailInput = document.getElementById('email');
+        const usernameInput = document.getElementById('username');
+        
+        emailInput.addEventListener('blur', function() {
+            if (emailInput.value && !usernameInput.value) {
+                const username = emailInput.value.split('@')[0].toLowerCase();
+                usernameInput.value = username.replace(/[^a-z0-9]/g, '');
+            }
+        });
+        
+        // Generate random password
+        const generatePassword = () => {
+            const length = 12;
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+            let password = "";
+            
+            // Ensure at least one of each character type
+            password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(Math.floor(Math.random() * 26));
+            password += "abcdefghijklmnopqrstuvwxyz".charAt(Math.floor(Math.random() * 26));
+            password += "0123456789".charAt(Math.floor(Math.random() * 10));
+            password += "!@#$%^&*()_+~`|}{[]:;?><,./-=".charAt(Math.floor(Math.random() * 26));
+            
+            // Fill the rest of the password
+            for (let i = 4; i < length; i++) {
+                password += charset.charAt(Math.floor(Math.random() * charset.length));
+            }
+            
+            // Shuffle the password
+            return password.split('').sort(() => 0.5 - Math.random()).join('');
+        };
+        
+        // Set random password
+        const passwordInput = document.getElementById('password');
+        passwordInput.value = generatePassword();
+    });
+</script>
+{% endblock %}

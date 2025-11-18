@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}AI Interview{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">AI Interview Simulation</h2>
+                    <span class="badge bg-primary">Live</span>
+                </div>
+                <div class="card-body">
+                    <div id="interviewContainer" class="mb-4">
+                        <div class="chat-container" id="chatContainer">
+                            <div class="message message-ai">
+                                <p class="mb-0">Hello! Welcome to your AI-powered interview. I'll be asking you a few questions to assess your fit for the position. Let's get started!</p>
+                            </div>
+                            <div class="message message-ai">
+                                <p class="mb-0" id="currentQuestion">Tell me about yourself and your experience.</p>
+                            </div>
+                        </div>
+                        
+                        <div id="typingIndicator" class="d-none">
+                            <div class="typing-indicator">
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="summaryCard" class="card d-none mt-4">
+                            <div class="card-header bg-success text-white">
+                                <h3 class="h5 mb-0">Interview Summary</h3>
+                            </div>
+                            <div class="card-body">
+                                <div id="interviewSummary">
+                                    <!-- Summary will be inserted here -->
+                                </div>
+                                <div class="d-flex justify-content-between mt-4">
+                                    <button class="btn btn-outline-secondary" id="downloadPdfBtn">
+                                        <i class="bi bi-file-earmark-pdf me-2"></i>Download as PDF
+                                    </button>
+                                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                                        <i class="bi bi-house-door me-2"></i>Return to Dashboard
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="interviewForm" class="d-none">
+                        <div class="mb-3">
+                            <label for="candidateResponse" class="form-label">Your Response</label>
+                            <textarea class="form-control" id="candidateResponse" rows="4" required></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary" id="submitResponseBtn">
+                                <span id="submitText">Submit Response</span>
+                                <span id="submitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="startInterview" class="text-center py-5">
+                        <h3 class="h4 mb-4">Ready to Begin Your Interview?</h3>
+                        <p class="text-muted mb-4">This interview will consist of 4 questions to assess your qualifications and fit for the position.</p>
+                        <button class="btn btn-primary btn-lg" id="startInterviewBtn">
+                            <i class="bi bi-mic me-2"></i>Start Interview
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/interview.js') }}"></script>
+{% endblock %}

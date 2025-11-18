@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - SmartHire AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border-radius: 10px;
+        padding: 20px;
+        color: white;
+        margin-bottom: 20px;
+        text-align: center;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2) !important;
+    }
+    
+    .stat-card i {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        display: block;
+    }
+    
+    .stat-card h3 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 10px 0;
+    }
+    
+    .stat-card p {
+        margin: 0;
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .card {
+        margin-bottom: 30px;
+        border: 1px solid #444;
+        border-radius: 10px;
+        background-color: #2d2d2d;
+        color: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .card-header {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid #444;
+        font-weight: 600;
+        color: #f8f9fa;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    
+    .recent-activity {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .recent-activity li {
+        padding: 10px 0;
+        border-bottom: 1px solid #444;
+    }
+    
+    .recent-activity li:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-time {
+        font-size: 0.8rem;
+        color: #adb5bd;
+    }
+    
+    .progress {
+        background-color: #444;
+        height: 10px;
+    }
+    
+    .table {
+        color: #f8f9fa;
+    }
+    
+    .table th {
+        border-bottom: 1px solid #444;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom border-secondary">
+        <h1 class="h2">Analytics Dashboard</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="exportData">
+                    <i class="fas fa-download me-1"></i> Export Data
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshData">
+                    <i class="fas fa-sync-alt me-1"></i> Refresh
+                </button>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="timeRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-calendar-alt me-1"></i> Last 30 days
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="timeRangeDropdown">
+                    <li><a class="dropdown-item" href="#" data-range="7">Last 7 days</a></li>
+                    <li><a class="dropdown-item active" href="#" data-range="30">Last 30 days</a></li>
+                    <li><a class="dropdown-item" href="#" data-range="90">Last 90 days</a></li>
+                    <li><a class="dropdown-item" href="#" data-range="365">Last year</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+                <i class="fas fa-users"></i>
+                <h3 id="totalCandidates">0</h3>
+                <p>Total Candidates</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <i class="fas fa-chart-line"></i>
+                <h3 id="avgScore">0<small>%</small></h3>
+                <p>Avg. Resume Score</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f46b45 0%, #eea849 100%);">
+                <i class="fas fa-comments"></i>
+                <h3 id="interviewsCompleted">0</h3>
+                <p>Interviews Completed</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%);">
+                <i class="fas fa-smile"></i>
+                <h3 id="positiveFeedback">0<small>%</small></h3>
+                <p>Positive Feedback</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- Score Distribution Chart -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Resume Score Distribution</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="scoreChartDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            By Department
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="scoreChartDropdown">
+                            <li><a class="dropdown-item active" href="#" data-metric="department">By Department</a></li>
+                            <li><a class="dropdown-item" href="#" data-metric="position">By Position</a></li>
+                            <li><a class="dropdown-item" href="#" data-metric="time">Over Time</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="scoreDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sentiment Analysis -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Exit Interview Sentiment Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="chart-container">
+                                <canvas id="sentimentChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mt-4 mt-md-0">
+                                <h6>Sentiment Breakdown</h6>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Positive</span>
+                                    <span id="positiveCount">0</span>
+                                </div>
+                                <div class="progress mb-3">
+                                    <div id="positiveBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Neutral</span>
+                                    <span id="neutralCount">0</span>
+                                </div>
+                                <div class="progress mb-3">
+                                    <div id="neutralBar" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Negative</span>
+                                    <span id="negativeCount">0</span>
+                                </div>
+                                <div class="progress mb-3">
+                                    <div id="negativeBar" class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                
+                                <div class="alert alert-dark mt-4">
+                                    <small>
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Based on analysis of exit interview feedback using natural language processing.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Recent Activity -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="recent-activity p-3" id="recentActivity">
+                        <li>
+                            <div class="d-flex justify-content-between">
+                                <span>New candidate applied</span>
+                                <small class="activity-time">2 min ago</small>
+                            </div>
+                            <small class="text-muted">John Doe applied for Senior Developer</small>
+                        </li>
+                        <li>
+                            <div class="d-flex justify-content-between">
+                                <span>Interview completed</span>
+                                <small class="activity-time">1 hour ago</small>
+                            </div>
+                            <small class="text-muted">Jane Smith completed technical interview</small>
+                        </li>
+                        <li>
+                            <div class="d-flex justify-content-between">
+                                <span>New feedback received</span>
+                                <small class="activity-time">3 hours ago</small>
+                            </div>
+                            <small class="text-muted">Feedback for interview #4567</small>
+                        </li>
+                        <li>
+                            <div class="d-flex justify-content-between">
+                                <span>Position closed</span>
+                                <small class="activity-time">1 day ago</small>
+                            </div>
+                            <small class="text-muted">Frontend Developer position filled</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Top Performers -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Top Candidates</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="topCandidates">
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Alex Johnson</h6>
+                                <span class="badge bg-success">96%</span>
+                            </div>
+                            <small class="text-muted">Senior Developer</small>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Sarah Williams</h6>
+                                <span class="badge bg-success">94%</span>
+                            </div>
+                            <small class="text-muted">UX Designer</small>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Michael Chen</h6>
+                                <span class="badge bg-primary">89%</span>
+                            </div>
+                            <small class="text-muted">Data Scientist</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom Row -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Hiring Trends</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="hiringTrendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize charts
+    let scoreDistributionChart, sentimentChart, hiringTrendsChart;
+    
+    // Sample data - replace with actual data from your backend
+    const sampleData = {
+        totalCandidates: 247,
+        avgScore: 78,
+        interviewsCompleted: 143,
+        positiveFeedback: 82,
+        sentiment: {
+            positive: 65,
+            neutral: 25,
+            negative: 10
+        },
+        scoreDistribution: [12, 19, 28, 35, 42, 38, 31, 24, 18, 9],
+        hiringTrends: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+            applications: [45, 52, 48, 55, 62, 58, 65, 72, 68, 75],
+            interviews: [32, 38, 35, 42, 48, 45, 52, 58, 55, 62],
+            hires: [8, 10, 12, 15, 18, 16, 20, 22, 25, 28]
+        }
+    };
+
+    // Update stats cards
+    document.getElementById('totalCandidates').textContent = sampleData.totalCandidates.toLocaleString();
+    document.getElementById('avgScore').textContent = sampleData.avgScore;
+    document.getElementById('interviewsCompleted').textContent = sampleData.interviewsCompleted.toLocaleString();
+    document.getElementById('positiveFeedback').textContent = sampleData.positiveFeedback;
+
+    // Update sentiment breakdown
+    document.getElementById('positiveCount').textContent = sampleData.sentiment.positive + '%';
+    document.getElementById('neutralCount').textContent = sampleData.sentiment.neutral + '%';
+    document.getElementById('negativeCount').textContent = sampleData.sentiment.negative + '%';
+    
+    document.getElementById('positiveBar').style.width = sampleData.sentiment.positive + '%';
+    document.getElementById('neutralBar').style.width = sampleData.sentiment.neutral + '%';
+    document.getElementById('negativeBar').style.width = sampleData.sentiment.negative + '%';
+
+    // Initialize Score Distribution Chart
+    const scoreCtx = document.getElementById('scoreDistributionChart').getContext('2d');
+    scoreDistributionChart = new Chart(scoreCtx, {
+        type: 'bar',
+        data: {
+            labels: ['0-10', '11-20', '21-30', '31-40', '41-50', '51-60', '61-70', '71-80', '81-90', '91-100'],
+            datasets: [{
+                label: 'Number of Candidates',
+                data: sampleData.scoreDistribution,
+                backgroundColor: 'rgba(123, 44, 191, 0.7)',
+                borderColor: 'rgba(123, 44, 191, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#f8f9fa'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#f8f9fa'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        }
+    });
+
+    // Initialize Sentiment Chart
+    const sentimentCtx = document.getElementById('sentimentChart').getContext('2d');
+    sentimentChart = new Chart(sentimentCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Positive', 'Neutral', 'Negative'],
+            datasets: [{
+                data: [
+                    sampleData.sentiment.positive,
+                    sampleData.sentiment.neutral,
+                    sampleData.sentiment.negative
+                ],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(220, 53, 69, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: '#f8f9fa'
+                    }
+                }
+            }
+        }
+    });
+
+    // Initialize Hiring Trends Chart
+    const hiringCtx = document.getElementById('hiringTrendsChart').getContext('2d');
+    hiringTrendsChart = new Chart(hiringCtx, {
+        type: 'line',
+        data: {
+            labels: sampleData.hiringTrends.labels,
+            datasets: [
+                {
+                    label: 'Applications',
+                    data: sampleData.hiringTrends.applications,
+                    borderColor: 'rgba(123, 44, 191, 1)',
+                    backgroundColor: 'rgba(123, 44, 191, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Interviews',
+                    data: sampleData.hiringTrends.interviews,
+                    borderColor: 'rgba(23, 162, 184, 1)',
+                    backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Hires',
+                    data: sampleData.hiringTrends.hires,
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#f8f9fa'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#f8f9fa'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#f8f9fa'
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        }
+    });
+
+    // Handle refresh button click
+    document.getElementById('refreshData').addEventListener('click', function() {
+        // Show loading state
+        const originalText = this.innerHTML;
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+        
+        // Simulate data refresh
+        setTimeout(() => {
+            // In a real app, you would fetch new data here
+            this.innerHTML = originalText;
+            this.disabled = false;
+            
+            // Show success message
+            const toast = document.createElement('div');
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success alert-dismissible fade show';
+            toast.role = 'alert';
+            toast.innerHTML = `
+                <strong>Success!</strong> Data has been refreshed.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.body.appendChild(toast);
+            
+            // Auto-remove toast after 3 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }, 1500);
+    });
+
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (scoreDistributionChart) scoreDistributionChart.resize();
+            if (sentimentChart) sentimentChart.resize();
+            if (hiringTrendsChart) hiringTrendsChart.resize();
+        }, 250);
+    });
+});
+</script>
+{% endblock %}

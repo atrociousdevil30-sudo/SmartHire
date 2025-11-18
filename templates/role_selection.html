@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h2 class="mb-4">Select Your Role</h2>
+            <p class="mb-5">Choose how you want to access SmartHire AI</p>
+            
+            <div class="row">
+                <!-- HR Portal Card -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="text-center mb-4">
+                                <i class="fas fa-user-tie fa-4x mb-3" style="color: #7b2cbf;"></i>
+                                <h3>HR Professional</h3>
+                                <p class="text-muted">Access the HR dashboard, manage candidates, and view analytics</p>
+                            </div>
+                            <a href="{{ url_for('login', role='hr') }}" class="btn btn-primary btn-lg w-100">Continue as HR</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Employee Portal Card -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="text-center mb-4">
+                                <i class="fas fa-user-tie fa-4x mb-3" style="color: #34A853;"></i>
+                                <h3>Employee</h3>
+                                <p class="text-muted">Access your dashboard, view tasks, and manage your profile</p>
+                            </div>
+                            <a href="{{ url_for('login', role='employee') }}" class="btn btn-success btn-lg w-100">Continue as Employee</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
