@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 
+{% block title %}{{ role }} Login{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="row justify-content-center mt-5">
-        <div class="col-md-6 col-lg-4">
+        <div class="col-md-6 col-lg-5">
             <div class="card shadow-sm">
                 <div class="card-header text-center bg-primary text-white">
                     <h4 class="mb-0">{{ role }} Login</h4>
@@ -21,7 +23,22 @@
                         {% endif %}
                     {% endwith %}
                     
-                    <form method="POST" action="{{ url_for('login', role=role.lower()) }}" class="needs-validation" novalidate>
+                    <!-- Remembered Credentials Section -->
+                    <div id="rememberedCredentialsSection" style="display: none;">
+                        <div class="alert alert-info mb-3">
+                            <h6 class="alert-heading"><i class="fas fa-user-clock me-2"></i>Saved Accounts</h6>
+                            <p class="mb-2 small">Select an account to login quickly:</p>
+                            <div id="rememberedAccountsList"></div>
+                        </div>
+                        <div class="text-center mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="useDifferentAccount">
+                                <i class="fas fa-user-plus me-1"></i>Use Different Account
+                            </button>
+                        </div>
+                        <hr>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('login', role=role.lower()) }}" class="needs-validation" novalidate id="loginForm">
                         <div class="mb-3">
                             <label for="username" class="form-label">Username or Email</label>
                             <div class="input-group">
@@ -83,38 +100,161 @@
 </div>
 
 <script>
-// Toggle password visibility
-const togglePassword = document.querySelector('#togglePassword');
-const password = document.querySelector('#password');
-
-togglePassword.addEventListener('click', function (e) {
-    // Toggle the type attribute
-    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
-    password.setAttribute('type', type);
-    // Toggle the eye icon
-    this.querySelector('i').classList.toggle('fa-eye');
-    this.querySelector('i').classList.toggle('fa-eye-slash');
+document.addEventListener('DOMContentLoaded', function() {
+    // Load remembered credentials on page load
+    loadRememberedCredentials();
+    
+    // Toggle password visibility
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        });
+    }
+    
+    // Use different account button
+    const useDifferentAccountBtn = document.getElementById('useDifferentAccount');
+    if (useDifferentAccountBtn) {
+        useDifferentAccountBtn.addEventListener('click', function() {
+            document.getElementById('rememberedCredentialsSection').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('remember').checked = false;
+        });
+    }
 });
+
+// Load remembered credentials from API
+async function loadRememberedCredentials() {
+    try {
+        const response = await fetch('/api/remembered-credentials');
+        const result = await response.json();
+        
+        if (result.status === 'success' && result.remembered_accounts.length > 0) {
+            displayRememberedCredentials(result.remembered_accounts);
+        }
+    } catch (error) {
+        console.error('Error loading remembered credentials:', error);
+    }
+}
+
+// Display remembered credentials
+function displayRememberedCredentials(accounts) {
+    const container = document.getElementById('rememberedCredentialsSection');
+    const list = document.getElementById('rememberedAccountsList');
+    const loginForm = document.getElementById('loginForm');
+    
+    if (!container || !list || !loginForm) return;
+    
+    // Filter accounts by current role
+    const currentRole = '{{ role|lower }}';
+    const filteredAccounts = accounts.filter(acc => acc.role === currentRole);
+    
+    if (filteredAccounts.length === 0) return;
+    
+    // Clear existing content
+    list.innerHTML = '';
+    
+    // Add each remembered account
+    filteredAccounts.forEach(account => {
+        const accountDiv = document.createElement('div');
+        accountDiv.className = 'd-flex align-items-center justify-content-between p-2 border rounded mb-2 hover-bg-light';
+        
+        const lastUsed = account.last_used ? new Date(account.last_used).toLocaleDateString() : 'Never';
+        
+        accountDiv.innerHTML = `
+            <div class="flex-grow-1">
+                <div class="fw-bold">${account.full_name}</div>
+                <div class="small text-muted">${account.username}</div>
+                ${account.department ? `<div class="small text-muted">${account.department}</div>` : ''}
+                <div class="small text-muted">Last used: ${lastUsed}</div>
+            </div>
+            <div class="btn-group btn-group-sm">
+                ${account.has_password ? `
+                    <button type="button" class="btn btn-success btn-sm" onclick="loginWithCredential(${account.id})">
+                        <i class="fas fa-sign-in-alt me-1"></i>Login
+                    </button>
+                ` : ''}
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCredential(${account.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        list.appendChild(accountDiv);
+    });
+    
+    // Show remembered credentials section and hide form
+    container.style.display = 'block';
+    loginForm.style.display = 'none';
+}
+
+// Login with remembered credential
+async function loginWithCredential(credentialId) {
+    try {
+        const response = await fetch(`/api/remembered-credentials/${credentialId}/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            window.location.href = result.redirect_url;
+        } else {
+            alert('Login failed: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error logging in with remembered credential:', error);
+        alert('An error occurred during login');
+    }
+}
+
+// Remove remembered credential
+async function removeCredential(credentialId) {
+    if (!confirm('Are you sure you want to remove this saved account?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/remembered-credentials/${credentialId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            // Reload remembered credentials
+            loadRememberedCredentials();
+        } else {
+            alert('Failed to remove saved account: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error removing remembered credential:', error);
+        alert('An error occurred while removing the saved account');
+    }
+}
 
 // Form validation
 (function () {
     'use strict'
-    
-    // Fetch all the forms we want to apply custom Bootstrap validation styles to
     var forms = document.querySelectorAll('.needs-validation')
-    
-    // Loop over them and prevent submission
-    Array.prototype.slice.call(forms)
-        .forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                }
-                
-                form.classList.add('was-validated')
-            }, false)
-        })
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
 })()
 </script>
 {% endblock %}

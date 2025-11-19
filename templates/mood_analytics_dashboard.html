@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Mood Analytics{% endblock %}
+
+{% block content %}
 <!-- Mood & Confidence Analytics Dashboard -->
 <div class="row mb-4">
     <!-- Engagement Score -->
@@ -45,7 +50,7 @@
 
 <!-- Trends Chart -->
 <div class="card mb-4">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Mood & Confidence Trends</h5>
         <div class="btn-group" role="group">
             <button type="button" class="btn btn-sm btn-outline-secondary" data-range="7">7d</button>
@@ -60,7 +65,7 @@
 
 <!-- Alerts Section -->
 <div class="card mb-4" id="alertsCard" style="display: none;">
-    <div class="card-header bg-white">
+    <div class="card-header">
         <h5 class="mb-0">Attention Required</h5>
     </div>
     <div class="card-body p-0">
@@ -72,18 +77,18 @@
 
 <!-- Recent Feedback -->
 <div class="card">
-    <div class="card-header bg-white">
+    <div class="card-header">
         <h5 class="mb-0">Recent Feedback</h5>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
-                <thead class="table-light">
+                <thead class="table-dark">
                     <tr>
                         <th>Date</th>
                         <th>Mood</th>
                         <th>Confidence</th>
-                        <th>Feedback</th>
+                        <th>Employee & Feedback</th>
                     </tr>
                 </thead>
                 <tbody id="recentFeedback">
@@ -204,19 +209,41 @@ function updateTrendsChart(data) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'rgba(255, 255, 255, 0.2)'
+                    },
+                    ticks: {
+                        color: 'var(--text-secondary)'
+                    }
+                },
                 y: {
                     min: 0,
                     max: 5,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        color: 'var(--text-secondary)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'rgba(255, 255, 255, 0.2)'
                     }
                 }
             },
             plugins: {
                 legend: {
                     position: 'top',
+                    labels: {
+                        color: 'var(--text-primary)'
+                    }
                 },
                 tooltip: {
+                    backgroundColor: 'var(--card-bg)',
+                    titleColor: 'var(--text-primary)',
+                    bodyColor: 'var(--text-primary)',
+                    borderColor: 'var(--border-color)',
+                    borderWidth: 1,
                     callbacks: {
                         label: function(context) {
                             return `${context.dataset.label}: ${context.raw.toFixed(1)}/5.0`;
@@ -267,10 +294,60 @@ function updateAlerts(alerts) {
     alertsCard.style.display = 'block';
 }
 
+// Update recent feedback table
+async function updateRecentFeedback() {
+    try {
+        console.log('Fetching recent feedback from /api/feedback/recent...');
+        const response = await fetch('/api/feedback/recent');
+        const result = await response.json();
+        
+        console.log('API Response:', result);
+        
+        if (result.status === 'success') {
+            const tbody = document.getElementById('recentFeedback');
+            
+            if (!result.data || result.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No feedback data available</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            result.data.forEach(feedback => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${feedback.date}</td>
+                    <td>
+                        <span class="me-2">${feedback.mood_emoji}</span>
+                        <span class="badge bg-${feedback.mood_rating >= 4 ? 'success' : feedback.mood_rating >= 3 ? 'warning' : 'danger'}">
+                            ${feedback.mood_rating}/5
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-info">${feedback.confidence_rating}/5</span>
+                    </td>
+                    <td>
+                        <div class="small">
+                            <strong>${feedback.employee_name}</strong> 
+                            ${feedback.department !== 'N/A' ? `(${feedback.department})` : ''}
+                        </div>
+                        <div class="text-muted small mt-1">${feedback.feedback_text}</div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } else {
+            console.error('Failed to load recent feedback:', result.message);
+        }
+    } catch (error) {
+        console.error('Error loading recent feedback:', error);
+    }
+}
+
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Load initial data
     loadFeedbackData();
+    updateRecentFeedback();
     
     // Set up range buttons
     document.querySelectorAll('[data-range]').forEach(button => {
@@ -285,51 +362,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Set up auto-refresh every 5 minutes
-    setInterval(() => loadFeedbackData(), 5 * 60 * 1000);
+    setInterval(() => {
+        loadFeedbackData();
+        updateRecentFeedback();
+    }, 5 * 60 * 1000);
 });
 </script>
 
 <style>
-/* Custom styles for the analytics dashboard */
-.card {
-    border: none;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    font-weight: 600;
-}
-
+/* Minimal custom styles for the analytics dashboard */
 .progress {
     height: 10px;
     border-radius: 5px;
-}
-
-.progress-bar {
-    border-radius: 5px;
-}
-
-.table th {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.5px;
-    color: #6c757d;
 }
 
 .btn-group .btn {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
 }
-
-.list-group-item-warning {
-    background-color: #fff3cd;
-}
 </style>
+{% endblock %}

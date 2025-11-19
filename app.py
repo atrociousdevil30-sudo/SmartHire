@@ -11,6 +11,10 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from sqlalchemy import orm
 
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import base64
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -89,6 +93,47 @@ def get_db_session():
         yield db_session
     finally:
         db_session.close()
+
+# Encryption helper functions
+def get_encryption_key():
+    """Generate or retrieve encryption key for storing passwords"""
+    # Use app secret key as base for encryption
+    app_secret = app.config.get('SECRET_KEY', 'default-secret-key').encode()
+    salt = b'smarthire_salt'  # Fixed salt for consistency
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(app_secret))
+    return key
+
+def encrypt_password(password):
+    """Encrypt password for storage"""
+    key = get_encryption_key()
+    f = Fernet(key)
+    encrypted_password = f.encrypt(password.encode())
+    return base64.urlsafe_b64encode(encrypted_password).decode()
+
+def decrypt_password(encrypted_password):
+    """Decrypt stored password"""
+    if not encrypted_password:
+        return None
+    try:
+        key = get_encryption_key()
+        f = Fernet(key)
+        encrypted_data = base64.urlsafe_b64decode(encrypted_password.encode())
+        decrypted_password = f.decrypt(encrypted_data).decode()
+        return decrypted_password
+    except Exception:
+        return None
+
+def get_device_info():
+    """Get device/browser info for remembered credentials"""
+    user_agent = request.headers.get('User-Agent', '')
+    # Simple device fingerprint
+    return user_agent[:100] if user_agent else 'Unknown'
 
 # Database Models
 class User(db.Model):
@@ -252,6 +297,21 @@ class ExitFeedback(db.Model):
     sentiment = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class RememberedCredential(db.Model):
+    """Store remembered login credentials for users"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    username = db.Column(db.String(80), nullable=False)  # Store username/email for easy lookup
+    encrypted_password = db.Column(db.String(255), nullable=True)  # Store encrypted password
+    device_info = db.Column(db.String(255), nullable=True)  # Store device/browser info
+    last_used = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)  # When to expire the remembered credentials
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('remembered_credentials', lazy=True))
+
 class EmployeeFeedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -408,6 +468,140 @@ def select_role():
     session.clear()
     return render_template('role_selection.html')
 
+@app.route('/api/remembered-credentials')
+def get_remembered_credentials():
+    """Get remembered credentials for the current device"""
+    try:
+        device_info = get_device_info()
+        
+        # Find active remembered credentials for this device
+        credentials = RememberedCredential.query.filter_by(
+            device_info=device_info,
+            is_active=True
+        ).filter(
+            RememberedCredential.expires_at > datetime.utcnow()
+        ).all()
+        
+        remembered_accounts = []
+        for cred in credentials:
+            user = User.query.get(cred.user_id)
+            if user and user.is_active:
+                remembered_accounts.append({
+                    'id': cred.id,
+                    'username': cred.username,
+                    'full_name': user.full_name,
+                    'role': user.role,
+                    'department': user.department,
+                    'has_password': bool(cred.encrypted_password),
+                    'last_used': cred.last_used.isoformat() if cred.last_used else None
+                })
+        
+        return jsonify({
+            'status': 'success',
+            'remembered_accounts': remembered_accounts
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/remembered-credentials/<int:credential_id>/login', methods=['POST'])
+def login_with_remembered_credentials(credential_id):
+    """Login using remembered credentials"""
+    try:
+        credential = RememberedCredential.query.get_or_404(credential_id)
+        
+        # Verify device matches
+        if credential.device_info != get_device_info():
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid device'
+            }), 403
+        
+        # Check if credential is still valid
+        if not credential.is_active or credential.expires_at < datetime.utcnow():
+            return jsonify({
+                'status': 'error',
+                'message': 'Credentials expired'
+            }), 400
+        
+        # Decrypt password
+        password = decrypt_password(credential.encrypted_password)
+        if not password:
+            return jsonify({
+                'status': 'error',
+                'message': 'Could not decrypt password'
+            }), 500
+        
+        # Get user
+        user = User.query.get(credential.user_id)
+        if not user or not user.is_active:
+            return jsonify({
+                'status': 'error',
+                'message': 'User not found or inactive'
+            }), 404
+        
+        # Verify password
+        if not user.check_password(password):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid credentials'
+            }), 401
+        
+        # Update last used
+        credential.last_used = datetime.utcnow()
+        db.session.commit()
+        
+        # Set session
+        session['user_id'] = user.id
+        session['role'] = user.role
+        session.permanent = True
+        session['username'] = user.full_name
+        
+        # Update last login
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'redirect_url': url_for('hr_dashboard') if user.role == 'hr' else url_for('employee_dashboard')
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/remembered-credentials/<int:credential_id>', methods=['DELETE'])
+def delete_remembered_credentials(credential_id):
+    """Delete remembered credentials"""
+    try:
+        credential = RememberedCredential.query.get_or_404(credential_id)
+        
+        # Verify device matches
+        if credential.device_info != get_device_info():
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid device'
+            }), 403
+        
+        db.session.delete(credential)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Credentials removed successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 @app.route('/login/<role>', methods=['GET', 'POST'])
 def login(role):
     try:
@@ -448,6 +642,43 @@ def login(role):
                     app.logger.warning(f'Failed login attempt for: {username}')
                     flash('Invalid username/email or password', 'danger')
                     return redirect(url_for('login', role=role))
+                
+                # Handle remember me functionality
+                if remember:
+                    # Check if credentials already exist for this device
+                    device_info = get_device_info()
+                    existing_credential = RememberedCredential.query.filter_by(
+                        user_id=user.id,
+                        device_info=device_info,
+                        is_active=True
+                    ).first()
+                    
+                    if existing_credential:
+                        # Update existing credential
+                        existing_credential.encrypted_password = encrypt_password(password)
+                        existing_credential.last_used = datetime.utcnow()
+                        existing_credential.expires_at = datetime.utcnow() + timedelta(days=30)
+                    else:
+                        # Create new remembered credential
+                        credential = RememberedCredential(
+                            user_id=user.id,
+                            username=username,
+                            encrypted_password=encrypt_password(password),
+                            device_info=device_info,
+                            expires_at=datetime.utcnow() + timedelta(days=30)
+                        )
+                        db.session.add(credential)
+                    
+                    db.session.commit()
+                    app.logger.info(f'Remembered credentials saved for user: {user.username}')
+                else:
+                    # Clean up any existing remembered credentials for this device if user unchecked remember me
+                    device_info = get_device_info()
+                    RememberedCredential.query.filter_by(
+                        user_id=user.id,
+                        device_info=device_info
+                    ).delete()
+                    db.session.commit()
                 
                 # Update last login
                 user.last_login = datetime.utcnow()
@@ -676,8 +907,8 @@ def logout():
 @app.route('/analytics/mood', endpoint='mood_analytics')
 @login_required()
 def mood_analytics():
-    """Redirect to index"""
-    return redirect(url_for('index'))
+    """Mood Analytics Dashboard"""
+    return render_template('mood_analytics_dashboard.html')
 
 # HR Dashboard
 @app.route('/hr/employees/add', methods=['GET', 'POST'])
@@ -884,8 +1115,17 @@ def employee_dashboard():
     # Get the logged-in user
     user = User.query.get(session['user_id'])
     
-    # Get HR contact information
-    hr_contact = User.query.filter_by(role='hr').first()
+    # Get HR contact information - prioritize assigned HR or first available HR
+    hr_contact = None
+    
+    # Try to get assigned HR from onboarding checklist
+    onboarding_checklist = OnboardingChecklist.query.filter_by(employee_id=user.id).first()
+    if onboarding_checklist and onboarding_checklist.assigned_hr_id:
+        hr_contact = User.query.get(onboarding_checklist.assigned_hr_id)
+    
+    # Fallback to any HR user if no assigned HR found
+    if not hr_contact:
+        hr_contact = User.query.filter_by(role='hr', is_active=True).first()
     
     # Get onboarding checklist for progress calculation
     onboarding_checklist = OnboardingChecklist.query.filter_by(employee_id=user.id).first()
@@ -2719,6 +2959,82 @@ def submit_feedback():
         return jsonify({
             'status': 'error',
             'message': 'Failed to submit feedback. Please try again.'
+        }), 500
+
+@app.route('/api/feedback/debug')
+@login_required('hr')
+def debug_feedback_data():
+    """Debug endpoint to check database connection and feedback data"""
+    try:
+        # Test database connection
+        feedback_count = EmployeeFeedback.query.count()
+        recent_feedback = EmployeeFeedback.query.order_by(EmployeeFeedback.created_at.desc()).limit(5).all()
+        
+        debug_info = {
+            'database_connected': True,
+            'total_feedback_count': feedback_count,
+            'recent_feedback_sample': []
+        }
+        
+        for feedback in recent_feedback:
+            debug_info['recent_feedback_sample'].append({
+                'id': feedback.id,
+                'user_id': feedback.user_id,
+                'mood_rating': feedback.mood_rating,
+                'confidence_rating': feedback.confidence_rating,
+                'feedback': feedback.feedback,
+                'created_at': feedback.created_at.isoformat() if feedback.created_at else None,
+                'user_name': feedback.user.full_name if feedback.user else 'Unknown'
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'debug_info': debug_info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'database_connected': False
+        }), 500
+
+@app.route('/api/feedback/recent')
+@login_required('hr')
+def get_recent_feedback():
+    """Get recent feedback with employee details"""
+    try:
+        # Get feedback from the last 30 days
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        recent_feedback = EmployeeFeedback.query.filter(
+            EmployeeFeedback.created_at >= thirty_days_ago
+        ).order_by(EmployeeFeedback.created_at.desc()).limit(20).all()
+        
+        feedback_list = []
+        for feedback in recent_feedback:
+            # Get mood emoji
+            mood_emoji = "😊" if feedback.mood_rating >= 4 else "😐" if feedback.mood_rating >= 3 else "😞"
+            
+            feedback_list.append({
+                'id': feedback.id,
+                'date': feedback.created_at.strftime('%Y-%m-%d %H:%M'),
+                'employee_name': feedback.user.full_name if feedback.user else 'Unknown',
+                'mood_rating': feedback.mood_rating,
+                'mood_emoji': mood_emoji,
+                'confidence_rating': feedback.confidence_rating,
+                'feedback_text': feedback.feedback or 'No comment provided',
+                'department': feedback.user.department if feedback.user and feedback.user.department else 'N/A'
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'data': feedback_list
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
         }), 500
 
 @app.route('/api/feedback/summary')
