@@ -357,7 +357,7 @@ class Message(db.Model):
     sent_at = db.Column(db.DateTime, default=datetime.utcnow)
     read_at = db.Column(db.DateTime)
     parent_id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=True)  # For replies
-    metadata = db.Column(db.JSON, nullable=True)  # Additional notification metadata
+    notification_data = db.Column(db.JSON, nullable=True)  # Additional notification metadata
     
     # Relationships
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
@@ -2693,7 +2693,7 @@ def submit_feedback():
                     recipient_id=hr_user.id,
                     message_type='hr_notification',
                     priority=priority,
-                    metadata={
+                    notification_data={
                         'notification_type': notification_type,
                         'feedback_id': new_feedback.id,
                         'mood_rating': mood_rating,
@@ -3717,7 +3717,7 @@ def create_hr_notification(title, message, notification_type='info', priority='n
                 priority=priority,
                 status='unread'
             )
-            notification.metadata = {
+            notification.notification_data = {
                 'notification_type': notification_type,
                 'action_url': action_url
             }
@@ -3850,15 +3850,15 @@ def get_hr_notifications():
         # Format notifications
         notifications = []
         for notif in unread_notifications:
-            metadata = notif.metadata or {}
+            notification_data = notif.notification_data or {}
             notifications.append({
                 'id': notif.id,
                 'title': notif.subject,
                 'message': notif.content,
-                'type': metadata.get('notification_type', 'info'),
+                'type': notification_data.get('notification_type', 'info'),
                 'priority': notif.priority,
                 'created_at': notif.created_at.isoformat(),
-                'action_url': metadata.get('action_url'),
+                'action_url': notification_data.get('action_url'),
                 'is_read': notif.status == 'read'
             })
         
@@ -3888,15 +3888,15 @@ def get_all_hr_notifications():
         # Format notifications
         notifications = []
         for notif in all_notifications:
-            metadata = notif.metadata or {}
+            notification_data = notif.notification_data or {}
             notifications.append({
                 'id': notif.id,
                 'title': notif.subject,
                 'message': notif.content,
-                'type': metadata.get('notification_type', 'info'),
+                'type': notification_data.get('notification_type', 'info'),
                 'priority': notif.priority,
                 'created_at': notif.created_at.isoformat(),
-                'action_url': metadata.get('action_url'),
+                'action_url': notification_data.get('action_url'),
                 'is_read': notif.status == 'read'
             })
         
