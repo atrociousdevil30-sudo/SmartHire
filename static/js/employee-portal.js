@@ -126,7 +126,7 @@ function displayDocuments(documents) {
                         ${doc.description ? `<p class="mb-0 small">${doc.description}</p>` : ''}
                     </div>
                     <div class="btn-group btn-group-sm ms-2" role="group">
-                        <a href="/uploads/documents/${doc.file_name}" class="btn btn-outline-primary" 
+                        <a href="/uploads/documents/${doc.file_path.split('/').pop()}" class="btn btn-outline-primary" 
                            title="Download" target="_blank">
                             <i class="fas fa-download"></i>
                         </a>

@@ -30,17 +30,18 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <button class="btn btn-primary btn-lg w-100" data-bs-toggle="modal" data-bs-target="#profileModal">
+                            <button class="btn btn-primary btn-lg w-100" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="loadProfileModal()">
                                 <i class="fas fa-user me-2"></i>My Profile
                             </button>
                         </div>
                         <div class="col-md-4">
-                            <button class="btn btn-info btn-lg w-100" data-bs-toggle="modal" data-bs-target="#documentsModal">
+                            <button class="btn btn-info btn-lg w-100" data-bs-toggle="modal" data-bs-target="#documentsModal" onclick="loadDocumentsModal()">
                                 <i class="fas fa-file-alt me-2"></i>My Documents
+                                {% if documents_count > 0 %}<span class="badge bg-light text-dark ms-1">{{ documents_count }}</span>{% endif %}
                             </button>
                         </div>
                         <div class="col-md-4">
-                            <button class="btn btn-success btn-lg w-100" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                            <button class="btn btn-success btn-lg w-100" data-bs-toggle="modal" data-bs-target="#settingsModal" onclick="loadSettingsModal()">
                                 <i class="fas fa-cog me-2"></i>My Settings
                             </button>
                         </div>
@@ -56,19 +57,19 @@
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold">Onboarding Progress</h6>
-                    <span class="text-primary">Day 1 of 5</span>
+                    <span class="text-primary">Day {{ employee.onboarding_progress.current_day }} of {{ employee.onboarding_progress.total_days }}</span>
                 </div>
                 <div class="card-body">
                     <div class="progress mb-3" style="height: 20px;">
                         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
-                             style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">20%</div>
+                             style="width: {{ onboarding_progress }}%;" aria-valuenow="{{ onboarding_progress }}" aria-valuemin="0" aria-valuemax="100">{{ onboarding_progress }}%</div>
                     </div>
                     <div class="text-center small">
                         <span class="me-3"><i class="fas fa-check-circle text-success me-1"></i> Account Setup</span>
-                        <span class="me-3"><i class="fas fa-hourglass-half text-warning me-1"></i> Documentation</span>
-                        <span class="me-3"><i class="far fa-clock text-muted me-1"></i> Training</span>
-                        <span class="me-3"><i class="far fa-clock text-muted me-1"></i> Equipment</span>
-                        <span class="me-3"><i class="far fa-clock text-muted me-1"></i> Final Review</span>
+                        <span class="me-3"><i class="fas fa-{% if onboarding_progress >= 40 %}check-circle text-success{% else %}hourglass-half text-warning{% endif %} me-1"></i> Documentation</span>
+                        <span class="me-3"><i class="fas fa-{% if onboarding_progress >= 60 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Training</span>
+                        <span class="me-3"><i class="fas fa-{% if onboarding_progress >= 80 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Equipment</span>
+                        <span class="me-3"><i class="fas fa-{% if onboarding_progress >= 100 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Final Review</span>
                     </div>
                 </div>
             </div>
@@ -84,30 +85,16 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action">
+                        {% for task in employee.pending_tasks %}
+                        <a href="{{ url_for('onboarding_tasks') }}" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">Submit Tax Documents</h6>
-                                <small class="text-danger">Due Today</small>
+                                <h6 class="mb-1">{{ task.title }}</h6>
+                                <small class="{% if task.priority == 'high' %}text-danger{% elif task.priority == 'medium' %}text-warning{% else %}text-info{% endif %}">{{ task.due }}</small>
                             </div>
-                            <p class="mb-1">Complete your tax forms in the documents section.</p>
-                            <small>HR Department</small>
+                            <p class="mb-1">{% if task.title == 'Submit timesheet' %}Complete your weekly timesheet in the employee portal.{% elif task.title == 'Complete training module' %}Mandatory training module for new employees.{% else %}Update project documentation as assigned.{% endif %}</p>
+                            <small>{% if task.priority == 'high' %}HR Department{% elif task.priority == 'medium' %}IT Department{% else %}Operations{% endif %}</small>
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">Complete IT Security Training</h6>
-                                <small class="text-warning">Due in 2 days</small>
-                            </div>
-                            <p class="mb-1">Mandatory security training for all new hires.</p>
-                            <small>IT Department</small>
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">Schedule Equipment Pickup</h6>
-                                <small class="text-info">Next Step</small>
-                            </div>
-                            <p class="mb-1">Schedule a time to pick up your work equipment.</p>
-                            <small>Operations</small>
-                        </a>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
