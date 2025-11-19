@@ -406,6 +406,272 @@ function submitPasswordChange() {
     });
 }
 
+// ============ NOTIFICATION SYSTEM ============
+
+let notificationCheckInterval;
+let lastNotificationCount = 0;
+
+// Initialize notification system
+function initializeNotifications() {
+    // Check for notifications immediately
+    checkNotifications();
+    
+    // Then check every 30 seconds
+    notificationCheckInterval = setInterval(checkNotifications, 30000);
+}
+
+// Check for new notifications
+function checkNotifications() {
+    fetch('/api/notifications', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const unreadCount = data.unread_count || 0;
+            
+            // Update notification badge if it exists
+            updateNotificationBadge(unreadCount);
+            
+            // Show toast for new notifications
+            if (unreadCount > lastNotificationCount) {
+                const newNotifications = data.notifications.slice(0, unreadCount - lastNotificationCount);
+                newNotifications.forEach(notification => {
+                    showNotificationToast(notification);
+                });
+            }
+            
+            lastNotificationCount = unreadCount;
+        }
+    })
+    .catch(error => {
+        console.error('Error checking notifications:', error);
+    });
+}
+
+// Update notification badge in navbar
+function updateNotificationBadge(count) {
+    const badge = document.getElementById('notificationBadge');
+    if (badge) {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+}
+
+// Show toast for new notification
+function showNotificationToast(notification) {
+    const type = notification.priority === 'urgent' ? 'danger' : 
+                 notification.priority === 'high' ? 'warning' : 
+                 notification.priority === 'low' ? 'info' : 'primary';
+    
+    const icon = notification.message_type === 'task' ? 'fa-tasks' :
+                notification.message_type === 'document' ? 'fa-file-alt' :
+                notification.message_type === 'interview' ? 'fa-calendar-check' :
+                notification.message_type === 'exit' ? 'fa-door-open' :
+                'fa-bell';
+    
+    const title = `<i class="fas ${icon} me-2"></i>${notification.subject}`;
+    
+    showToast(type, title, notification.content);
+}
+
+// Load and display all notifications
+function loadNotifications() {
+    fetch('/api/notifications', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            displayNotificationsModal(data.notifications);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading notifications:', error);
+        showToast('danger', 'Error', 'Failed to load notifications');
+    });
+}
+
+// Display notifications in a modal
+function displayNotificationsModal(notifications) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('notificationsModal');
+    if (!modal) {
+        const modalHtml = `
+            <div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="notificationsModalLabel"><i class="fas fa-bell me-2"></i>All Notifications</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="notificationsList">
+                                <p class="text-muted">Loading notifications...</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" onclick="markAllNotificationsRead()">Mark All as Read</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('notificationsModal');
+    }
+    
+    const notificationsList = document.getElementById('notificationsList');
+    
+    if (notifications.length === 0) {
+        notificationsList.innerHTML = '<p class="text-muted text-center">No notifications</p>';
+    } else {
+        let html = '';
+        notifications.forEach(notification => {
+            const icon = notification.message_type === 'task' ? 'fa-tasks' :
+                        notification.message_type === 'document' ? 'fa-file-alt' :
+                        notification.message_type === 'interview' ? 'fa-calendar-check' :
+                        notification.message_type === 'exit' ? 'fa-door-open' :
+                        'fa-bell';
+            
+            const badgeClass = notification.priority === 'urgent' ? 'danger' :
+                              notification.priority === 'high' ? 'warning' :
+                              notification.priority === 'low' ? 'info' :
+                              'primary';
+            
+            html += `
+                <div class="card mb-2 notification-item ${notification.status === 'read' ? 'opacity-50' : ''}" data-id="${notification.id}">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="me-3">
+                                <i class="fas ${icon} text-${badgeClass} fs-4"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="card-title mb-1">${notification.subject}</h6>
+                                <p class="card-text small text-muted">${notification.content}</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    ${new Date(notification.sent_at).toLocaleString()}
+                                    <span class="ms-2">
+                                        <span class="badge bg-${badgeClass}">${notification.priority}</span>
+                                        <span class="badge bg-secondary ms-1">${notification.message_type}</span>
+                                    </span>
+                                </small>
+                            </div>
+                            <div class="ms-2">
+                                ${notification.status === 'unread' ? 
+                                    `<button class="btn btn-sm btn-outline-primary" onclick="markNotificationRead(${notification.id})">
+                                        <i class="fas fa-check"></i>
+                                    </button>` : 
+                                    '<span class="text-success"><i class="fas fa-check-circle"></i></span>'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        notificationsList.innerHTML = html;
+    }
+    
+    // Show modal
+    const modalInstance = new bootstrap.Modal(modal);
+    modalInstance.show();
+}
+
+// Mark notification as read
+function markNotificationRead(notificationId) {
+    fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Update UI
+            const notificationItem = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
+            if (notificationItem) {
+                notificationItem.classList.add('opacity-50');
+                const button = notificationItem.querySelector('button');
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-check-circle"></i>';
+                    button.disabled = true;
+                }
+            }
+            // Update badge
+            checkNotifications();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notification as read:', error);
+    });
+}
+
+// Mark all notifications as read
+function markAllNotificationsRead() {
+    const unreadNotifications = document.querySelectorAll('.notification-item:not(.opacity-50)');
+    const notificationIds = Array.from(unreadNotifications).map(item => item.dataset.id);
+    
+    if (notificationIds.length === 0) {
+        showToast('info', 'Info', 'All notifications are already marked as read');
+        return;
+    }
+    
+    // Mark each notification as read
+    const promises = notificationIds.map(id => 
+        fetch(`/api/notifications/${id}/read`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+    );
+    
+    Promise.all(promises)
+    .then(responses => Promise.all(responses.map(r => r.json())))
+    .then(results => {
+        const successCount = results.filter(r => r.status === 'success').length;
+        if (successCount > 0) {
+            showToast('success', 'Success', `Marked ${successCount} notifications as read`);
+            // Update UI
+            unreadNotifications.forEach(item => {
+                item.classList.add('opacity-50');
+                const button = item.querySelector('button');
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-check-circle"></i>';
+                    button.disabled = true;
+                }
+            });
+            // Update badge
+            checkNotifications();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notifications as read:', error);
+        showToast('danger', 'Error', 'Failed to mark notifications as read');
+    });
+}
+
+// Clean up notification system when page unloads
+window.addEventListener('beforeunload', () => {
+    if (notificationCheckInterval) {
+        clearInterval(notificationCheckInterval);
+    }
+});
+
 // ============ UTILITY FUNCTIONS ============
 
 function showToast(type, title, message) {
@@ -459,9 +725,18 @@ window.loadSettingsModal = loadSettingsModal;
 window.saveSettings = saveSettings;
 window.changePassword = changePassword;
 window.submitPasswordChange = submitPasswordChange;
+window.loadNotifications = loadNotifications;
+window.markNotificationRead = markNotificationRead;
+window.markAllNotificationsRead = markAllNotificationsRead;
 
-// Initialize when document is ready
+// Initialize page when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize notification system
+    initializeNotifications();
+    
+    // Load user profile
+    loadProfile();
+    
     // Add event listeners for modal forms if needed
     const profileModal = document.getElementById('profileModal');
     if (profileModal) {

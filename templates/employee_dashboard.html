@@ -100,36 +100,160 @@
             </div>
         </div>
 
-        <!-- Upcoming Schedule -->
+        <!-- Employee Journey Timeline -->
         <div class="col-xl-6 mb-4">
-            <div class="card shadow h-100">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold">Upcoming Schedule</h6>
+            <div class="card bg-dark bg-opacity-25 border-secondary shadow h-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="m-0 font-weight-bold text-light">Employee Journey Timeline</h6>
                 </div>
                 <div class="card-body">
-                    <div class="timeline">
-                        <div class="timeline-item">
-                            <div class="timeline-marker bg-primary"><i class="fas fa-calendar-alt"></i></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">New Hire Orientation</h6>
-                                <p class="mb-1 small">Monday, 9:00 AM - 12:00 PM</p>
-                                <p class="mb-1 small text-muted">Main Conference Room (or Virtual)</p>
+                    <div class="timeline-vertical">
+                        <!-- Offer Accepted -->
+                        <div class="timeline-item-vertical {% if employee_journey.offer_accepted.completed %}completed{% endif %}">
+                            <div class="timeline-marker-vertical {% if employee_journey.offer_accepted.completed %}bg-success{% else %}bg-warning{% endif %}">
+                                <i class="fas {% if employee_journey.offer_accepted.completed %}check{% else %}hourglass-half{% endif %}"></i>
+                            </div>
+                            <div class="timeline-content-vertical">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">Offer Accepted</h6>
+                                        <p class="mb-1 small text-muted">{{ employee_journey.offer_accepted.date or 'Pending' }}</p>
+                                        <p class="mb-1 small">Contract signed and returned</p>
+                                    </div>
+                                    {% if employee_journey.offer_accepted.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
-                        <div class="timeline-item">
-                            <div class="timeline-marker bg-success"><i class="fas fa-user-tie"></i></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">Meeting with Manager</h6>
-                                <p class="mb-1 small">Tuesday, 10:00 AM - 10:30 AM</p>
-                                <p class="mb-1 small text-muted">Sarah Johnson (Your Manager)</p>
+
+                        <!-- Documents Submitted -->
+                        <div class="timeline-item-vertical {% if employee_journey.documents_submitted.completed %}completed{% endif %}">
+                            <div class="timeline-marker-vertical {% if employee_journey.documents_submitted.completed %}bg-success{% else %}bg-warning{% endif %}">
+                                <i class="fas {% if employee_journey.documents_submitted.completed %}check{% else %}file-alt{% endif %}"></i>
+                            </div>
+                            <div class="timeline-content-vertical">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">Documents Submitted</h6>
+                                        <p class="mb-1 small text-muted">{{ employee_journey.documents_submitted.date or 'Pending' }}</p>
+                                        <p class="mb-1 small">ID, tax forms, emergency contacts</p>
+                                    </div>
+                                    {% if employee_journey.documents_submitted.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">In Progress</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
-                        <div class="timeline-item">
-                            <div class="timeline-marker bg-info"><i class="fas fa-laptop"></i></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">IT Setup Session</h6>
-                                <p class="mb-1 small">Wednesday, 11:00 AM - 12:00 PM</p>
-                                <p class="mb-1 small text-muted">IT Support Team</p>
+
+                        <!-- Systems Created -->
+                        <div class="timeline-item-vertical {% if employee_journey.systems_created.completed %}completed{% endif %}">
+                            <div class="timeline-marker-vertical {% if employee_journey.systems_created.completed %}bg-success{% else %}bg-info{% endif %}">
+                                <i class="fas {% if employee_journey.systems_created.completed %}check{% else %}laptop{% endif %}"></i>
+                            </div>
+                            <div class="timeline-content-vertical">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">Systems Created</h6>
+                                        <p class="mb-1 small text-muted">{{ employee_journey.systems_created.date or 'Pending' }}</p>
+                                        <p class="mb-1 small">Email, accounts, access permissions</p>
+                                    </div>
+                                    {% if employee_journey.systems_created.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-info">Pending</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- First Day -->
+                        <div class="timeline-item-vertical {% if employee_journey.first_day.completed %}completed{% endif %}">
+                            <div class="timeline-marker-vertical {% if employee_journey.first_day.completed %}bg-success{% else %}bg-primary{% endif %}">
+                                <i class="fas {% if employee_journey.first_day.completed %}check{% else %}calendar-day{% endif %}"></i>
+                            </div>
+                            <div class="timeline-content-vertical">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">First Day</h6>
+                                        <p class="mb-1 small text-muted">{{ employee_journey.first_day.date or employee.hire_date or 'Scheduled' }}</p>
+                                        <p class="mb-1 small">Welcome session & team introductions</p>
+                                    </div>
+                                    {% if employee_journey.first_day.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-primary">Upcoming</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Orientation -->
+                        <div class="timeline-item-vertical {% if employee_journey.orientation.completed %}completed{% endif %}">
+                            <div class="timeline-marker-vertical {% if employee_journey.orientation.completed %}bg-success{% else %}bg-secondary{% endif %}">
+                                <i class="fas {% if employee_journey.orientation.completed %}check{% else %}users{% endif %}"></i>
+                            </div>
+                            <div class="timeline-content-vertical">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">Orientation</h6>
+                                        <p class="mb-1 small text-muted">{{ employee_journey.orientation.date or 'Scheduled' }}</p>
+                                        <p class="mb-1 small">Company policies & culture overview</p>
+                                    </div>
+                                    {% if employee_journey.orientation.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Scheduled</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Training Modules -->
+                        <div class="timeline-item-vertical {% if employee_journey.training_modules.completed %}completed{% endif %}">
+                            <div class="timeline-marker-vertical {% if employee_journey.training_modules.completed %}bg-success{% else %}bg-secondary{% endif %}">
+                                <i class="fas {% if employee_journey.training_modules.completed %}check{% else %}graduation-cap{% endif %}"></i>
+                            </div>
+                            <div class="timeline-content-vertical">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">Training Modules</h6>
+                                        <p class="mb-1 small text-muted">{{ employee_journey.training_modules.date or 'In Progress' }}</p>
+                                        <p class="mb-1 small">Role-specific & compliance training</p>
+                                    </div>
+                                    {% if employee_journey.training_modules.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">
+                                        {{ employee_journey.training_modules.progress or '0' }}% Complete
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Confirmation Letter -->
+                        <div class="timeline-item-vertical {% if employee_journey.confirmation_letter.completed %}completed{% endif %}">
+                            <div class="timeline-marker-vertical {% if employee_journey.confirmation_letter.completed %}bg-success{% else %}bg-light{% endif %}">
+                                <i class="fas {% if employee_journey.confirmation_letter.completed %}check{% else %}certificate{% endif %}"></i>
+                            </div>
+                            <div class="timeline-content-vertical">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">Confirmation Letter</h6>
+                                        <p class="mb-1 small text-muted">{{ employee_journey.confirmation_letter.date or 'Pending' }}</p>
+                                        <p class="mb-1 small">Successful completion of probation</p>
+                                    </div>
+                                    {% if employee_journey.confirmation_letter.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark">Pending</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -208,6 +332,101 @@
     </div>
 </div>
 <!-- /.container-fluid -->
+
+<style>
+/* Vertical Timeline Styles - Dark Theme */
+.timeline-vertical {
+    position: relative;
+    padding-left: 40px;
+}
+
+.timeline-vertical::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #7b2cbf, #5a189a);
+}
+
+.timeline-item-vertical {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.timeline-item-vertical:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-marker-vertical {
+    position: absolute;
+    left: -25px;
+    top: 5px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    border: 2px solid #1a1a1a;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 1;
+}
+
+.timeline-content-vertical {
+    background: rgba(26, 26, 26, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid #7b2cbf;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.timeline-content-vertical:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+    border-color: #9d4edd;
+}
+
+.timeline-content-vertical h6 {
+    color: #f8f9fa !important;
+}
+
+.timeline-content-vertical p {
+    color: #adb5bd !important;
+}
+
+.timeline-item-vertical.completed .timeline-content-vertical {
+    border-left-color: #1cc88a;
+    background: rgba(28, 200, 138, 0.1);
+}
+
+.timeline-item-vertical.completed .timeline-marker-vertical {
+    background: #1cc88a !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .timeline-vertical {
+        padding-left: 30px;
+    }
+    
+    .timeline-marker-vertical {
+        left: -20px;
+        width: 25px;
+        height: 25px;
+        font-size: 10px;
+    }
+    
+    .timeline-content-vertical {
+        padding: 12px;
+    }
+}
+</style>
 
 <!-- Help Modal -->
 <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">

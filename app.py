@@ -3,10 +3,13 @@ import json
 import logging
 import random
 import re
-from datetime import datetime, timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from functools import wraps
 from io import BytesIO
 from pathlib import Path
+from datetime import datetime, timedelta
+from sqlalchemy import orm
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_from_directory
@@ -270,6 +273,7 @@ class EmployeeDocument(db.Model):
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
     description = db.Column(db.Text, nullable=True)
     is_verified = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     user = db.relationship('User',
                            backref=db.backref('documents', lazy=True))
 
@@ -285,11 +289,81 @@ class EmployeeSettings(db.Model):
     theme = db.Column(db.String(50), default='light')  # light/dark
     language = db.Column(db.String(10), default='en')
     two_factor_enabled = db.Column(db.Boolean, default=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow,
-                           onupdate=datetime.utcnow)
-    user = db.relationship('User',
-                           backref=db.backref('settings', uselist=False,
-                                              lazy=True))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship
+    user = db.relationship('User', backref=db.backref('settings', uselist=False))
+
+
+class Task(db.Model):
+    """General tasks table for various task types"""
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    task_type = db.Column(db.String(50), nullable=False)  # onboarding, offboarding, general
+    status = db.Column(db.String(50), default='pending')  # pending, in_progress, completed, overdue
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high, urgent
+    assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    department = db.Column(db.String(50))
+    due_date = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    assignee = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_tasks')
+    assigner = db.relationship('User', foreign_keys=[assigned_by], backref='created_tasks')
+
+
+class AccessRecord(db.Model):
+    """Track system access and login records"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    access_type = db.Column(db.String(50), nullable=False)  # login, logout, file_access, system_access
+    ip_address = db.Column(db.String(45))  # IPv6 compatible
+    user_agent = db.Column(db.Text)
+    resource_accessed = db.Column(db.String(200))  # What was accessed
+    action = db.Column(db.String(100))  # CREATE, READ, UPDATE, DELETE
+    success = db.Column(db.Boolean, default=True)
+    failure_reason = db.Column(db.String(200))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    session_id = db.Column(db.String(255))
+    
+    # Access management fields
+    resource_name = db.Column(db.String(200))  # Name of the resource
+    resource_description = db.Column(db.Text)  # Description of the resource
+    status = db.Column(db.String(20), default='active')  # active, revoked, expired
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow)  # When access was granted
+    expires_at = db.Column(db.DateTime)  # When access expires
+    granted_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Who granted the access
+    
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='access_records')
+    granted_by_user = db.relationship('User', foreign_keys=[granted_by], backref='granted_access_records')
+
+
+class Message(db.Model):
+    """Internal messaging system"""
+    id = db.Column(db.Integer, primary_key=True)
+    subject = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message_type = db.Column(db.String(50), default='message')  # message, notification, reminder
+    priority = db.Column(db.String(20), default='normal')  # low, normal, high, urgent
+    status = db.Column(db.String(50), default='unread')  # unread, read, archived
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    read_at = db.Column(db.DateTime)
+    parent_id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=True)  # For replies
+    metadata = db.Column(db.JSON, nullable=True)  # Additional notification metadata
+    
+    # Relationships
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
+    replies = db.relationship('Message', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
+
 
 # Create database tables
 with app.app_context():
@@ -866,14 +940,502 @@ def employee_dashboard():
     # Get employee documents count
     documents_count = EmployeeDocument.query.filter_by(user_id=user.id).count()
     
+    # Generate employee journey timeline data
+    employee_journey = {
+        'offer_accepted': {
+            'completed': True,
+            'date': user.created_at.strftime('%Y-%m-%d') if user.created_at else '2024-01-15'
+        },
+        'documents_submitted': {
+            'completed': documents_count > 0,
+            'date': '2024-01-18' if documents_count > 0 else 'Pending'
+        },
+        'systems_created': {
+            'completed': True,
+            'date': user.created_at.strftime('%Y-%m-%d') if user.created_at else '2024-01-20'
+        },
+        'first_day': {
+            'completed': user.hire_date and user.hire_date <= datetime.now().date(),
+            'date': user.hire_date.strftime('%Y-%m-%d') if user.hire_date else '2024-02-01'
+        },
+        'orientation': {
+            'completed': onboarding_progress >= 50,
+            'date': '2024-02-02' if onboarding_progress >= 50 else 'Scheduled'
+        },
+        'training_modules': {
+            'completed': onboarding_progress >= 80,
+            'date': '2024-02-15' if onboarding_progress >= 80 else 'In Progress',
+            'progress': min(onboarding_progress, 100)
+        },
+        'confirmation_letter': {
+            'completed': False,  # Typically after probation period
+            'date': 'Pending'
+        }
+    }
+    
     return render_template('employee_dashboard.html', 
                          employee=employee_data, 
                          user=user,
                          hr_contact=hr_contact,
                          documents_count=documents_count,
                          onboarding_progress=onboarding_progress,
+                         employee_journey=employee_journey,
                          current_user=user,  # For compatibility with existing templates
                          title=f'{user.full_name}\'s Dashboard')
+
+@app.route('/hr/tasks')
+@login_required('hr')
+def tasks_management():
+    """Task management page for HR"""
+    # Get all tasks with user relationships
+    tasks = db.session.query(Task, User).outerjoin(User, Task.assigned_to == User.id).all()
+    
+    # Format tasks for template
+    formatted_tasks = []
+    for task, assigned_user in tasks:
+        formatted_tasks.append({
+            'id': task.id,
+            'title': task.title,
+            'description': task.description,
+            'priority': task.priority,
+            'status': task.status,
+            'task_type': task.task_type,
+            'due_date': task.due_date,
+            'assigned_to_user': assigned_user
+        })
+    
+    # Get all users for assignment dropdown
+    users = User.query.filter(User.role.in_(['hr', 'employee'])).all()
+    
+    return render_template('tasks.html', 
+                         tasks=formatted_tasks, 
+                         users=users,
+                         current_user=User.query.get(session['user_id']))
+
+@app.route('/hr/access-records')
+@login_required('hr')
+def access_records_management():
+    """Access records management page for HR"""
+    # Get all access records with user relationships
+    # Create aliases for the User table
+    user_alias = orm.aliased(User)
+    granted_by_alias = orm.aliased(User)
+    
+    records = db.session.query(AccessRecord, user_alias, granted_by_alias).outerjoin(
+        user_alias, AccessRecord.user_id == user_alias.id
+    ).outerjoin(
+        granted_by_alias, AccessRecord.granted_by == granted_by_alias.id
+    ).all()
+    
+    # Format records for template
+    formatted_records = []
+    for record, user, granted_by_user in records:
+        formatted_records.append({
+            'id': record.id,
+            'user': user,
+            'resource_name': record.resource_name,
+            'resource_description': record.resource_description,
+            'access_type': record.access_type,
+            'status': record.status,
+            'granted_at': record.granted_at,
+            'expires_at': record.expires_at,
+            'granted_by_user': granted_by_user
+        })
+    
+    # Calculate statistics
+    total_records = len(formatted_records)
+    active_count = len([r for r in formatted_records if r['status'] == 'active'])
+    revoked_count = len([r for r in formatted_records if r['status'] == 'revoked'])
+    pending_count = len([r for r in formatted_records if r['status'] == 'pending'])
+    
+    # Get all users for assignment dropdown
+    users = User.query.filter(User.role.in_(['hr', 'employee'])).all()
+    
+    return render_template('access_records.html', 
+                         access_records=formatted_records,
+                         total_records=total_records,
+                         active_count=active_count,
+                         revoked_count=revoked_count,
+                         pending_count=pending_count,
+                         users=users,
+                         current_user=User.query.get(session['user_id']))
+
+@app.route('/hr/messages')
+@login_required('hr')
+def messages_management():
+    """Messages management page for HR"""
+    current_user_id = session['user_id']
+    
+    # Get conversations (unique users with messages)
+    conversations = db.session.query(
+        Message.recipient_id, Message.sender_id, User
+    ).filter(
+        (Message.sender_id == current_user_id) | (Message.recipient_id == current_user_id)
+    ).outerjoin(
+        User, 
+        db.or_(
+            (Message.sender_id == User.id) & (Message.recipient_id == current_user_id),
+            (Message.recipient_id == User.id) & (Message.sender_id == current_user_id)
+        )
+    ).distinct().all()
+    
+    # Format conversations
+    formatted_conversations = []
+    for msg in conversations:
+        # Get the other user ID
+        other_user_id = msg.recipient_id if msg.sender_id == current_user_id else msg.sender_id
+        
+        # Get last message
+        last_message = Message.query.filter(
+            ((Message.sender_id == current_user_id) & (Message.recipient_id == other_user_id)) |
+            ((Message.sender_id == other_user_id) & (Message.recipient_id == current_user_id))
+        ).order_by(Message.sent_at.desc()).first()
+        
+        # Get unread count
+        unread_count = Message.query.filter(
+            Message.sender_id == other_user_id,
+            Message.recipient_id == current_user_id,
+            Message.status == 'unread'
+        ).count()
+        
+        formatted_conversations.append({
+            'user_id': other_user_id,
+            'user': User.query.get(other_user_id),
+            'last_message_content': last_message.content if last_message else '',
+            'last_message_time': last_message.sent_at if last_message else None,
+            'unread_count': unread_count
+        })
+    
+    # Sort by last message time
+    formatted_conversations.sort(key=lambda x: x['last_message_time'] or datetime.min, reverse=True)
+    
+    # Calculate statistics
+    total_messages = Message.query.filter(
+        (Message.sender_id == current_user_id) | (Message.recipient_id == current_user_id)
+    ).count()
+    
+    unread_count = Message.query.filter(
+        Message.recipient_id == current_user_id,
+        Message.status == 'unread'
+    ).count()
+    
+    total_conversations = len(formatted_conversations)
+    
+    today_active = Message.query.filter(
+        (Message.sender_id == current_user_id) | (Message.recipient_id == current_user_id),
+        Message.sent_at >= datetime.now().date()
+    ).count()
+    
+    # Get all users for messaging
+    users = User.query.filter(User.role.in_(['hr', 'employee'])).all()
+    
+    return render_template('messages.html', 
+                         conversations=formatted_conversations,
+                         total_messages=total_messages,
+                         unread_count=unread_count,
+                         total_conversations=total_conversations,
+                         today_active=today_active,
+                         users=users,
+                         current_user=User.query.get(current_user_id))
+
+@app.route('/api/messages', methods=['POST'])
+@login_required(['hr', 'employee'])
+def create_message():
+    """Create a new message"""
+    try:
+        message = Message(
+            sender_id=session['user_id'],
+            recipient_id=request.form.get('recipient_id'),
+            subject=request.form.get('subject'),
+            content=request.form.get('content'),
+            is_priority=request.form.get('is_priority') == 'on'
+        )
+        
+        db.session.add(message)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Message sent successfully',
+            'message_id': message.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating message: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to send message'
+        }), 500
+
+@app.route('/api/messages/conversation/<int:user_id>', methods=['GET'])
+@login_required(['hr', 'employee'])
+def get_conversation_messages(user_id):
+    """Get messages in a conversation with a specific user"""
+    try:
+        current_user_id = session['user_id']
+        
+        messages = Message.query.filter(
+            ((Message.sender_id == current_user_id) & (Message.recipient_id == user_id)) |
+            ((Message.sender_id == user_id) & (Message.recipient_id == current_user_id))
+        ).order_by(Message.sent_at.asc()).all()
+        
+        message_list = []
+        for msg in messages:
+            message_list.append({
+                'id': msg.id,
+                'content': msg.content,
+                'subject': msg.subject,
+                'sent_at': msg.sent_at.isoformat(),
+                'sender_id': msg.sender_id,
+                'recipient_id': msg.recipient_id,
+                'is_read': msg.status == 'read',
+                'is_priority': msg.is_priority
+            })
+        
+        user = User.query.get(user_id)
+        
+        return jsonify({
+            'status': 'success',
+            'messages': message_list,
+            'user': {
+                'id': user.id,
+                'full_name': user.full_name,
+                'username': user.username,
+                'role': user.role
+            }
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error getting conversation: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to load conversation'
+        }), 500
+
+@app.route('/api/messages/mark-read/<int:user_id>', methods=['PUT'])
+@login_required(['hr', 'employee'])
+def mark_messages_as_read(user_id):
+    """Mark messages from a user as read"""
+    try:
+        current_user_id = session['user_id']
+        
+        Message.query.filter(
+            Message.sender_id == user_id,
+            Message.recipient_id == current_user_id,
+            Message.status == 'unread'
+        ).update({'status': 'read'})
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Messages marked as read'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error marking messages as read: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to mark messages as read'
+        }), 500
+
+@app.route('/api/access-records', methods=['POST'])
+@login_required('hr')
+def create_access_record():
+    """Create a new access record"""
+    try:
+        record = AccessRecord(
+            user_id=request.form.get('user_id'),
+            resource_name=request.form.get('resource_name'),
+            resource_description=request.form.get('resource_description'),
+            access_type=request.form.get('access_type'),
+            granted_by=session['user_id'],
+            expires_at=datetime.strptime(request.form.get('expires_at'), '%Y-%m-%d').date() if request.form.get('expires_at') else None
+        )
+        
+        db.session.add(record)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Access granted successfully',
+            'record_id': record.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating access record: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to grant access'
+        }), 500
+
+@app.route('/api/access-records/<int:record_id>/revoke', methods=['PUT'])
+@login_required('hr')
+def revoke_access_record(record_id):
+    """Revoke an access record"""
+    try:
+        record = AccessRecord.query.get_or_404(record_id)
+        record.status = 'revoked'
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Access revoked successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error revoking access: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to revoke access'
+        }), 500
+
+@app.route('/api/access-records/<int:record_id>/grant', methods=['PUT'])
+@login_required('hr')
+def grant_access_record(record_id):
+    """Grant an access record"""
+    try:
+        record = AccessRecord.query.get_or_404(record_id)
+        record.status = 'active'
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Access granted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error granting access: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to grant access'
+        }), 500
+
+@app.route('/api/access-records/<int:record_id>', methods=['DELETE'])
+@login_required('hr')
+def delete_access_record(record_id):
+    """Delete an access record"""
+    try:
+        record = AccessRecord.query.get_or_404(record_id)
+        db.session.delete(record)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Access record deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error deleting access record: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to delete access record'
+        }), 500
+
+@app.route('/api/tasks', methods=['POST'])
+@login_required('hr')
+def create_task():
+    """Create a new task"""
+    try:
+        assigned_to = request.form.get('assigned_to')
+        current_user = User.query.get(session['user_id'])
+        
+        # Validate assignment rules
+        if assigned_to:
+            assigned_user = User.query.get(assigned_to)
+            if not assigned_user:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Assigned user not found'
+                }), 400
+            
+            # Rule 1: Can only assign to employees (not HR)
+            if assigned_user.role != 'employee':
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Tasks can only be assigned to employees'
+                }), 400
+            
+            # Rule 2: Must be from different department
+            if assigned_user.department == current_user.department:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Cannot assign tasks to employees from the same department'
+                }), 400
+            
+            # Rule 3: Employee must be under HR's chain of command
+            # Check if the HR is in the management chain above this employee
+            def is_in_management_chain(hr_user, employee_user):
+                """Check if HR is in the management chain above employee"""
+                current = employee_user
+                while current and current.manager_id:
+                    manager = User.query.get(current.manager_id)
+                    if manager and manager.id == hr_user.id:
+                        return True
+                    current = manager
+                return False
+            
+            if not is_in_management_chain(current_user, assigned_user):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Can only assign tasks to employees under your chain of command'
+                }), 400
+        
+        task = Task(
+            title=request.form.get('title'),
+            description=request.form.get('description'),
+            assigned_to=assigned_to if assigned_to else None,
+            assigned_by=session['user_id'],
+            task_type=request.form.get('task_type', 'general'),
+            priority=request.form.get('priority', 'medium'),
+            status=request.form.get('status', 'pending'),
+            due_date=datetime.strptime(request.form.get('due_date'), '%Y-%m-%d').date() if request.form.get('due_date') else None
+        )
+        
+        db.session.add(task)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Task created successfully',
+            'task_id': task.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating task: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to create task'
+        }), 500
+
+@app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
+@login_required('hr')
+def delete_task(task_id):
+    """Delete a task"""
+    try:
+        task = Task.query.get_or_404(task_id)
+        db.session.delete(task)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Task deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error deleting task: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to delete task'
+        }), 500
 
 @app.route('/employee/profile', methods=['GET', 'POST'])
 @login_required('employee')
@@ -2105,6 +2667,42 @@ def submit_feedback():
 
         db.session.add(new_feedback)
         db.session.commit()
+        
+        # Create notification for HR users about new feedback
+        user = User.query.get(user_id)
+        if user:
+            # Check if mood or confidence is low (<= 2)
+            if mood_rating <= 2 or confidence_rating <= 2:
+                notification_type = 'low_mood' if mood_rating <= 2 else 'low_confidence'
+                priority = 'high'
+                title = f"Low {notification_type.replace('_', ' ').title()} Alert"
+                message = f"{user.full_name} reported {notification_type.replace('_', ' ')} (Mood: {mood_rating}, Confidence: {confidence_rating})"
+            else:
+                notification_type = 'feedback'
+                priority = 'normal'
+                title = "New Mood Feedback"
+                message = f"{user.full_name} submitted mood feedback (Mood: {mood_rating}, Confidence: {confidence_rating})"
+            
+            # Send to all HR users
+            hr_users = User.query.filter_by(role='hr').all()
+            for hr_user in hr_users:
+                notification = Message(
+                    subject=title,
+                    content=message,
+                    sender_id=user_id,
+                    recipient_id=hr_user.id,
+                    message_type='hr_notification',
+                    priority=priority,
+                    metadata={
+                        'notification_type': notification_type,
+                        'feedback_id': new_feedback.id,
+                        'mood_rating': mood_rating,
+                        'confidence_rating': confidence_rating
+                    }
+                )
+                db.session.add(notification)
+            
+            db.session.commit()
 
         return jsonify({
             'status': 'success',
@@ -2584,44 +3182,1398 @@ def update_onboarding_tasks(checklist_id):
         db.session.commit()
         
         return jsonify({
-            'status': 'success',
             'message': 'Tasks updated successfully'
         })
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f'Error updating tasks: {str(e)}')
+        app.logger.error(f'Error updating onboarding tasks: {str(e)}')
         return jsonify({
             'status': 'error',
             'message': 'Failed to update tasks'
         }), 500
 
 
-@app.route('/uploads/documents/<path:filename>')
-@login_required('employee')
-def download_document(filename):
-    """Download document (with access control)"""
+# ===== OFFBOARDING API ENDPOINTS =====
+
+@app.route('/api/offboarding/candidates', methods=['GET'])
+@login_required('hr')
+def get_offboarding_candidates():
+    """Get all offboarding candidates"""
     try:
-        # Verify the user has access to this document
-        document = EmployeeDocument.query.filter_by(
-            file_path=f"/uploads/documents/{filename}"
+        candidates = OffboardingCandidate.query.all()
+        return jsonify({
+            'status': 'success',
+            'candidates': [{
+                'id': c.id,
+                'employee_id': c.employee_id,
+                'employee_name': c.employee.full_name if c.employee else 'N/A',
+                'exit_date': c.exit_date.isoformat() if c.exit_date else None,
+                'exit_reason': c.exit_reason,
+                'status': c.status,
+                'assigned_hr': c.assigned_hr,
+                'created_at': c.created_at.isoformat() if c.created_at else None
+            } for c in candidates]
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching offboarding candidates: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch candidates'
+        }), 500
+
+
+@app.route('/api/offboarding/candidates', methods=['POST'])
+@login_required('hr')
+def create_offboarding_candidate():
+    """Create a new offboarding candidate"""
+    try:
+        data = request.get_json()
+        
+        candidate = OffboardingCandidate(
+            employee_id=data['employee_id'],
+            exit_date=datetime.fromisoformat(data['exit_date'].replace('Z', '+00:00')) if data.get('exit_date') else None,
+            exit_reason=data.get('exit_reason', ''),
+            assigned_hr=data.get('assigned_hr'),
+            status=data.get('status', 'pending')
+        )
+        
+        db.session.add(candidate)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Offboarding candidate created successfully',
+            'candidate_id': candidate.id
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error creating offboarding candidate: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to create candidate'
+        }), 500
+
+
+@app.route('/api/offboarding/candidates/<int:candidate_id>', methods=['PUT'])
+@login_required('hr')
+def update_offboarding_candidate(candidate_id):
+    """Update offboarding candidate"""
+    try:
+        candidate = OffboardingCandidate.query.get_or_404(candidate_id)
+        data = request.get_json()
+        
+        if 'exit_date' in data and data['exit_date']:
+            candidate.exit_date = datetime.fromisoformat(data['exit_date'].replace('Z', '+00:00'))
+        if 'exit_reason' in data:
+            candidate.exit_reason = data['exit_reason']
+        if 'assigned_hr' in data:
+            candidate.assigned_hr = data['assigned_hr']
+        if 'status' in data:
+            candidate.status = data['status']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Candidate updated successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error updating offboarding candidate: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to update candidate'
+        }), 500
+
+
+@app.route('/api/offboarding/assets/<int:candidate_id>', methods=['GET'])
+@login_required('hr')
+def get_offboarding_assets(candidate_id):
+    """Get assets for offboarding candidate"""
+    try:
+        assets = OffboardingAsset.query.filter_by(candidate_id=candidate_id).all()
+        return jsonify({
+            'status': 'success',
+            'assets': [{
+                'id': a.id,
+                'asset_name': a.asset_name,
+                'asset_type': a.asset_type,
+                'serial_number': a.serial_number,
+                'status': a.status,
+                'return_date': a.return_date.isoformat() if a.return_date else None,
+                'notes': a.notes
+            } for a in assets]
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching offboarding assets: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch assets'
+        }), 500
+
+
+@app.route('/api/offboarding/assets', methods=['POST'])
+@login_required('hr')
+def create_offboarding_asset():
+    """Create offboarding asset record"""
+    try:
+        data = request.get_json()
+        
+        asset = OffboardingAsset(
+            candidate_id=data['candidate_id'],
+            asset_name=data['asset_name'],
+            asset_type=data.get('asset_type', 'equipment'),
+            serial_number=data.get('serial_number', ''),
+            status=data.get('status', 'assigned'),
+            return_date=datetime.fromisoformat(data['return_date'].replace('Z', '+00:00')) if data.get('return_date') else None,
+            notes=data.get('notes', '')
+        )
+        
+        db.session.add(asset)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Asset recorded successfully',
+            'asset_id': asset.id
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error creating offboarding asset: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to record asset'
+        }), 500
+
+
+@app.route('/api/offboarding/clearance/<int:candidate_id>', methods=['GET'])
+@login_required('hr')
+def get_offboarding_clearance(candidate_id):
+    """Get clearance status for offboarding candidate"""
+    try:
+        clearances = OffboardingClearance.query.filter_by(candidate_id=candidate_id).all()
+        return jsonify({
+            'status': 'success',
+            'clearances': [{
+                'id': c.id,
+                'department': c.department,
+                'clearance_type': c.clearance_type,
+                'status': c.status,
+                'cleared_by': c.cleared_by,
+                'cleared_date': c.cleared_date.isoformat() if c.cleared_date else None,
+                'notes': c.notes
+            } for c in clearances]
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching offboarding clearance: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch clearance status'
+        }), 500
+
+
+@app.route('/api/offboarding/clearance', methods=['POST'])
+@login_required('hr')
+def update_offboarding_clearance():
+    """Update clearance status"""
+    try:
+        data = request.get_json()
+        
+        clearance = OffboardingClearance(
+            candidate_id=data['candidate_id'],
+            department=data['department'],
+            clearance_type=data.get('clearance_type', 'general'),
+            status=data.get('status', 'pending'),
+            cleared_by=data.get('cleared_by'),
+            cleared_date=datetime.utcnow() if data.get('status') == 'cleared' else None,
+            notes=data.get('notes', '')
+        )
+        
+        # Check if clearance already exists
+        existing = OffboardingClearance.query.filter_by(
+            candidate_id=data['candidate_id'],
+            department=data['department'],
+            clearance_type=data.get('clearance_type', 'general')
         ).first()
         
-        if not document:
-            return jsonify({'status': 'error',
-                           'message': 'Document not found'}), 404
+        if existing:
+            existing.status = data.get('status', 'pending')
+            existing.cleared_by = data.get('cleared_by')
+            existing.cleared_date = datetime.utcnow() if data.get('status') == 'cleared' else None
+            existing.notes = data.get('notes', '')
+        else:
+            db.session.add(clearance)
         
-        if document.user_id != session['user_id']:
-            return jsonify({'status': 'error',
-                           'message': 'Access denied'}), 403
+        db.session.commit()
         
-        doc_dir = os.path.join(
-            app.root_path, 'uploads', 'documents')
-        return send_from_directory(doc_dir, filename)
+        return jsonify({
+            'status': 'success',
+            'message': 'Clearance status updated successfully'
+        })
     except Exception as e:
-        app.logger.error(f'Error downloading document: {str(e)}')
-        return jsonify({'status': 'error',
-                       'message': 'Failed to download document'}), 500
+        db.session.rollback()
+        app.logger.error(f'Error updating offboarding clearance: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to update clearance'
+        }), 500
 
+
+# ===== DASHBOARD API ENDPOINTS =====
+
+@app.route('/api/dashboard/stats', methods=['GET'])
+@login_required('hr')
+def get_dashboard_stats():
+    """Get dashboard statistics"""
+    try:
+        # Employee statistics
+        total_employees = Employee.query.count()
+        active_employees = Employee.query.filter_by(status='Active').count()
+        new_hires_this_month = Employee.query.filter(
+            Employee.hire_date >= datetime.utcnow().replace(day=1)
+        ).count()
+        
+        # Onboarding statistics
+        pending_onboarding = OnboardingChecklist.query.filter_by(status='Pending').count()
+        completed_onboarding = OnboardingChecklist.query.filter_by(status='Completed').count()
+        
+        # Offboarding statistics
+        active_offboarding = OffboardingCandidate.query.filter_by(status='active').count()
+        completed_offboarding = OffboardingCandidate.query.filter_by(status='completed').count()
+        
+        # Document statistics
+        total_documents = EmployeeDocument.query.count()
+        pending_documents = EmployeeDocument.query.filter_by(status='pending').count()
+        
+        # Feedback statistics
+        recent_feedback = EmployeeFeedback.query.filter(
+            EmployeeFeedback.created_at >= datetime.utcnow() - timedelta(days=30)
+        ).count()
+        
+        return jsonify({
+            'status': 'success',
+            'stats': {
+                'employees': {
+                    'total': total_employees,
+                    'active': active_employees,
+                    'new_hires_this_month': new_hires_this_month
+                },
+                'onboarding': {
+                    'pending': pending_onboarding,
+                    'completed': completed_onboarding,
+                    'completion_rate': round((completed_onboarding / (completed_onboarding + pending_onboarding) * 100) if (completed_onboarding + pending_onboarding) > 0 else 0, 1)
+                },
+                'offboarding': {
+                    'active': active_offboarding,
+                    'completed': completed_offboarding
+                },
+                'documents': {
+                    'total': total_documents,
+                    'pending': pending_documents
+                },
+                'feedback': {
+                    'recent_feedback': recent_feedback
+                }
+            }
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching dashboard stats: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch dashboard statistics'
+        }), 500
+
+
+@app.route('/api/dashboard/onboarding-progress', methods=['GET'])
+@login_required('hr')
+def get_onboarding_progress():
+    """Get onboarding progress data"""
+    try:
+        checklists = OnboardingChecklist.query.all()
+        progress_data = []
+        
+        for checklist in checklists:
+            completed_tasks = sum(1 for task in checklist.tasks if task.is_completed)
+            total_tasks = len(checklist.tasks)
+            progress = round((completed_tasks / total_tasks * 100) if total_tasks > 0 else 0, 1)
+            
+            progress_data.append({
+                'employee_name': checklist.employee.full_name if checklist.employee else 'N/A',
+                'department': checklist.employee.department if checklist.employee and checklist.employee.department else 'Unassigned',
+                'progress': progress,
+                'completed_tasks': completed_tasks,
+                'total_tasks': total_tasks,
+                'status': checklist.status,
+                'start_date': checklist.created_at.isoformat() if checklist.created_at else None
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'data': progress_data
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching onboarding progress: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch onboarding progress'
+        }), 500
+
+
+@app.route('/api/dashboard/department-stats', methods=['GET'])
+@login_required('hr')
+def get_department_stats():
+    """Get department-wise statistics"""
+    try:
+        # Group employees by department
+        dept_stats = {}
+        employees = Employee.query.all()
+        
+        for emp in employees:
+            dept = emp.department or 'Unassigned'
+            if dept not in dept_stats:
+                dept_stats[dept] = {
+                    'total_employees': 0,
+                    'active_employees': 0,
+                    'new_hires': 0,
+                    'pending_onboarding': 0,
+                    'completed_onboarding': 0
+                }
+            
+            dept_stats[dept]['total_employees'] += 1
+            if emp.status == 'Active':
+                dept_stats[dept]['active_employees'] += 1
+            if emp.hire_date and emp.hire_date >= datetime.utcnow().replace(day=1):
+                dept_stats[dept]['new_hires'] += 1
+        
+        # Add onboarding stats
+        checklists = OnboardingChecklist.query.all()
+        for checklist in checklists:
+            dept = checklist.employee.department if checklist.employee and checklist.employee.department else 'Unassigned'
+            if dept in dept_stats:
+                if checklist.status == 'Pending':
+                    dept_stats[dept]['pending_onboarding'] += 1
+                elif checklist.status == 'Completed':
+                    dept_stats[dept]['completed_onboarding'] += 1
+        
+        return jsonify({
+            'status': 'success',
+            'departments': dept_stats
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching department stats: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch department statistics'
+        }), 500
+
+
+@app.route('/api/dashboard/recent-activities', methods=['GET'])
+@login_required('hr')
+def get_recent_activities():
+    """Get recent system activities"""
+    try:
+        activities = []
+        
+        # Recent logins
+        recent_logins = AccessRecord.query.filter_by(access_type='login').order_by(AccessRecord.timestamp.desc()).limit(5).all()
+        for login in recent_logins:
+            activities.append({
+                'type': 'login',
+                'description': f"{login.user.full_name if login.user else 'Unknown'} logged in",
+                'timestamp': login.timestamp.isoformat(),
+                'user': login.user.full_name if login.user else 'Unknown'
+            })
+        
+        # Recent document uploads
+        recent_docs = EmployeeDocument.query.order_by(EmployeeDocument.upload_date.desc()).limit(5).all()
+        for doc in recent_docs:
+            activities.append({
+                'type': 'document',
+                'description': f"{doc.user.full_name if doc.user else 'Unknown'} uploaded {doc.file_name}",
+                'timestamp': doc.upload_date.isoformat(),
+                'user': doc.user.full_name if doc.user else 'Unknown'
+            })
+        
+        # Recent onboarding completions
+        recent_onboarding = OnboardingChecklist.query.filter_by(status='Completed').order_by(OnboardingChecklist.completed_at.desc()).limit(5).all()
+        for checklist in recent_onboarding:
+            activities.append({
+                'type': 'onboarding',
+                'description': f"Onboarding completed for {checklist.employee.full_name if checklist.employee else 'Unknown'}",
+                'timestamp': checklist.completed_at.isoformat(),
+                'user': checklist.employee.full_name if checklist.employee else 'Unknown'
+            })
+        
+        # Sort by timestamp
+        activities.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return jsonify({
+            'status': 'success',
+            'activities': activities[:10]  # Return latest 10 activities
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching recent activities: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch recent activities'
+        }), 500
+
+
+@app.route('/api/dashboard/feedback-summary', methods=['GET'])
+@login_required('hr')
+def get_dashboard_feedback_summary():
+    """Get feedback summary and trends"""
+    try:
+        # Get last 6 months of feedback
+        six_months_ago = datetime.utcnow() - timedelta(days=180)
+        feedback_data = EmployeeFeedback.query.filter(
+            EmployeeFeedback.created_at >= six_months_ago
+        ).all()
+        
+        # Group by month and calculate average mood
+        monthly_data = {}
+        for feedback in feedback_data:
+            month_key = feedback.created_at.strftime('%Y-%m')
+            if month_key not in monthly_data:
+                monthly_data[month_key] = {
+                    'count': 0,
+                    'total_mood': 0,
+                    'avg_mood': 0
+                }
+            
+            monthly_data[month_key]['count'] += 1
+            if feedback.mood_rating:
+                monthly_data[month_key]['total_mood'] += feedback.mood_rating
+        
+        # Calculate averages
+        for month in monthly_data:
+            if monthly_data[month]['count'] > 0:
+                monthly_data[month]['avg_mood'] = round(
+                    monthly_data[month]['total_mood'] / monthly_data[month]['count'], 2
+                )
+        
+        # Get department-wise feedback
+        dept_feedback = {}
+        for feedback in feedback_data:
+            dept = feedback.user.employee.department if feedback.user and feedback.user.employee and feedback.user.employee.department else 'Unassigned'
+            if dept not in dept_feedback:
+                dept_feedback[dept] = {
+                    'count': 0,
+                    'total_mood': 0,
+                    'avg_mood': 0
+                }
+            
+            dept_feedback[dept]['count'] += 1
+            if feedback.mood_rating:
+                dept_feedback[dept]['total_mood'] += feedback.mood_rating
+        
+        # Calculate department averages
+        for dept in dept_feedback:
+            if dept_feedback[dept]['count'] > 0:
+                dept_feedback[dept]['avg_mood'] = round(
+                    dept_feedback[dept]['total_mood'] / dept_feedback[dept]['count'], 2
+                )
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'monthly_trends': monthly_data,
+                'department_feedback': dept_feedback,
+                'total_feedback': len(feedback_data),
+                'overall_avg_mood': round(
+                    sum(f.mood_rating for f in feedback_data if f.mood_rating) / 
+                    len([f for f in feedback_data if f.mood_rating]), 2
+                ) if feedback_data else 0
+            }
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching feedback summary: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch feedback summary'
+        }), 500
+
+
+# ===== HR NOTIFICATION SYSTEM =====
+
+def create_hr_notification(title, message, notification_type='info', priority='normal', action_url=None, recipient_id=None):
+    """Create an HR notification"""
+    try:
+        # If no recipient specified, send to all HR users
+        if recipient_id is None:
+            hr_users = User.query.filter_by(role='hr').all()
+            recipients = [u.id for u in hr_users]
+        else:
+            recipients = [recipient_id]
+        
+        notifications = []
+        for recipient_id in recipients:
+            notification = Message(
+                subject=title,
+                content=message,
+                sender_id=session.get('user_id', 1),
+                recipient_id=recipient_id,
+                message_type='hr_notification',
+                priority=priority,
+                status='unread'
+            )
+            notification.metadata = {
+                'notification_type': notification_type,
+                'action_url': action_url
+            }
+            notifications.append(notification)
+            db.session.add(notification)
+        
+        db.session.commit()
+        app.logger.info(f'Created HR notification for {len(recipients)} recipients: {title}')
+        return notifications
+    except Exception as e:
+        app.logger.error(f'Error creating HR notification: {str(e)}')
+        db.session.rollback()
+        return []
+
+def check_overdue_onboarding_tasks():
+    """Check for overdue onboarding tasks and create notifications"""
+    try:
+        overdue_tasks = []
+        
+        # Get all active onboarding checklists
+        active_checklists = OnboardingChecklist.query.filter_by(status='Pending').all()
+        
+        for checklist in active_checklists:
+            # Get incomplete tasks
+            incomplete_tasks = OnboardingTask.query.filter_by(
+                checklist_id=checklist.id,
+                is_completed=False
+            ).all()
+            
+            for task in incomplete_tasks:
+                # Calculate days overdue
+                days_overdue = (datetime.utcnow() - checklist.created_at).days
+                
+                # Consider tasks overdue after 7 days
+                if days_overdue > 7:
+                    overdue_tasks.append({
+                        'employee_id': checklist.employee_id,
+                        'employee_name': checklist.employee.full_name if checklist.employee else 'Unknown',
+                        'task_title': task.task_name,
+                        'task_id': task.id,
+                        'days_overdue': days_overdue,
+                        'assigned_date': checklist.created_at.isoformat()
+                    })
+        
+        # Create notifications for overdue tasks
+        for task in overdue_tasks:
+            title = "Overdue Onboarding Task"
+            message = f"Task '{task['task_title']}' for {task['employee_name']} is {task['days_overdue']} days overdue."
+            action_url = f"/onboarding?employee={task['employee_id']}"
+            
+            create_hr_notification(
+                title=title,
+                message=message,
+                notification_type='onboarding_overdue',
+                priority='high' if task['days_overdue'] > 14 else 'normal',
+                action_url=action_url
+            )
+        
+        return overdue_tasks
+    except Exception as e:
+        app.logger.error(f'Error checking overdue onboarding tasks: {str(e)}')
+        return []
+
+def check_pending_access_revocation():
+    """Check for pending access revocation and create notifications"""
+    try:
+        pending_revocations = []
+        
+        # Get employees who have exited but still have active access
+        exited_employees = User.query.filter(
+            User.exit_date.isnot(None),
+            User.exit_date <= datetime.utcnow().date()
+        ).all()
+        
+        for employee in exited_employees:
+            # Check for active access records
+            active_access = AccessRecord.query.filter_by(
+                user_id=employee.id,
+                status='active'
+            ).all()
+            
+            for access in active_access:
+                days_since_exit = (datetime.utcnow().date() - employee.exit_date).days
+                
+                # Alert if access is still active 3 days after exit
+                if days_since_exit >= 3:
+                    pending_revocations.append({
+                        'employee_id': employee.id,
+                        'employee_name': employee.full_name,
+                        'access_id': access.id,
+                        'system_name': access.resource_name,
+                        'exit_date': employee.exit_date.isoformat(),
+                        'days_since_exit': days_since_exit
+                    })
+        
+        # Create notifications for pending revocations
+        for revocation in pending_revocations:
+            title = "Pending Access Revocation"
+            message = f"Access to {revocation['system_name']} for {revocation['employee_name']} should be revoked ({revocation['days_since_exit']} days post-exit)."
+            action_url = f"/access-records?employee={revocation['employee_id']}"
+            
+            create_hr_notification(
+                title=title,
+                message=message,
+                notification_type='access_revocation',
+                priority='urgent' if revocation['days_since_exit'] > 7 else 'high',
+                action_url=action_url
+            )
+        
+        return pending_revocations
+    except Exception as e:
+        app.logger.error(f'Error checking pending access revocation: {str(e)}')
+        return []
+
+
+# ===== HR NOTIFICATION API ENDPOINTS =====
+
+@app.route('/api/hr/notifications', methods=['GET'])
+@login_required('hr')
+def get_hr_notifications():
+    """Get HR notifications count and recent high-priority notifications"""
+    try:
+        # Get unread notifications for current HR user
+        unread_notifications = Message.query.filter_by(
+            recipient_id=session['user_id'],
+            status='unread',
+            message_type='hr_notification'
+        ).order_by(Message.sent_at.desc()).limit(10).all()
+        
+        # Format notifications
+        notifications = []
+        for notif in unread_notifications:
+            metadata = notif.metadata or {}
+            notifications.append({
+                'id': notif.id,
+                'title': notif.subject,
+                'message': notif.content,
+                'type': metadata.get('notification_type', 'info'),
+                'priority': notif.priority,
+                'created_at': notif.created_at.isoformat(),
+                'action_url': metadata.get('action_url'),
+                'is_read': notif.status == 'read'
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'count': len(unread_notifications),
+            'notifications': notifications
+        })
+    except Exception as e:
+        app.logger.error(f'Error getting HR notifications: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get notifications'
+        }), 500
+
+@app.route('/api/hr/notifications/all', methods=['GET'])
+@login_required('hr')
+def get_all_hr_notifications():
+    """Get all HR notifications"""
+    try:
+        # Get all notifications for current HR user
+        all_notifications = Message.query.filter_by(
+            recipient_id=session['user_id'],
+            message_type='hr_notification'
+        ).order_by(Message.sent_at.desc()).limit(50).all()
+        
+        # Format notifications
+        notifications = []
+        for notif in all_notifications:
+            metadata = notif.metadata or {}
+            notifications.append({
+                'id': notif.id,
+                'title': notif.subject,
+                'message': notif.content,
+                'type': metadata.get('notification_type', 'info'),
+                'priority': notif.priority,
+                'created_at': notif.created_at.isoformat(),
+                'action_url': metadata.get('action_url'),
+                'is_read': notif.status == 'read'
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'notifications': notifications
+        })
+    except Exception as e:
+        app.logger.error(f'Error getting all HR notifications: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get notifications'
+        }), 500
+
+@app.route('/api/hr/daily-summary', methods=['POST'])
+@login_required('hr')
+def generate_daily_hr_summary():
+    """Generate daily summary of pending work"""
+    try:
+        # Check for overdue tasks
+        overdue_onboarding = check_overdue_onboarding_tasks()
+        
+        # Check for pending access revocation
+        pending_access_revocation = check_pending_access_revocation()
+        
+        # Get other stats
+        stats = {
+            'pending_tasks': Task.query.filter_by(status='pending').count(),
+            'pending_documents': EmployeeDocument.query.filter_by(status='pending').count(),
+            'upcoming_interviews': Interview.query.filter(
+                Interview.scheduled_at >= datetime.utcnow(),
+                Interview.scheduled_at <= datetime.utcnow() + timedelta(days=7),
+                Interview.status == 'scheduled'
+            ).count(),
+            'completed_onboarding': OnboardingChecklist.query.filter_by(status='Completed').count()
+        }
+        
+        summary = {
+            'overdue_onboarding': overdue_onboarding,
+            'pending_access_revocation': pending_access_revocation,
+            'stats': stats,
+            'generated_at': datetime.utcnow().isoformat()
+        }
+        
+        # Create daily summary notification
+        title = "Daily HR Summary"
+        message = f"Daily summary generated with {len(overdue_onboarding)} overdue tasks and {len(pending_access_revocation)} pending revocations."
+        create_hr_notification(
+            title=title,
+            message=message,
+            notification_type='daily_summary',
+            priority='normal'
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'summary': summary
+        })
+    except Exception as e:
+        app.logger.error(f'Error generating daily HR summary: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to generate daily summary'
+        }), 500
+
+@app.route('/api/hr/notifications/<int:notification_id>/read', methods=['PUT'])
+@login_required('hr')
+def mark_hr_notification_read(notification_id):
+    """Mark HR notification as read"""
+    try:
+        notification = Message.query.filter_by(
+            id=notification_id,
+            recipient_id=session['user_id']
+        ).first_or_404()
+        
+        notification.status = 'read'
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Notification marked as read'
+        })
+    except Exception as e:
+        app.logger.error(f'Error marking HR notification as read: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to mark notification as read'
+        }), 500
+
+@app.route('/api/hr/notifications/mark-all-read', methods=['PUT'])
+@login_required('hr')
+def mark_all_hr_notifications_read():
+    """Mark all HR notifications as read"""
+    try:
+        Message.query.filter_by(
+            recipient_id=session['user_id'],
+            message_type='hr_notification',
+            status='unread'
+        ).update({'status': 'read'})
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'All notifications marked as read'
+        })
+    except Exception as e:
+        app.logger.error(f'Error marking all HR notifications as read: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to mark notifications as read'
+        }), 500
+
+
+# ===== NOTIFICATION HELPERS =====
+
+def create_notification(recipient_id, subject, content, message_type='notification', priority='normal', sender_id=None):
+    """Create a new notification message"""
+    try:
+        # If no sender specified, use system user (ID 1) or create a system notification
+        if sender_id is None:
+            # Try to find an HR user or use the first user as system
+            system_user = User.query.filter_by(role='hr').first()
+            sender_id = system_user.id if system_user else 1
+        
+        notification = Message(
+            subject=subject,
+            content=content,
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            message_type=message_type,
+            priority=priority,
+            status='unread'
+        )
+        
+        db.session.add(notification)
+        db.session.commit()
+        
+        app.logger.info(f'Created notification for user {recipient_id}: {subject}')
+        return notification
+        
+    except Exception as e:
+        app.logger.error(f'Error creating notification: {str(e)}')
+        db.session.rollback()
+        return None
+
+def notify_task_assigned(employee_id, task_title, task_description):
+    """Notify employee when a new task is assigned"""
+    employee = User.query.get(employee_id)
+    if employee:
+        subject = "New Task Assigned"
+        content = f"You have been assigned a new task: {task_title}\n\n{task_description}"
+        create_notification(
+            recipient_id=employee_id,
+            subject=subject,
+            content=content,
+            message_type='task',
+            priority='normal'
+        )
+
+def notify_document_approved(employee_id, document_name):
+    """Notify employee when a document is approved"""
+    employee = User.query.get(employee_id)
+    if employee:
+        subject = "Document Approved"
+        content = f"Your document '{document_name}' has been approved by HR."
+        create_notification(
+            recipient_id=employee_id,
+            subject=subject,
+            content=content,
+            message_type='document',
+            priority='normal'
+        )
+
+def notify_interview_scheduled(employee_id, interview_details):
+    """Notify employee when an interview is scheduled"""
+    employee = User.query.get(employee_id)
+    if employee:
+        subject = "Interview Scheduled"
+        content = f"An interview has been scheduled for you:\n\n{interview_details}"
+        create_notification(
+            recipient_id=employee_id,
+            subject=subject,
+            content=content,
+            message_type='interview',
+            priority='high'
+        )
+
+def notify_exit_summary_ready(employee_id):
+    """Notify employee when exit summary is ready"""
+    employee = User.query.get(employee_id)
+    if employee:
+        subject = "Exit Summary Ready"
+        content = "Your exit interview summary and final documents are ready for review."
+        create_notification(
+            recipient_id=employee_id,
+            subject=subject,
+            content=content,
+            message_type='exit',
+            priority='high'
+        )
+
+
+# ===== NOTIFICATION API ENDPOINTS =====
+
+@app.route('/api/notifications', methods=['GET'])
+@login_required(['hr', 'employee'])
+def get_notifications():
+    """Get notifications for the current user"""
+    try:
+        user_id = session['user_id']
+        messages = Message.query.filter_by(recipient_id=user_id, status='unread').order_by(Message.sent_at.desc()).limit(20).all()
+        
+        notifications = []
+        for msg in messages:
+            notifications.append({
+                'id': msg.id,
+                'subject': msg.subject,
+                'content': msg.content[:100] + '...' if len(msg.content) > 100 else msg.content,
+                'message_type': msg.message_type,
+                'priority': msg.priority,
+                'sent_at': msg.sent_at.isoformat(),
+                'sender': msg.sender.full_name if msg.sender else 'System'
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'notifications': notifications,
+            'unread_count': len(notifications)
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching notifications: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch notifications'
+        }), 500
+
+
+@app.route('/api/notifications/<int:message_id>/read', methods=['PUT'])
+@login_required(['hr', 'employee'])
+def mark_notification_read(message_id):
+    """Mark notification as read"""
+    try:
+        user_id = session['user_id']
+        message = Message.query.filter_by(id=message_id, recipient_id=user_id).first_or_404()
+        
+        message.status = 'read'
+        message.read_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Notification marked as read'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error marking notification as read: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to mark notification as read'
+        }), 500
+
+
+@app.route('/api/notifications/send', methods=['POST'])
+@login_required('hr')
+def send_notification():
+    """Send notification to users"""
+    try:
+        data = request.get_json()
+        
+        recipients = data.get('recipients', [])  # Array of user IDs
+        subject = data.get('subject', '')
+        content = data.get('content', '')
+        message_type = data.get('message_type', 'notification')
+        priority = data.get('priority', 'normal')
+        
+        if not recipients or not subject or not content:
+            return jsonify({
+                'status': 'error',
+                'message': 'Recipients, subject, and content are required'
+            }), 400
+        
+        sender_id = session['user_id']
+        sent_messages = []
+        
+        for recipient_id in recipients:
+            message = Message(
+                subject=subject,
+                content=content,
+                sender_id=sender_id,
+                recipient_id=recipient_id,
+                message_type=message_type,
+                priority=priority,
+                status='unread'
+            )
+            db.session.add(message)
+            sent_messages.append(recipient_id)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Notification sent to {len(sent_messages)} recipients',
+            'recipients': sent_messages
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error sending notification: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to send notification'
+        }), 500
+
+
+@app.route('/api/notifications/reminders', methods=['GET'])
+@login_required('hr')
+def get_reminders():
+    """Get system reminders and upcoming tasks"""
+    try:
+        reminders = []
+        
+        # Onboarding reminders
+        pending_onboarding = OnboardingChecklist.query.filter_by(status='pending').all()
+        for checklist in pending_onboarding:
+            days_since_start = (datetime.utcnow() - checklist.created_at).days
+            if days_since_start > 7:  # Remind about pending onboarding older than 7 days
+                reminders.append({
+                    'type': 'onboarding',
+                    'title': f'Pending Onboarding: {checklist.employee.full_name if checklist.employee else "Unknown"}',
+                    'description': f'Onboarding started {days_since_start} days ago',
+                    'priority': 'high' if days_since_start > 14 else 'medium',
+                    'action_url': f'/onboarding/{checklist.id}',
+                    'created_at': checklist.created_at.isoformat()
+                })
+        
+        # Document reminders
+        pending_docs = EmployeeDocument.query.filter_by(status='pending').all()
+        for doc in pending_docs:
+            days_pending = (datetime.utcnow() - doc.upload_date).days
+            if days_pending > 3:  # Remind about pending documents older than 3 days
+                reminders.append({
+                    'type': 'document',
+                    'title': f'Pending Document: {doc.file_name}',
+                    'description': f'Document uploaded {days_pending} days ago awaiting approval',
+                    'priority': 'medium',
+                    'action_url': f'/documents/review/{doc.id}',
+                    'created_at': doc.upload_date.isoformat()
+                })
+        
+        # Offboarding reminders
+        active_offboarding = OffboardingCandidate.query.filter_by(status='active').all()
+        for candidate in active_offboarding:
+            if candidate.exit_date:
+                days_until_exit = (candidate.exit_date - datetime.utcnow().date()).days
+                if days_until_exit <= 3 and days_until_exit >= 0:  # Remind about upcoming exit
+                    reminders.append({
+                        'type': 'offboarding',
+                        'title': f'Upcoming Exit: {candidate.employee.full_name if candidate.employee else "Unknown"}',
+                        'description': f'Exit date in {days_until_exit} days',
+                        'priority': 'high' if days_until_exit <= 1 else 'medium',
+                        'action_url': f'/offboarding/{candidate.id}',
+                        'created_at': candidate.created_at.isoformat()
+                    })
+        
+        # Sort reminders by priority and date
+        priority_order = {'high': 0, 'medium': 1, 'low': 2}
+        reminders.sort(key=lambda x: (priority_order.get(x['priority'], 3), x['created_at']), reverse=True)
+        
+        return jsonify({
+            'status': 'success',
+            'reminders': reminders[:20],  # Return latest 20 reminders
+            'total_count': len(reminders)
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching reminders: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch reminders'
+        }), 500
+
+
+@app.route('/api/notifications/messages', methods=['GET'])
+@login_required(['hr', 'employee'])
+def get_messages():
+    """Get messages (conversation thread)"""
+    try:
+        user_id = session['user_id']
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Get messages where user is either sender or recipient
+        messages = Message.query.filter(
+            (Message.sender_id == user_id) | (Message.recipient_id == user_id)
+        ).order_by(Message.sent_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        message_list = []
+        for msg in messages.items:
+            message_list.append({
+                'id': msg.id,
+                'subject': msg.subject,
+                'content': msg.content,
+                'message_type': msg.message_type,
+                'priority': msg.priority,
+                'status': msg.status,
+                'sent_at': msg.sent_at.isoformat(),
+                'read_at': msg.read_at.isoformat() if msg.read_at else None,
+                'sender': msg.sender.full_name if msg.sender else 'System',
+                'recipient': msg.recipient.full_name if msg.recipient else 'Unknown',
+                'is_sent': msg.sender_id == user_id,
+                'is_reply': msg.parent_id is not None
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'messages': message_list,
+            'pagination': {
+                'page': messages.page,
+                'pages': messages.pages,
+                'per_page': messages.per_page,
+                'total': messages.total,
+                'has_next': messages.has_next,
+                'has_prev': messages.has_prev
+            }
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching messages: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch messages'
+        }), 500
+
+
+@app.route('/api/notifications/messages', methods=['POST'])
+@login_required(['hr', 'employee'])
+def send_message():
+    """Send a message to another user"""
+    try:
+        data = request.get_json()
+        recipient_id = data.get('recipient_id')
+        subject = data.get('subject', '')
+        content = data.get('content', '')
+        parent_id = data.get('parent_id')  # For replies
+        
+        if not recipient_id or not content:
+            return jsonify({
+                'status': 'error',
+                'message': 'Recipient and content are required'
+            }), 400
+        
+        # Verify recipient exists
+        recipient = User.query.get(recipient_id)
+        if not recipient:
+            return jsonify({
+                'status': 'error',
+                'message': 'Recipient not found'
+            }), 404
+        
+        sender_id = session['user_id']
+        
+        message = Message(
+            subject=subject or 'No Subject',
+            content=content,
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            message_type='message',
+            priority='normal',
+            status='unread',
+            parent_id=parent_id
+        )
+        
+        db.session.add(message)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Message sent successfully',
+            'message_id': message.id
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error sending message: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to send message'
+        }), 500
+
+
+@app.route('/api/employee/documents/<int:document_id>/approve', methods=['PUT'])
+@login_required('hr')
+def approve_employee_document(document_id):
+    """Approve or reject employee document"""
+    try:
+        data = request.get_json()
+        status = data.get('status', 'approved')  # approved or rejected
+        remarks = data.get('remarks', '')
+        
+        document = EmployeeDocument.query.get_or_404(document_id)
+        
+        if document.status != 'pending':
+            return jsonify({
+                'status': 'error',
+                'message': 'Document has already been processed'
+            }), 400
+        
+        document.status = status
+        document.remarks = remarks
+        document.reviewed_by = session['user_id']
+        document.reviewed_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Send notification to employee
+        if status == 'approved':
+            notify_document_approved(document.employee_id, document.document_name)
+        else:
+            # Create rejection notification
+            employee = User.query.get(document.employee_id)
+            if employee:
+                subject = "Document Rejected"
+                content = f"Your document '{document.document_name}' has been rejected."
+                if remarks:
+                    content += f"\n\nRemarks: {remarks}"
+                create_notification(
+                    recipient_id=document.employee_id,
+                    subject=subject,
+                    content=content,
+                    message_type='document',
+                    priority='high'
+                )
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Document {status} successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error approving document: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to process document'
+        }), 500
+
+
+@app.route('/api/interviews', methods=['POST'])
+@login_required('hr')
+def schedule_interview():
+    """Schedule an interview for a candidate"""
+    try:
+        data = request.get_json()
+        
+        candidate_id = data.get('candidate_id')
+        employee_id = data.get('employee_id')  # For internal interviews
+        interview_type = data.get('type', 'technical')
+        scheduled_date = data.get('scheduled_date')
+        scheduled_time = data.get('scheduled_time')
+        location = data.get('location', 'Video Call')
+        notes = data.get('notes', '')
+        
+        if not scheduled_date or not scheduled_time:
+            return jsonify({
+                'status': 'error',
+                'message': 'Date and time are required'
+            }), 400
+        
+        # Parse date and time
+        try:
+            date_obj = datetime.strptime(scheduled_date, '%Y-%m-%d').date()
+            time_obj = datetime.strptime(scheduled_time, '%H:%M').time()
+            scheduled_datetime = datetime.combine(date_obj, time_obj)
+        except ValueError:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid date or time format'
+            }), 400
+        
+        # Create interview record
+        interview = Interview(
+            candidate_id=candidate_id,
+            scheduled_at=scheduled_datetime,
+            interview_type=interview_type,
+            location=location,
+            notes=notes,
+            status='scheduled'
+        )
+        
+        db.session.add(interview)
+        db.session.commit()
+        
+        # Send notification to employee if it's an internal interview
+        if employee_id:
+            interview_details = f"""
+Type: {interview_type.title()}
+Date: {scheduled_date}
+Time: {scheduled_time}
+Location: {location}
+{notes if notes else ''}
+"""
+            notify_interview_scheduled(employee_id, interview_details)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Interview scheduled successfully',
+            'data': {
+                'id': interview.id,
+                'scheduled_at': interview.scheduled_at.isoformat(),
+                'type': interview.interview_type,
+                'location': interview.location
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error scheduling interview: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to schedule interview'
+        }), 500
+
+
+@app.route('/api/exit/summary/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def generate_exit_summary(employee_id):
+    """Generate and notify about exit summary"""
+    try:
+        employee = User.query.get(employee_id)
+        if not employee:
+            return jsonify({
+                'status': 'error',
+                'message': 'Employee not found'
+            }), 404
+        
+        # In a real app, generate comprehensive exit summary
+        # For now, just create a notification
+        notify_exit_summary_ready(employee_id)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Exit summary generated and employee notified'
+        })
+    except Exception as e:
+        app.logger.error(f'Error generating exit summary: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to generate exit summary'
+        }), 500
+
+
+# Initialize APScheduler
+scheduler = BackgroundScheduler()
+
+def scheduled_notification_check():
+    """Scheduled task to check for overdue tasks and pending revocations"""
+    with app.app_context():
+        try:
+            app.logger.info("Running scheduled notification check...")
+            check_overdue_onboarding_tasks()
+            check_pending_access_revocation()
+            app.logger.info("Scheduled notification check completed")
+        except Exception as e:
+            app.logger.error(f'Error in scheduled notification check: {str(e)}')
+
+# Schedule the notification check to run every hour
+scheduler.add_job(
+    func=scheduled_notification_check,
+    trigger=IntervalTrigger(hours=1),
+    id='notification_check_job',
+    name='Check for overdue tasks and pending revocations',
+    replace_existing=True
+)
+
+# Start the scheduler
+scheduler.start()
+
+# Shut down the scheduler when the app exits
+import atexit
+atexit.register(lambda: scheduler.shutdown())
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -114,6 +114,19 @@
                     <span class="d-none d-md-inline ms-1">Logout</span>
                 </a>
                 
+                <!-- Notification Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-bell"></i>
+                        <span id="notificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 0.6em;">0</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown">
+                        <li><h6 class="dropdown-header">Notifications</h6></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="loadNotifications(); return false;">View All Notifications</a></li>
+                    </ul>
+                </li>
+                
                 <!-- User Dropdown -->
                 <div class="dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
@@ -348,6 +361,9 @@
         </div>
     </div>
 </div>
+
+<!-- Toast Container for Notifications -->
+<div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
 {% endblock %}
 
