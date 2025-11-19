@@ -37,7 +37,7 @@
                         <div class="col-md-4">
                             <button class="btn btn-info btn-lg w-100" data-bs-toggle="modal" data-bs-target="#documentsModal" onclick="loadDocumentsModal()">
                                 <i class="fas fa-file-alt me-2"></i>My Documents
-                                {% if documents_count > 0 %}<span class="badge bg-light text-dark ms-1">{{ documents_count }}</span>{% endif %}
+                                {% if documents_count is defined and documents_count > 0 %}<span class="badge bg-light text-dark ms-1">{{ documents_count }}</span>{% endif %}
                             </button>
                         </div>
                         <div class="col-md-4">
