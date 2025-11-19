@@ -230,13 +230,16 @@ def login_required(role=None):
             if 'user_id' not in session or 'role' not in session:
                 # Redirect to role selection page if not logged in
                 return redirect(url_for('index'))
-            if role and session.get('role') != role:
-                flash('You do not have permission to access this page.', 'danger')
-                # For candidates, redirect to the login with candidate role
-                if session.get('role') == 'candidate':
-                    return redirect(url_for('login', role='candidate'))
-                # For other roles, try to redirect to their dashboard
-                return redirect(url_for('index'))
+            if role:
+                # Handle both single role string and list of roles
+                allowed_roles = role if isinstance(role, list) else [role]
+                if session.get('role') not in allowed_roles:
+                    flash('You do not have permission to access this page.', 'danger')
+                    # For candidates, redirect to the login with candidate role
+                    if session.get('role') == 'candidate':
+                        return redirect(url_for('login', role='candidate'))
+                    # For other roles, redirect to their appropriate dashboard
+                    return redirect(url_for(session.get('role', 'index') + '_dashboard'))
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -992,7 +995,7 @@ def interview():
     return render_template('interview.html')
 
 @app.route('/exit', methods=['GET', 'POST'])
-@login_required('employee')  # Make sure only logged-in employees can access
+@login_required(['employee', 'hr'])  # Allow both employees and HR to access
 def exit_interview():
     # Get the current user's employee data
     employee = User.query.get(session['user_id'])
