@@ -170,15 +170,15 @@
                     </div>
                     <div class="mb-3">
                         <label for="phone" class="form-label">Phone Number</label>
-                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="Enter your phone number">
+                        <input type="tel" class="form-control" id="phone" name="phone" autocomplete="tel" placeholder="Enter your phone number">
                     </div>
                     <div class="mb-3">
                         <label for="department" class="form-label">Department</label>
-                        <input type="text" class="form-control" id="department" name="department" placeholder="Enter your department">
+                        <input type="text" class="form-control" id="department" name="department" autocomplete="off" placeholder="Enter your department">
                     </div>
                     <div class="mb-3">
                         <label for="position" class="form-label">Position</label>
-                        <input type="text" class="form-control" id="position" name="position" placeholder="Enter your position">
+                        <input type="text" class="form-control" id="position" name="position" autocomplete="off" placeholder="Enter your position">
                     </div>
                 </form>
             </div>
@@ -201,7 +201,7 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label for="documentType" class="form-label">Document Type</label>
-                    <select class="form-control" id="documentType">
+                    <select class="form-control" id="documentType" name="documentType" autocomplete="off">
                         <option value="">Select a type...</option>
                         <option value="Resume">Resume</option>
                         <option value="Certificate">Certificate</option>
@@ -212,12 +212,12 @@
                 </div>
                 <div class="mb-3">
                     <label for="documentFile" class="form-label">Upload Document</label>
-                    <input type="file" class="form-control" id="documentFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    <input type="file" class="form-control" id="documentFile" name="documentFile" autocomplete="off" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
                     <small class="text-muted">Accepted formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB)</small>
                 </div>
                 <div class="mb-3">
                     <label for="documentDescription" class="form-label">Description</label>
-                    <textarea class="form-control" id="documentDescription" rows="2" placeholder="Optional description..."></textarea>
+                    <textarea class="form-control" id="documentDescription" name="documentDescription" autocomplete="off" rows="2" placeholder="Optional description..."></textarea>
                 </div>
                 <button type="button" class="btn btn-primary mb-3" onclick="uploadDocument()"><i class="fas fa-upload me-2"></i>Upload Document</button>
                 
@@ -264,7 +264,7 @@
                 
                 <div class="mb-3">
                     <label for="notificationFrequency" class="form-label">Notification Frequency</label>
-                    <select class="form-control" id="notificationFrequency">
+                    <select class="form-control" id="notificationFrequency" name="notificationFrequency" autocomplete="off">
                         <option value="immediately">Immediately</option>
                         <option value="daily">Daily Digest</option>
                         <option value="weekly">Weekly Digest</option>
@@ -275,7 +275,7 @@
                 
                 <div class="mb-3">
                     <label for="theme" class="form-label">Theme</label>
-                    <select class="form-control" id="theme">
+                    <select class="form-control" id="theme" name="theme" autocomplete="off">
                         <option value="light">Light</option>
                         <option value="dark">Dark</option>
                     </select>
@@ -283,7 +283,7 @@
                 
                 <div class="mb-3">
                     <label for="language" class="form-label">Language</label>
-                    <select class="form-control" id="language">
+                    <select class="form-control" id="language" name="language" autocomplete="off">
                         <option value="en">English</option>
                         <option value="es">Spanish</option>
                         <option value="fr">French</option>
