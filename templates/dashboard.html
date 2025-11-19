@@ -166,55 +166,6 @@
     <div class="row g-4">
         <!-- Left Column -->
         <div class="col-lg-8">
-            <!-- Engagement Trend -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-0">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="text-uppercase text-light-50 fw-bold mb-0">ENGAGEMENT TREND</h6>
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Time period">
-                            <button type="button" class="btn btn-outline-light active" data-period="6M">6M</button>
-                            <button type="button" class="btn btn-outline-light" data-period="1Y">1Y</button>
-                            <button type="button" class="btn btn-outline-light" data-period="All">All</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="position-relative" style="height: 300px;">
-                        <div class="position-absolute w-100 h-100 d-flex align-items-center justify-content-center" id="chartLoading" style="background: rgba(0,0,0,0.5);">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                        <canvas id="engagementChart" style="width: 100%; height: 100%;"></canvas>
-                    </div>
-                    <div class="card-footer bg-transparent border-0 pt-0">
-                        <div class="row g-2 text-center">
-                            <div class="col-4">
-                                <div class="p-2 border rounded bg-dark bg-opacity-50">
-                                    <div class="text-muted small">Current</div>
-                                    <div class="h5 mb-0 text-light">78%</div>
-                                    <span class="text-success small"><i class="bi bi-arrow-up"></i> 2.5%</span>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="p-2 border rounded bg-dark bg-opacity-50">
-                                    <div class="text-muted small">Avg. 6M</div>
-                                    <div class="h5 mb-0 text-light">75%</div>
-                                    <span class="text-success small"><i class="bi bi-arrow-up"></i> 5.1%</span>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="p-2 border rounded bg-dark bg-opacity-50">
-                                    <div class="text-muted small">Peak</div>
-                                    <div class="h5 mb-0 text-light">82%</div>
-                                    <span class="text-muted small">Mar 2023</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Exit Reasons Analysis -->
             <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-0">
@@ -458,585 +409,116 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Add required Chart.js plugins -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
-
 <script>
-// Register the zoom plugin
-Chart.register(ChartZoom);
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize chart elements
-    const chartLoading = document.getElementById('chartLoading');
-    const chartCanvas = document.getElementById('engagementChart');
-    const ctx = chartCanvas.getContext('2d');
-    
-    // Chart data for different time periods
-    const chartData = {
-        '6M': {
-            labels: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            data: [82, 84, 85, 87, 86, 88]
-        },
-        '1Y': {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            data: [75, 76, 78, 80, 82, 81, 82, 84, 85, 87, 86, 88]
-        },
-        'All': {
-            labels: ['2022 Q1', '2022 Q2', '2022 Q3', '2022 Q4', '2023 Q1', '2023 Q2', '2023 Q3', '2023 Q4'],
-            data: [70, 72, 74, 76, 78, 80, 82, 84]
-        }
-    };
-    
-    // Initialize chart with default data
-    const engagementChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: chartData['6M'].labels,
-            datasets: [{
-                label: 'Engagement Score',
-                data: chartData['6M'].data,
-                borderColor: '#4e73df',
-                backgroundColor: 'rgba(78, 115, 223, 0.2)',
-                borderWidth: 2,
-                tension: 0.3,
-                fill: true,
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#4e73df',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 1000
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: '#dee2e6',
-                        font: {
-                            size: 12
-                        }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    borderColor: '#4e73df',
-                    borderWidth: 1,
-                    padding: 10,
-                    displayColors: false
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(108, 117, 125, 0.2)',
-                        display: true
-                    },
-                    ticks: {
-                        color: '#adb5bd'
-                    }
-                },
-                y: {
-                    min: 60,
-                    max: 100,
-                    grid: {
-                        color: 'rgba(108, 117, 125, 0.2)'
-                    },
-                    ticks: {
-                        color: '#adb5bd',
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    }
-                }
-            }
-        }
-    });
-    
-    // Update chart when time period changes
-    document.querySelectorAll('[data-period]').forEach(button => {
-        button.addEventListener('click', function() {
-            const period = this.getAttribute('data-period');
-            
-            // Update active button
-            document.querySelectorAll('[data-period]').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            this.classList.add('active');
-            
-            // Show loading
-            chartLoading.style.opacity = '1';
-            chartLoading.style.display = 'flex';
-            
-            // Simulate data loading
-            setTimeout(() => {
-                engagementChart.data.labels = chartData[period].labels;
-                engagementChart.data.datasets[0].data = chartData[period].data;
-                engagementChart.update();
-                
-                // Hide loading
-                chartLoading.style.opacity = '0';
-                setTimeout(() => {
-                    chartLoading.style.display = 'none';
-                }, 300);
-            }, 500);
-        });
-    });
-    
-    // Hide loading spinner after chart is ready
-    setTimeout(() => {
-        chartLoading.style.opacity = '0';
-        setTimeout(() => {
-            chartLoading.style.display = 'none';
-        }, 300);
-    }, 1000);
-    
-    // Initialize with 6M data by default
-    const timePeriods = {
-        '6M': {
-            labels: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            data: [85, 83, 87, 85, 88, 90]
-        },
-        '1Y': {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            data: [72, 75, 78, 76, 80, 82, 85, 83, 87, 85, 88, 90]
-        },
-        'All': {
-            labels: ['2022 Q1', '2022 Q2', '2022 Q3', '2022 Q4', '2023 Q1', '2023 Q2', '2023 Q3', '2023 Q4'],
-            data: [68, 70, 72, 74, 75, 78, 82, 85]
-        }
-    };
-
-    // Set initial data for 6M view
-    let currentData = timePeriods['6M'];
-    
-    // Update chart function
-    function updateChart(period) {
-        const periodData = timePeriods[period];
-        if (!periodData) return;
-        
-        currentData = periodData;
-        engagementChart.data.labels = periodData.labels;
-        engagementChart.data.datasets[0].data = periodData.data;
-        engagementChart.update();
-    }
-    
-    // Add click handlers for period buttons
-    document.querySelectorAll('[data-period]').forEach(button => {
-        button.addEventListener('click', function() {
-            // Remove active class from all buttons
-            document.querySelectorAll('[data-period]').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            // Add active class to clicked button
-            this.classList.add('active');
-            // Update chart with selected period
-            updateChart(this.dataset.period);
-        });
-    });
-    
-    // Hide loading spinner and show chart after a short delay
-    setTimeout(() => {
-        if (chartLoading) {
-            chartLoading.style.opacity = '0';
-            setTimeout(() => {
-                chartLoading.style.display = 'none';
-                chartCanvas.style.opacity = '1';
-            }, 300);
-        }
-    
-    const engagementChart = new Chart(ctx, {
-        type: 'line',
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: '#dee2e6',
-                        font: {
-                            size: 12
-                        }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(33, 37, 41, 0.95)',
-                    titleColor: '#fff',
-                    bodyColor: '#dee2e6',
-                    borderColor: '#495057',
-                    borderWidth: 1,
-                    displayColors: true,
-                    padding: 10,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y + '%';
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(108, 117, 125, 0.2)'
-                    },
-                    ticks: {
-                        color: '#adb5bd'
-                    }
-                },
-                y: {
-                    min: 0,
-                    max: 100,
-                    grid: {
-                        color: 'rgba(108, 117, 125, 0.2)'
-                    },
-                    ticks: {
-                        color: '#adb5bd',
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    }
-                }
-            }
-        },
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [
-                {
-                    label: 'Engagement Score',
-                    data: [72, 75, 78, 76, 80, 82, 85, 83, 87, 85, 88, 90],
-                    borderColor: '#4e73df',
-                    backgroundColor: 'rgba(78, 115, 223, 0.2)',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#4e73df',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#4e73df',
-                    pointHoverBorderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Employee Satisfaction',
-                    data: [68, 70, 73, 75, 77, 79, 81, 82, 84, 83, 85, 87],
-                    borderColor: 'rgba(25, 135, 84, 1)',
-                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0.3,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Retention Rate %',
-                    data: [88, 87, 89, 88, 90, 91, 90, 91, 92, 93, 94, 95],
-                    borderColor: 'rgba(255, 193, 7, 1)',
-                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                    borderWidth: 2,
-                    borderDash: [3, 3],
-                    fill: false,
-                    tension: 0.3,
-                    yAxisID: 'y1'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: '#dee2e6',
-                        padding: 20,
-                        boxWidth: 12,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    backgroundColor: 'rgba(33, 37, 41, 0.95)',
-                    titleColor: '#fff',
-                    bodyColor: '#dee2e6',
-                    borderColor: '#495057',
-                    borderWidth: 1,
-                    padding: 12,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += context.datasetIndex === 2 ? context.parsed.y + '%' : context.parsed.y;
-                                if (context.datasetIndex === 0) {
-                                    label += '/100';
-                                } else if (context.datasetIndex === 1) {
-                                    label += '/100';
-                                }
-                            }
-                            return label;
-                        }
-                    }
-                },
-                zoom: {
-                    zoom: {
-                        wheel: {
-                            enabled: true
-                        },
-                        pinch: {
-                            enabled: true
-                        },
-                        mode: 'x',
-                        speed: 100
-                    },
-                    pan: {
-                        enabled: true,
-                        mode: 'x',
-                        speed: 0.5
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    title: {
-                        display: true,
-                        text: 'Score',
-                        color: '#adb5bd'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                        color: '#adb5bd',
-                        callback: function(value) {
-                            return value + (this === engagementChart.scales.y ? '' : '%');
-                        }
-                    },
-                    min: 60,
-                    max: 100
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    title: {
-                        display: true,
-                        text: 'Retention %',
-                        color: '#adb5bd'
-                    },
-                    grid: {
-                        drawOnChartArea: false,
-                    },
-                    ticks: {
-                        color: '#ffc107',
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    },
-                    min: 80,
-                    max: 100
-                },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: '#adb5bd'
-                    }
-                }
-            }
-        }
-    });
-
-    // Initialize tooltips and modals first
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
     // Initialize modals
     var myModal = new bootstrap.Modal(document.getElementById('addEmployeeModal'), {
         keyboard: true
     });
 
     // Quick Actions Functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        // Search Employee
-        const searchEmployeeBtn = document.getElementById('searchEmployeeBtn');
-        if (searchEmployeeBtn) {
-            searchEmployeeBtn.addEventListener('click', function() {
-                const searchTerm = prompt('Enter employee name or ID:');
-                if (searchTerm) {
-                    const toast = showToast('Searching for: ' + searchTerm, 'info');
-                    setTimeout(() => {
-                        toast.querySelector('.toast-body').textContent = `Found 5 results for "${searchTerm}"`;
-                        setTimeout(() => toast.remove(), 3000);
-                    }, 1500);
-                }
-            });
-        }
-
-        // Generate Report
-        const generateReportBtn = document.getElementById('generateReportBtn');
-        if (generateReportBtn) {
-            generateReportBtn.addEventListener('click', function() {
-                const toast = showToast('Generating report...', 'info');
-                
-                // Simulate report generation
+    // Search Employee
+    const searchEmployeeBtn = document.getElementById('searchEmployeeBtn');
+    if (searchEmployeeBtn) {
+        searchEmployeeBtn.addEventListener('click', function() {
+            const searchTerm = prompt('Enter employee name or ID:');
+            if (searchTerm) {
+                const toast = showToast('Searching for: ' + searchTerm, 'info');
                 setTimeout(() => {
-                    toast.querySelector('.toast-body').innerHTML = 'Report generated successfully! <a href="#" class="text-white fw-bold ms-2">Download</a>';
-                    setTimeout(() => toast.remove(), 5000);
-                }, 2000);
-            });
-        }
-
-        // Schedule Meeting
-        const scheduleMeetingBtn = document.getElementById('scheduleMeetingBtn');
-        if (scheduleMeetingBtn) {
-            scheduleMeetingBtn.addEventListener('click', function() {
-                const meetingTitle = prompt('Enter meeting title:');
-                if (meetingTitle) {
-                    const date = new Date();
-                    date.setDate(date.getDate() + 1);
-                    const defaultDate = date.toISOString().split('T')[0];
-                    const meetingDate = prompt('Enter meeting date (YYYY-MM-DD):', defaultDate);
-                    if (meetingDate) {
-                        showToast(`Meeting "${meetingTitle}" scheduled for ${meetingDate}`, 'success');
-                    }
-                }
-            });
-        }
-
-        // View Analytics
-        const viewAnalyticsBtn = document.getElementById('viewAnalyticsBtn');
-        if (viewAnalyticsBtn) {
-            viewAnalyticsBtn.addEventListener('click', function() {
-                const chartContainer = document.querySelector('.card-body[style*="height: 300px"]');
-                if (!chartContainer) return;
-                
-                const isFullscreen = chartContainer.classList.toggle('fullscreen-chart');
-                
-                if (isFullscreen) {
-                    chartContainer.style.height = '70vh';
-                    const chart = document.querySelector('#engagementChart');
-                    if (chart) chart.style.cursor = 'move';
-                    if (typeof engagementChart !== 'undefined') {
-                        engagementChart.resize();
-                    }
-                    viewAnalyticsBtn.innerHTML = '<i class="bi bi-fullscreen-exit me-2"></i> Exit Fullscreen';
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    chartContainer.style.height = '300px';
-                    const chart = document.querySelector('#engagementChart');
-                    if (chart) chart.style.cursor = 'default';
-                    if (typeof engagementChart !== 'undefined') {
-                        if (engagementChart.resetZoom) engagementChart.resetZoom();
-                        engagementChart.resize();
-                    }
-                    viewAnalyticsBtn.innerHTML = '<i class="bi bi-arrows-fullscreen me-2"></i> View Analytics';
-                    document.body.style.overflow = '';
-                }
-            });
-        }
-        
-        // Helper function to show toast notifications
-        function showToast(message, type = 'info') {
-            const toastContainer = document.getElementById('toastContainer') || (() => {
-                const container = document.createElement('div');
-                container.id = 'toastContainer';
-                container.style.position = 'fixed';
-                container.style.bottom = '1rem';
-                container.style.right = '1rem';
-                container.style.zIndex = '1100';
-                document.body.appendChild(container);
-                return container;
-            })();
-
-            const toastId = 'toast-' + Date.now();
-            const toast = document.createElement('div');
-            toast.id = toastId;
-            toast.className = 'toast show';
-            toast.role = 'alert';
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            
-            const bgClass = {
-                'success': 'bg-success',
-                'error': 'bg-danger',
-                'warning': 'bg-warning',
-                'info': 'bg-info'
-            }[type] || 'bg-primary';
-            
-            toast.innerHTML = `
-                <div class="toast-header ${bgClass} text-white">
-                    <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="toast-body bg-dark text-light">
-                    ${message}
-                </div>
-            `;
-            
-            toastContainer.appendChild(toast);
-            
-            // Auto-remove toast after 5 seconds
-            setTimeout(() => {
-                const toastElement = document.getElementById(toastId);
-                if (toastElement) {
-                    toastElement.classList.remove('show');
-                    setTimeout(() => toastElement.remove(), 300);
-                }
-            }, 5000);
-            
-            return toast;
-        }
-
-        // Add smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
+                    toast.querySelector('.toast-body').textContent = `Found 5 results for "${searchTerm}"`;
+                    setTimeout(() => toast.remove(), 3000);
+                }, 1500);
+            }
         });
-    });
+    }
+
+    // Generate Report
+    const generateReportBtn = document.getElementById('generateReportBtn');
+    if (generateReportBtn) {
+        generateReportBtn.addEventListener('click', function() {
+            const toast = showToast('Generating report...', 'info');
+            
+            // Simulate report generation
+            setTimeout(() => {
+                toast.querySelector('.toast-body').innerHTML = 'Report generated successfully! <a href="#" class="text-white fw-bold ms-2">Download</a>';
+                setTimeout(() => toast.remove(), 5000);
+            }, 2000);
+        });
+    }
+
+    // Schedule Meeting
+    const scheduleMeetingBtn = document.getElementById('scheduleMeetingBtn');
+    if (scheduleMeetingBtn) {
+        scheduleMeetingBtn.addEventListener('click', function() {
+            const meetingTitle = prompt('Enter meeting title:');
+            if (meetingTitle) {
+                const date = new Date();
+                date.setDate(date.getDate() + 1);
+                const defaultDate = date.toISOString().split('T')[0];
+                const meetingDate = prompt('Enter meeting date (YYYY-MM-DD):', defaultDate);
+                if (meetingDate) {
+                    showToast(`Meeting "${meetingTitle}" scheduled for ${meetingDate}`, 'success');
+                }
+            }
+        });
+    }
+
+    // View Analytics
+    const viewAnalyticsBtn = document.getElementById('viewAnalyticsBtn');
+    if (viewAnalyticsBtn) {
+        viewAnalyticsBtn.addEventListener('click', function() {
+            showToast('Analytics feature coming soon!', 'info');
+        });
+    }
+    
+    // Helper function to show toast notifications
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer') || (() => {
+            const container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.style.position = 'fixed';
+            container.style.bottom = '1rem';
+            container.style.right = '1rem';
+            container.style.zIndex = '1100';
+            document.body.appendChild(container);
+            return container;
+        })();
+
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.id = toastId;
+        toast.className = 'toast show';
+        toast.role = 'alert';
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        const bgClass = {
+            'success': 'bg-success',
+            'error': 'bg-danger',
+            'warning': 'bg-warning',
+            'info': 'bg-info'
+        }[type] || 'bg-primary';
+        
+        toast.innerHTML = `
+            <div class="toast-header ${bgClass} text-white">
+                <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body bg-dark text-light">
+                ${message}
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+        
+        return toast;
+    }
 
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -1049,74 +531,9 @@ document.addEventListener('DOMContentLoaded', function() {
     popoverTriggerList.map(function (popoverTriggerEl) {
         return new bootstrap.Popover(popoverTriggerEl);
     });
+});
 
-    // Initialize charts
-    if (typeof engagementChart !== 'undefined') {
-        engagementChart.update();
-    }
-    });
-</script>
-
-<style>
-    /* Additional styles for the enhanced chart */
-    .fullscreen-chart {
-        position: fixed !important;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1050;
-        background-color: rgba(0, 0, 0, 0.9);
-        padding: 20px;
-        transition: all 0.3s ease;
-    }
-    
-    /* Custom scrollbar for the chart container */
-    .chart-container {
-        scrollbar-width: thin;
-        scrollbar-color: #495057 #212529;
-    }
-    
-    .chart-container::-webkit-scrollbar {
-        height: 8px;
-        width: 8px;
-    }
-    
-    .chart-container::-webkit-scrollbar-track {
-        background: #212529;
-    }
-    
-    .chart-container::-webkit-scrollbar-thumb {
-        background-color: #495057;
-        border-radius: 4px;
-    }
-    
-    /* Hover effects for quick action buttons */
-    .btn-outline-light:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        transition: all 0.2s ease-in-out;
-    }
-    
-    /* Animation for the toast */
-    @keyframes slideInUp {
-        from {
-            transform: translateY(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
-    }
-    
-    .toast {
-        animation: slideInUp 0.3s ease-out;
-    }
-</style>
-
-<script>
-// Close any open tooltips when clicking elsewhere
+// Hide tooltips when clicking elsewhere
 document.addEventListener('click', function(e) {
     if (!e.target.closest('[data-bs-toggle="tooltip"]')) {
         const tooltips = [].slice.call(document.querySelectorAll('.tooltip'));
@@ -1129,5 +546,43 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
+
+<style>
+    /* Custom styles for the dashboard */
+    .fullscreen-chart {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1050;
+        background-color: rgba(0, 0, 0, 0.9);
+        padding: 20px;
+        transition: all 0.3s ease;
+    }
+    
+    /* Custom scrollbar */
+    .chart-container {
+        scrollbar-width: thin;
+        scrollbar-color: #495057 #212529;
+    }
+    
+    .chart-container::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .chart-container::-webkit-scrollbar-track {
+        background: #212529;
+    }
+    
+    .chart-container::-webkit-scrollbar-thumb {
+        background: #495057;
+        border-radius: 4px;
+    }
+    
+    .chart-container::-webkit-scrollbar-thumb:hover {
+        background: #6c757d;
+    }
+</style>
 
 {% endblock %}
