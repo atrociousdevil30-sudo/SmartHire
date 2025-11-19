@@ -31,12 +31,25 @@ function loadProfileModal() {
 }
 
 function saveProfile() {
-    const formData = new FormData();
-    formData.append('phone', document.getElementById('phone').value);
-    formData.append('department', document.getElementById('department').value);
-    formData.append('position', document.getElementById('position').value);
+    console.log('saveProfile function called');
     
-    const submitBtn = event.target;
+    const phone = document.getElementById('phone').value;
+    const department = document.getElementById('department').value;
+    const position = document.getElementById('position').value;
+    
+    console.log('Form values:', { phone, department, position });
+    
+    const formData = new FormData();
+    formData.append('phone', phone);
+    formData.append('department', department);
+    formData.append('position', position);
+    
+    const submitBtn = document.querySelector('#profileModal .btn-primary');
+    if (!submitBtn) {
+        console.error('Submit button not found');
+        return;
+    }
+    
     const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
@@ -48,17 +61,20 @@ function saveProfile() {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Response data:', data);
         if (data.status === 'success') {
             showToast('success', 'Success', data.message);
-            // Close modal after 1 second
             setTimeout(() => {
-                bootstrap.Modal.getInstance(
-                    document.getElementById('profileModal')).hide();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('profileModal'));
+                if (modal) modal.hide();
             }, 1000);
         } else {
-            showToast('danger', 'Error', data.message);
+            showToast('danger', 'Error', data.message || 'Failed to save profile');
         }
     })
     .catch(error => {
@@ -126,7 +142,7 @@ function displayDocuments(documents) {
                         ${doc.description ? `<p class="mb-0 small">${doc.description}</p>` : ''}
                     </div>
                     <div class="btn-group btn-group-sm ms-2" role="group">
-                        <a href="/uploads/documents/${doc.file_path.split('/').pop()}" class="btn btn-outline-primary" 
+                        <a href="/uploads/documents/${doc.file_name}" class="btn btn-outline-primary" 
                            title="Download" target="_blank">
                             <i class="fas fa-download"></i>
                         </a>
@@ -164,7 +180,7 @@ function uploadDocument() {
     formData.append('document_type', documentType);
     formData.append('description', description);
     
-    const uploadBtn = event.target;
+    const uploadBtn = document.querySelector('#documentsModal .btn-primary');
     const originalText = uploadBtn.innerHTML;
     uploadBtn.disabled = true;
     uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
@@ -273,7 +289,7 @@ function saveSettings() {
     formData.append('two_factor_enabled', 
         document.getElementById('twoFactorAuth').checked);
     
-    const submitBtn = event.target;
+    const submitBtn = document.querySelector('#settingsModal .btn-primary');
     const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
@@ -354,7 +370,7 @@ function submitPasswordChange() {
     formData.append('new_password', newPassword);
     formData.append('confirm_password', confirmPassword);
     
-    const submitBtn = event.target;
+    const submitBtn = document.querySelector('#changePasswordModal .btn-primary');
     const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating...';
@@ -432,6 +448,17 @@ function showToast(type, title, message) {
         toast.remove();
     });
 }
+
+// Make functions globally available
+window.loadProfileModal = loadProfileModal;
+window.saveProfile = saveProfile;
+window.loadDocumentsModal = loadDocumentsModal;
+window.uploadDocument = uploadDocument;
+window.deleteDocument = deleteDocument;
+window.loadSettingsModal = loadSettingsModal;
+window.saveSettings = saveSettings;
+window.changePassword = changePassword;
+window.submitPasswordChange = submitPasswordChange;
 
 // Initialize when document is ready
 document.addEventListener('DOMContentLoaded', function() {

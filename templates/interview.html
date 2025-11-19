@@ -1,74 +1,194 @@
 {% extends "base.html" %}
 
-{% block title %}AI Interview{% endblock %}
+{% block title %}AI Interview Training{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
+<div class="container-fluid">
+    <div class="row">
+        <!-- HR Training Panel -->
+        {% if session.role == 'hr' %}
+        <div class="col-lg-4">
             <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0">AI Interview Simulation</h2>
-                    <span class="badge bg-primary">Live</span>
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Training Setup</h5>
                 </div>
                 <div class="card-body">
-                    <div id="interviewContainer" class="mb-4">
-                        <div class="chat-container" id="chatContainer">
-                            <div class="message message-ai">
-                                <p class="mb-0">Hello! Welcome to your AI-powered interview. I'll be asking you a few questions to assess your fit for the position. Let's get started!</p>
+                    <form id="trainingSetupForm">
+                        <div class="mb-3">
+                            <label for="candidateName" class="form-label">Candidate Name</label>
+                            <input type="text" class="form-select" id="candidateName" placeholder="Enter candidate name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roleHiring" class="form-label">Role Hiring For</label>
+                            <input type="text" class="form-select" id="roleHiring" placeholder="e.g. Senior Frontend Developer" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="trainingType" class="form-label">Interview Type</label>
+                            <select class="form-select" id="trainingType">
+                                <option value="technical">Technical (Frontend/Backend/DevOps)</option>
+                                <option value="behavioral">Behavioral</option>
+                                <option value="hr">HR Round</option>
+                                <option value="managerial">Managerial</option>
+                                <option value="domain">Domain-specific</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="difficultyLevel" class="form-label">Seniority Level</label>
+                            <select class="form-select" id="difficultyLevel">
+                                <option value="intern">Intern</option>
+                                <option value="junior">Junior</option>
+                                <option value="mid">Mid-level</option>
+                                <option value="senior">Senior</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="interviewStyle" class="form-label">Interview Style</label>
+                            <select class="form-select" id="interviewStyle">
+                                <option value="conversational">Conversational</option>
+                                <option value="friendly">Friendly</option>
+                                <option value="strict">Strict</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="duration" class="form-label">Duration (minutes)</label>
+                            <select class="form-select" id="duration">
+                                <option value="15">15 minutes</option>
+                                <option value="30" selected>30 minutes</option>
+                                <option value="45">45 minutes</option>
+                                <option value="60">60 minutes</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="jobDescription" class="form-label">Job Description/Skills</label>
+                            <textarea class="form-control bg-dark text-light" id="jobDescription" rows="3" placeholder="Enter key skills and requirements..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Evaluation Focus</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="technical" checked>
+                                <label class="form-check-label" for="technical">Technical Skills</label>
                             </div>
-                            <div class="message message-ai">
-                                <p class="mb-0" id="currentQuestion">Tell me about yourself and your experience.</p>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="communication" checked>
+                                <label class="form-check-label" for="communication">Communication</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="problemSolving">
+                                <label class="form-check-label" for="problemSolving">Problem Solving</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="leadership">
+                                <label class="form-check-label" for="leadership">Leadership</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="cultureFit">
+                                <label class="form-check-label" for="cultureFit">Culture Fit</label>
                             </div>
                         </div>
-                        
-                        <div id="typingIndicator" class="d-none">
-                            <div class="typing-indicator">
-                                <div class="typing-dot"></div>
-                                <div class="typing-dot"></div>
-                                <div class="typing-dot"></div>
-                            </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-play me-2"></i>Start AI Interview
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Live Monitoring</h6>
+                </div>
+                <div class="card-body">
+                    <div id="liveStats">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Active Sessions:</span>
+                            <span class="badge bg-success" id="activeSessions">0</span>
                         </div>
-                        
-                        <div id="summaryCard" class="card d-none mt-4">
-                            <div class="card-header bg-success text-white">
-                                <h3 class="h5 mb-0">Interview Summary</h3>
-                            </div>
-                            <div class="card-body">
-                                <div id="interviewSummary">
-                                    <!-- Summary will be inserted here -->
-                                </div>
-                                <div class="d-flex justify-content-between mt-4">
-                                    <button class="btn btn-outline-secondary" id="downloadPdfBtn">
-                                        <i class="bi bi-file-earmark-pdf me-2"></i>Download as PDF
-                                    </button>
-                                    <a href="{{ url_for('index') }}" class="btn btn-primary">
-                                        <i class="bi bi-house-door me-2"></i>Return to Dashboard
-                                    </a>
-                                </div>
-                            </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Avg. Performance:</span>
+                            <span class="badge bg-info" id="avgPerformance">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Interview/Training Area -->
+        <div class="{% if session.role == 'hr' %}col-lg-8{% else %}col-12{% endif %}">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">
+                        <i class="bi bi-robot me-2"></i>
+                        {% if session.role == 'hr' %}AI Training Simulator{% else %}AI Interview Practice{% endif %}
+                    </h2>
+                    <div>
+                        <span class="badge bg-primary" id="sessionStatus">Ready</span>
+                        {% if session.role == 'hr' %}
+                        <button class="btn btn-sm btn-outline-secondary ms-2" id="resetSession">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Chat Container -->
+                    <div id="chatContainer" class="chat-container mb-4 bg-dark bg-opacity-25 border-secondary" style="height: 400px; overflow-y: auto; border-radius: 0.375rem; padding: 1rem;">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-chat-dots fs-1 mb-3"></i>
+                            <p>Start a training session to begin</p>
                         </div>
                     </div>
                     
-                    <form id="interviewForm" class="d-none">
-                        <div class="mb-3">
-                            <label for="candidateResponse" class="form-label">Your Response</label>
-                            <textarea class="form-control" id="candidateResponse" rows="4" required></textarea>
+                    <!-- Typing Indicator -->
+                    <div id="typingIndicator" class="d-none mb-3">
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span>AI is thinking...</span>
                         </div>
-                        <div class="d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary" id="submitResponseBtn">
-                                <span id="submitText">Submit Response</span>
-                                <span id="submitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                            </button>
+                    </div>
+                    
+                    <!-- Response Form -->
+                    <form id="responseForm" class="d-none">
+                        <div class="mb-3">
+                            <label for="userResponse" class="form-label">Your Response</label>
+                            <textarea class="form-control bg-dark text-light" id="userResponse" rows="3" placeholder="Type your answer here..." required></textarea>
+                            <div class="form-text">Take your time to provide a thoughtful response.</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted small">Question <span id="questionCounter">1</span> of <span id="totalQuestions">5</span></span>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary me-2" id="skipQuestion">
+                                    Skip
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="submitResponse">
+                                    <span id="submitText">Submit</span>
+                                    <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+                                </button>
+                            </div>
                         </div>
                     </form>
                     
-                    <div id="startInterview" class="text-center py-5">
-                        <h3 class="h4 mb-4">Ready to Begin Your Interview?</h3>
-                        <p class="text-muted mb-4">This interview will consist of 4 questions to assess your qualifications and fit for the position.</p>
-                        <button class="btn btn-primary btn-lg" id="startInterviewBtn">
-                            <i class="bi bi-mic me-2"></i>Start Interview
-                        </button>
+                    <!-- Training Summary -->
+                    <div id="trainingSummary" class="d-none">
+                        <div class="card bg-dark bg-opacity-25 border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Training Complete</h5>
+                            </div>
+                            <div class="card-body" id="summaryContent">
+                                <!-- Summary content will be inserted here -->
+                            </div>
+                            <div class="card-footer bg-transparent border-secondary">
+                                <div class="d-flex justify-content-between">
+                                    <button class="btn btn-outline-primary" id="downloadReport">
+                                        <i class="bi bi-download me-2"></i>Download Report
+                                    </button>
+                                    <button class="btn btn-primary" id="startNewSession">
+                                        <i class="bi bi-arrow-repeat me-2"></i>New Session
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

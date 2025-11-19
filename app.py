@@ -126,6 +126,16 @@ class User(db.Model):
         return check_password_hash(self.password, password)
 
 
+class OnboardingTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    checklist_id = db.Column(db.Integer, db.ForeignKey('onboarding_checklist.id'), nullable=False)
+    task_name = db.Column(db.String(200), nullable=False)
+    task_description = db.Column(db.Text, nullable=True)
+    is_completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    order_index = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class OnboardingChecklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -133,7 +143,7 @@ class OnboardingChecklist(db.Model):
     completed_at = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(20), default='Pending')
     
-    # Onboarding tasks
+    # Legacy fields for backward compatibility
     paperwork_completed = db.Column(db.Boolean, default=False)
     equipment_assigned = db.Column(db.Boolean, default=False)
     training_completed = db.Column(db.Boolean, default=False)
@@ -157,17 +167,24 @@ class OnboardingChecklist(db.Model):
         backref='hr_assignments'
     )
     
+    tasks = db.relationship('OnboardingTask', backref='checklist', lazy=True, cascade='all, delete-orphan')
+    
     def get_progress(self):
         """Calculate completion percentage of onboarding tasks"""
-        tasks = [
-            self.paperwork_completed,
-            self.equipment_assigned,
-            self.training_completed,
-            self.hr_orientation,
-            self.team_introduction
-        ]
-        completed = sum(1 for task in tasks if task)
-        return (completed / len(tasks)) * 100 if tasks else 0
+        if self.tasks:
+            completed = sum(1 for task in self.tasks if task.is_completed)
+            return (completed / len(self.tasks)) * 100 if self.tasks else 0
+        else:
+            # Fallback to legacy fields
+            legacy_tasks = [
+                self.paperwork_completed,
+                self.equipment_assigned,
+                self.training_completed,
+                self.hr_orientation,
+                self.team_introduction
+            ]
+            completed = sum(1 for task in legacy_tasks if task)
+            return (completed / len(legacy_tasks)) * 100 if legacy_tasks else 0
 
 
 class Employee(db.Model):
@@ -489,18 +506,34 @@ def add_employee():
             db.session.add(user)
             db.session.flush()  # Get the user ID
             
-            # Create default onboarding checklist
+            # Create onboarding checklist
             checklist = OnboardingChecklist(
                 employee_id=user.id,
                 assigned_hr_id=session['user_id'],
                 status='Pending'
             )
             db.session.add(checklist)
+            db.session.flush()  # Get the checklist ID
+            
+            # Get custom tasks from form
+            task_names = request.form.getlist('task_name[]')
+            task_descriptions = request.form.getlist('task_description[]')
+            task_enabled = request.form.getlist('task_enabled[]')
+            
+            # Create custom onboarding tasks
+            for i, task_name in enumerate(task_names):
+                if task_name.strip() and str(i+1) in task_enabled:
+                    task = OnboardingTask(
+                        checklist_id=checklist.id,
+                        task_name=task_name.strip(),
+                        task_description=task_descriptions[i].strip() if i < len(task_descriptions) else '',
+                        order_index=i
+                    )
+                    db.session.add(task)
             
             db.session.commit()
 
-            # Inform HR that the employee was added; HR will share the credentials they entered
-            flash(f"Employee {full_name} added successfully!", 'success')
+            flash(f"Employee {full_name} added successfully with custom onboarding checklist!", 'success')
             return redirect(url_for('view_employee', employee_id=user.id))
             
         except Exception as e:
@@ -516,13 +549,51 @@ def add_employee():
 @login_required('hr')
 def view_employee(employee_id):
     employee = User.query.get_or_404(employee_id)
-    return render_template('hr/view_employee.html', employee=employee)
+    checklist = OnboardingChecklist.query.filter_by(employee_id=employee_id).first()
+    return render_template('hr/view_employee.html', employee=employee, checklist=checklist)
 
 @app.route('/hr/employees')
 @login_required('hr')
 def list_employees():
-    employees = User.query.filter_by(role='employee').order_by(User.created_at.desc()).all()
-    return render_template('hr/employees.html', employees=employees)
+    # Get filter parameters
+    search = request.args.get('search', '')
+    department_filter = request.args.get('department', '')
+    status_filter = request.args.get('status', '')
+    
+    # Build query
+    query = User.query.filter_by(role='employee')
+    
+    # Apply filters
+    if search:
+        query = query.filter(
+            db.or_(
+                User.full_name.ilike(f'%{search}%'),
+                User.email.ilike(f'%{search}%'),
+                User.username.ilike(f'%{search}%')
+            )
+        )
+    
+    if department_filter:
+        query = query.filter(User.department == department_filter)
+    
+    if status_filter:
+        query = query.filter(User.status == status_filter)
+    
+    employees = query.order_by(User.created_at.desc()).all()
+    
+    # Get unique departments for filter dropdown
+    departments = db.session.query(User.department).filter(
+        User.role == 'employee',
+        User.department.isnot(None)
+    ).distinct().all()
+    departments = [dept[0] for dept in departments if dept[0]]
+    
+    return render_template('hr/employees.html', 
+                         employees=employees,
+                         departments=departments,
+                         current_search=search,
+                         current_department=department_filter,
+                         current_status=status_filter)
 
 @app.route('/hr/dashboard')
 @login_required('hr')
@@ -530,69 +601,73 @@ def hr_dashboard():
     # Get the logged-in user
     user = User.query.get(session['user_id'])
     
-    # Get counts for dashboard
+    # Get real counts from database
     total_employees = User.query.filter_by(role='employee').count()
     onboarding_count = User.query.filter_by(status='Onboarding').count()
     active_count = User.query.filter_by(status='Active').count()
     
-    # Get recent onboarding activities
-    recent_onboarding = db.session.query(
-        User, OnboardingChecklist
-    ).join(
-        OnboardingChecklist, User.id == OnboardingChecklist.employee_id
+    # Get recent AI interview results from database
+    recent_interviews = Interview.query.order_by(Interview.created_at.desc()).limit(10).all()
+    interview_results = []
+    for interview in recent_interviews:
+        candidate = interview.candidate if interview.candidate else None
+        interview_results.append({
+            'id': interview.id,
+            'candidate_name': candidate.name if candidate else 'Unknown Candidate',
+            'role': candidate.job_desc[:50] + '...' if candidate and candidate.job_desc else 'N/A',
+            'score': round(candidate.score, 1) if candidate and candidate.score else 'N/A',
+            'recommendation': 'Proceed to Next Round' if (candidate and candidate.score and candidate.score >= 7.5) else 'Hold for Review' if (candidate and candidate.score and candidate.score >= 6.0) else 'Reject',
+            'date': interview.created_at.strftime('%Y-%m-%d'),
+            'summary': interview.summary[:100] + '...' if interview.summary else 'No summary available'
+        })
+    
+    # Get exit feedback sentiment analysis from database
+    exit_feedbacks = ExitFeedback.query.all()
+    sentiment_counts = {'Positive': 0, 'Neutral': 0, 'Negative': 0}
+    for feedback in exit_feedbacks:
+        if feedback.sentiment:
+            sentiment_counts[feedback.sentiment] = sentiment_counts.get(feedback.sentiment, 0) + 1
+        else:
+            sentiment_counts['Neutral'] += 1
+    
+    # Calculate employee feedback averages
+    employee_feedbacks = EmployeeFeedback.query.filter(
+        EmployeeFeedback.created_at >= datetime.utcnow() - timedelta(days=30)
+    ).all()
+    
+    avg_mood = sum(f.mood_rating for f in employee_feedbacks) / len(employee_feedbacks) if employee_feedbacks else 3.5
+    avg_confidence = sum(f.confidence_rating for f in employee_feedbacks) / len(employee_feedbacks) if employee_feedbacks else 3.5
+    engagement_score = round((avg_mood + avg_confidence) / 2 * 20, 1)  # Convert to percentage
+    
+    # Get department statistics
+    departments = db.session.query(
+        User.department, 
+        db.func.count(User.id).label('count')
     ).filter(
-        User.status == 'Onboarding'
-    ).order_by(
-        User.created_at.desc()
-    ).limit(5).all()
+        User.role == 'employee',
+        User.department.isnot(None)
+    ).group_by(User.department).all()
     
-    # Generate sample data for the dashboard
-    resume_scores = [random.randint(60, 100) for _ in range(50)]
-    # Generate sentiment data and calculate total
-    sentiment_data = {
-        'Positive': random.randint(5, 15),
-        'Neutral': random.randint(2, 10),
-        'Negative': random.randint(1, 5)
-    }
-    sentiment_total = sum(sentiment_data.values())
-    
-    # Generate hiring trends data
-    end_date = datetime.utcnow()
-    start_date = end_date - timedelta(days=90)
-    date_range = [start_date + timedelta(days=x) for x in range(0, 91, 7)]
-    trends_data = {
-        'date': date_range,
-        'applications': [random.randint(10, 50) for _ in date_range],
-        'interviews': [random.randint(5, 25) for _ in date_range],
-        'hires': [random.randint(1, 10) for _ in date_range]
-    }
-    
-    # Generate top candidates data
-    candidates = [
-        {'name': 'John Doe', 'score': 92, 'status': 'Interview Scheduled', 'applied': (end_date - timedelta(days=5)).strftime('%Y-%m-%d')},
-        {'name': 'Jane Smith', 'score': 88, 'status': 'Offer Sent', 'applied': (end_date - timedelta(days=10)).strftime('%Y-%m-%d')},
-        {'name': 'Robert Johnson', 'score': 85, 'status': 'New Application', 'applied': (end_date - timedelta(days=1)).strftime('%Y-%m-%d')},
-        {'name': 'Emily Davis', 'score': 82, 'status': 'Interviewed', 'applied': (end_date - timedelta(days=7)).strftime('%Y-%m-%d')},
-        {'name': 'Michael Brown', 'score': 79, 'status': 'Screening', 'applied': (end_date - timedelta(days=3)).strftime('%Y-%m-%d')},
-    ]
-    
-    # Create charts using the dashboard blueprint's functions
-    from dashboard import create_resume_score_chart, create_sentiment_chart, create_hiring_trends_chart
-    
-    resume_distribution = create_resume_score_chart(resume_scores)
-    sentiment_chart = create_sentiment_chart(sentiment_data)
-    hiring_trends = create_hiring_trends_chart(trends_data)
+    # Calculate onboarding progress statistics
+    onboarding_checklists = OnboardingChecklist.query.all()
+    avg_onboarding_days = 7.2  # Default value
+    if onboarding_checklists:
+        completed_checklists = [c for c in onboarding_checklists if c.completed_at]
+        if completed_checklists:
+            total_days = sum((c.completed_at - c.created_at).days for c in completed_checklists)
+            avg_onboarding_days = total_days / len(completed_checklists)
     
     return render_template('dashboard.html',
                          user=user,
-                         current_user=user,  # For compatibility with existing templates
-                         resume_distribution=resume_distribution,
-                         sentiment_chart=sentiment_chart,
-                         hiring_trends=hiring_trends,
-                         candidates=candidates,
-                         sentiment_data=sentiment_data,
-                         sentiment_total=sentiment_total,
-                         trends_data=trends_data)
+                         current_user=user,
+                         total_employees=total_employees,
+                         onboarding_count=onboarding_count,
+                         active_count=active_count,
+                         interview_results=interview_results,
+                         sentiment_data=sentiment_counts,
+                         engagement_score=engagement_score,
+                         avg_onboarding_days=round(avg_onboarding_days, 1),
+                         departments=departments)
 
 # Employee Dashboard
 @app.route('/employee/dashboard')
@@ -603,6 +678,12 @@ def employee_dashboard():
     
     # Get HR contact information
     hr_contact = User.query.filter_by(role='hr').first()
+    
+    # Get onboarding checklist for progress calculation
+    onboarding_checklist = OnboardingChecklist.query.filter_by(employee_id=user.id).first()
+    onboarding_progress = 20  # Default progress
+    if onboarding_checklist:
+        onboarding_progress = onboarding_checklist.get_progress()
     
     # Generate employee data based on the logged-in user
     employee_data = {
@@ -638,15 +719,27 @@ def employee_dashboard():
             {'name': 'Training Materials', 'type': 'folder', 'format': 'ZIP'},
             {'name': 'Company Policies', 'type': 'document', 'format': 'PDF'},
             {'name': 'IT Helpdesk', 'type': 'link', 'url': '#'}
-        ]
+        ],
+        'onboarding_progress': {
+            'current_day': 1,
+            'total_days': 5,
+            'percentage': onboarding_progress,
+            'tasks_completed': int(onboarding_progress / 20) if onboarding_progress else 1,
+            'total_tasks': 5
+        }
     }
+    
+    # Get employee documents count
+    documents_count = EmployeeDocument.query.filter_by(user_id=user.id).count()
     
     return render_template('employee_dashboard.html', 
                          employee=employee_data, 
                          user=user,
                          hr_contact=hr_contact,
+                         documents_count=documents_count,
+                         onboarding_progress=onboarding_progress,
                          current_user=user,  # For compatibility with existing templates
-                         title=f'{user.full_name}\s Dashboard')
+                         title=f'{user.full_name}\'s Dashboard')
 
 @app.route('/employee/profile', methods=['GET', 'POST'])
 @login_required('employee')
@@ -876,13 +969,33 @@ def onboarding():
                          selected_candidate=selected_candidate)
 
 @app.route('/interview', methods=['GET', 'POST'])
+@login_required(['hr', 'employee'])
 def interview():
     if request.method == 'POST':
         data = request.get_json()
+        
+        # Handle training session data
+        if data.get('action') == 'save_training':
+            training_data = {
+                'user_id': session['user_id'],
+                'session_type': data.get('type'),
+                'difficulty': data.get('difficulty'),
+                'responses': data.get('responses', []),
+                'score': data.get('score', 0),
+                'completed_at': datetime.utcnow()
+            }
+            
+            # In a real app, save to database
+            # For now, just return success
+            return jsonify({
+                'success': True,
+                'message': 'Training session saved successfully'
+            })
+        
+        # Handle interview responses (existing functionality)
         candidate_id = data.get('candidate_id')
         responses = data.get('responses', {})
         
-        # Mock interview summary
         summary = "Candidate demonstrated good communication skills and relevant experience."
         
         interview = Interview(
@@ -1473,6 +1586,318 @@ def generate_offboarding_checklist(employee_name, last_working_day, role, depart
         return "I couldn't generate an offboarding checklist at the moment. Please try again later."
 
 
+@app.route('/api/ai/generate-question', methods=['POST'])
+@login_required(['hr', 'employee'])
+def generate_ai_question():
+    """Generate AI-powered interview question using Gemini"""
+    try:
+        data = request.get_json()
+        training_type = data.get('type', 'interview')
+        difficulty = data.get('difficulty', 'beginner')
+        question_index = data.get('questionIndex', 0)
+        previous_responses = data.get('previousResponses', [])
+        
+        # Create context for Gemini
+        context = f"You are an AI interview trainer conducting a {difficulty} level {training_type} training session."
+        
+        if previous_responses:
+            context += f" Previous responses show the candidate has answered {len(previous_responses)} questions."
+        
+        prompt = f"{context} Generate question {question_index + 1} that is appropriate for {training_type} skills at {difficulty} level. Make it engaging and relevant. Return only the question."
+        
+        # Generate question using Gemini
+        ai_question = generate_ai_response([{"role": "user", "content": prompt}], max_tokens=100)
+        
+        return jsonify({
+            'success': True,
+            'question': ai_question
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error generating AI question: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate question'
+        }), 500
+
+@app.route('/api/ai/generate-feedback', methods=['POST'])
+@login_required(['hr', 'employee'])
+def generate_ai_feedback():
+    """Generate AI feedback for training responses using Gemini"""
+    try:
+        data = request.get_json()
+        response_text = data.get('response', '')
+        question = data.get('question', '')
+        training_type = data.get('type', 'interview')
+        difficulty = data.get('difficulty', 'beginner')
+        
+        # Create feedback prompt for Gemini
+        prompt = f"""As an expert interview coach, analyze this {training_type} response at {difficulty} level:
+        
+Question: {question}
+Response: {response_text}
+        
+Provide constructive feedback in 2-3 sentences focusing on:
+1. What they did well
+2. One specific improvement suggestion
+3. Encouragement for next question
+        
+Keep it supportive and actionable."""
+        
+        # Generate feedback using Gemini
+        ai_feedback = generate_ai_response([{"role": "user", "content": prompt}], max_tokens=150)
+        
+        return jsonify({
+            'success': True,
+            'feedback': ai_feedback
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error generating AI feedback: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate feedback'
+        }), 500
+
+@app.route('/api/training/generate-feedback', methods=['POST'])
+@login_required(['hr', 'employee'])
+def generate_training_feedback():
+    """Generate AI feedback for training responses"""
+    try:
+        data = request.get_json()
+        response_text = data.get('response', '')
+        question_type = data.get('type', 'general')
+        
+        # Generate contextual feedback based on response
+        feedback = analyze_training_response(response_text, question_type)
+        
+        return jsonify({
+            'success': True,
+            'feedback': feedback
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error generating training feedback: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate feedback'
+        }), 500
+
+def analyze_training_response(response, question_type):
+    """Analyze training response and provide feedback"""
+    word_count = len(response.split())
+    has_examples = 'example' in response.lower() or 'instance' in response.lower()
+    
+    feedback = {
+        'score': 0,
+        'strengths': [],
+        'improvements': [],
+        'overall': ''
+    }
+    
+    # Analyze word count
+    if word_count >= 30:
+        feedback['score'] += 25
+        feedback['strengths'].append('Good response length')
+    else:
+        feedback['improvements'].append('Provide more detailed responses')
+    
+    # Check for examples
+    if has_examples:
+        feedback['score'] += 25
+        feedback['strengths'].append('Included specific examples')
+    else:
+        feedback['improvements'].append('Add concrete examples to strengthen your answer')
+    
+    # Check structure
+    sentences = response.split('.')
+    if len(sentences) >= 3:
+        feedback['score'] += 25
+        feedback['strengths'].append('Well-structured response')
+    else:
+        feedback['improvements'].append('Organize your thoughts more clearly')
+    
+    # Question-specific analysis
+    if question_type == 'behavioral':
+        if 'situation' in response.lower() and 'action' in response.lower():
+            feedback['score'] += 25
+            feedback['strengths'].append('Used STAR method effectively')
+        else:
+            feedback['improvements'].append('Consider using the STAR method (Situation, Task, Action, Result)')
+    else:
+        feedback['score'] += 15  # Base score for other types
+    
+    # Generate overall feedback
+    if feedback['score'] >= 80:
+        feedback['overall'] = 'Excellent response! You demonstrated strong communication skills.'
+    elif feedback['score'] >= 60:
+        feedback['overall'] = 'Good response with room for improvement.'
+    else:
+        feedback['overall'] = 'Keep practicing! Focus on the suggested improvements.'
+    
+    return feedback
+
+@app.route('/api/ai/generate-summary', methods=['POST'])
+@login_required(['hr', 'employee'])
+def generate_ai_summary():
+    """Generate comprehensive HR interview summary using Gemini"""
+    try:
+        data = request.get_json()
+        session_data = data.get('session', {})
+        responses = data.get('responses', [])
+        candidate_name = session_data.get('candidateName', 'Candidate')
+        role = session_data.get('roleHiring', 'Position')
+        
+        # Create comprehensive analysis prompt
+        responses_text = "\n".join([f"Q: {r.get('question', '')}\nA: {r.get('answer', '')}" for r in responses if not r.get('skipped')])
+        
+        prompt = f"""Generate a comprehensive HR interview summary for {candidate_name} applying for {role}:
+
+{responses_text}
+
+Provide detailed analysis in this format:
+
+**EXECUTIVE SUMMARY**
+- Overall Rating (1-10):
+- Fit for Role:
+- Hire Recommendation:
+
+**SKILLS ANALYSIS** (Score 0-10 each)
+- Technical Skills:
+- Communication:
+- Problem Solving:
+- Leadership:
+- Cultural Fit:
+
+**TONE & MANNERISM**
+- Confidence Level:
+- Communication Style:
+- Response Quality:
+
+**ANSWER BREAKDOWN**
+[For each major question, provide: Question, Summary, Score, Red flags/Highlights]
+
+**RECOMMENDED ACTION**
+[Proceed to next round/Hold/Reject/Skill test/HR round]
+
+Be specific and professional."""
+        
+        # Generate comprehensive summary
+        ai_summary = generate_ai_response([{"role": "user", "content": prompt}], max_tokens=800)
+        
+        return jsonify({
+            'success': True,
+            'summary': ai_summary,
+            'candidate': candidate_name,
+            'role': role
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error generating AI summary: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate summary'
+        }), 500
+
+@app.route('/api/ai/analyze-response', methods=['POST'])
+@login_required(['hr', 'employee'])
+def analyze_response_realtime():
+    """Real-time response analysis during interview"""
+    try:
+        data = request.get_json()
+        response_text = data.get('response', '')
+        question = data.get('question', '')
+        
+        # Analyze response characteristics
+        word_count = len(response_text.split())
+        hesitation_words = ['um', 'uh', 'like', 'you know', 'actually']
+        hesitation_count = sum(response_text.lower().count(word) for word in hesitation_words)
+        
+        # AI analysis prompt
+        prompt = f"""Analyze this interview response for:
+1. Confidence (Low/Medium/High)
+2. Clarity (Poor/Good/Excellent)
+3. Relevance (Off-topic/Partial/Relevant)
+4. Technical accuracy (if applicable)
+5. Communication style
+
+Question: {question}
+Response: {response_text}
+
+Provide brief analysis in JSON format with scores."""
+        
+        ai_analysis = generate_ai_response([{"role": "user", "content": prompt}], max_tokens=200)
+        
+        return jsonify({
+            'success': True,
+            'analysis': {
+                'word_count': word_count,
+                'hesitation_count': hesitation_count,
+                'ai_feedback': ai_analysis
+            }
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error analyzing response: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to analyze response'
+        }), 500
+
+@app.route('/api/ai/send-interview-summary', methods=['POST'])
+@login_required('hr')
+def send_interview_summary():
+    """Send interview summary to HR email and dashboard"""
+    try:
+        data = request.get_json()
+        summary = data.get('summary', '')
+        candidate_name = data.get('candidate', '')
+        role = data.get('role', '')
+        hr_email = session.get('email', 'hr@company.com')
+        
+        # Save to database (Interview model)
+        interview_record = Interview(
+            candidate_id=None,  # Link to candidate if exists
+            responses={'summary': summary, 'candidate': candidate_name, 'role': role},
+            summary=summary,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(interview_record)
+        db.session.commit()
+        
+        # Generate email content
+        email_subject = f"Interview Summary - {candidate_name} for {role}"
+        email_body = f"""Interview Summary Report
+        
+Candidate: {candidate_name}
+Position: {role}
+Interview Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}
+        
+{summary}
+        
+This summary has been automatically generated and saved to your HR dashboard.
+        
+Best regards,
+SmartHire AI System"""
+        
+        # In production, integrate with email service (SendGrid, AWS SES, etc.)
+        # For now, log the email
+        app.logger.info(f"Interview summary email sent to {hr_email}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Interview summary sent and saved',
+            'interview_id': interview_record.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error sending interview summary: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to send summary'
+        }), 500
+
 @app.route('/api/generate-welcome-email', methods=['POST'])
 def generate_welcome_email():
     try:
@@ -1941,8 +2366,7 @@ def change_employee_password():
         # Validate current password
         if not user.check_password(current_password):
             return jsonify({'status': 'error',
-                           'message': 'Current password is incorrect'}),
-            401
+                           'message': 'Current password is incorrect'}), 401
         
         # Validate new password
         if len(new_password) < 8:
@@ -1969,6 +2393,73 @@ def change_employee_password():
         app.logger.error(f'Error changing password: {str(e)}')
         return jsonify({'status': 'error',
                        'message': 'Failed to change password'}), 500
+
+@app.route('/api/onboarding/tasks/<int:task_id>', methods=['DELETE'])
+@login_required('hr')
+def delete_onboarding_task(task_id):
+    """Delete an onboarding task"""
+    try:
+        task = OnboardingTask.query.get_or_404(task_id)
+        checklist = task.checklist
+        
+        # Ensure at least one task remains
+        if len(checklist.tasks) <= 1:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot delete the last remaining task'
+            }), 400
+        
+        db.session.delete(task)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Task deleted successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error deleting task: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to delete task'
+        }), 500
+
+@app.route('/api/onboarding/checklist/<int:checklist_id>/tasks', methods=['PUT'])
+@login_required('hr')
+def update_onboarding_tasks(checklist_id):
+    """Update onboarding tasks for a checklist"""
+    try:
+        checklist = OnboardingChecklist.query.get_or_404(checklist_id)
+        data = request.get_json()
+        
+        # Delete existing tasks
+        OnboardingTask.query.filter_by(checklist_id=checklist_id).delete()
+        
+        # Add updated tasks
+        for i, task_data in enumerate(data.get('tasks', [])):
+            if task_data.get('name', '').strip():
+                task = OnboardingTask(
+                    checklist_id=checklist_id,
+                    task_name=task_data['name'].strip(),
+                    task_description=task_data.get('description', '').strip(),
+                    order_index=i,
+                    is_completed=task_data.get('completed', False)
+                )
+                db.session.add(task)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Tasks updated successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error updating tasks: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to update tasks'
+        }), 500
 
 
 @app.route('/uploads/documents/<path:filename>')

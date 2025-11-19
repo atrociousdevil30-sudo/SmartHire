@@ -1,97 +1,207 @@
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
-    const startInterviewSection = document.getElementById('startInterview');
-    const interviewContainer = document.getElementById('interviewContainer');
+    const trainingSetupForm = document.getElementById('trainingSetupForm');
     const chatContainer = document.getElementById('chatContainer');
-    const interviewForm = document.getElementById('interviewForm');
-    const candidateResponse = document.getElementById('candidateResponse');
-    const submitBtn = document.getElementById('submitResponseBtn');
+    const responseForm = document.getElementById('responseForm');
+    const userResponse = document.getElementById('userResponse');
+    const submitResponse = document.getElementById('submitResponse');
     const submitText = document.getElementById('submitText');
     const submitSpinner = document.getElementById('submitSpinner');
-    const summaryCard = document.getElementById('summaryCard');
-    const interviewSummary = document.getElementById('interviewSummary');
-    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+    const typingIndicator = document.getElementById('typingIndicator');
+    const trainingSummary = document.getElementById('trainingSummary');
+    const summaryContent = document.getElementById('summaryContent');
+    const sessionStatus = document.getElementById('sessionStatus');
+    const questionCounter = document.getElementById('questionCounter');
+    const totalQuestions = document.getElementById('totalQuestions');
+    const skipQuestion = document.getElementById('skipQuestion');
+    const resetSession = document.getElementById('resetSession');
+    const startNewSession = document.getElementById('startNewSession');
+    const downloadReport = document.getElementById('downloadReport');
     
-    // Interview questions
-    const questions = [
-        "Can you tell me about yourself and your experience?",
-        "What interests you about this position and our company?",
-        "Can you describe a challenging project you worked on and how you handled it?",
-        "How do you approach problem-solving when you encounter a technical challenge?",
-        "Where do you see yourself in 5 years?"
-    ];
-    
-    // Interview state
-    let currentQuestionIndex = 0;
-    let interviewData = {
-        startTime: null,
-        endTime: null,
-        responses: [],
-        analysis: {}
+    // Training configurations
+    const trainingQuestions = {
+        interview: {
+            beginner: [
+                "Tell me about yourself.",
+                "Why are you interested in this position?",
+                "What are your strengths?",
+                "Where do you see yourself in 5 years?"
+            ],
+            intermediate: [
+                "Describe a challenging situation you faced and how you handled it.",
+                "How do you handle working under pressure?",
+                "Tell me about a time you had to work with a difficult team member.",
+                "What motivates you in your work?",
+                "How do you prioritize multiple tasks?"
+            ],
+            advanced: [
+                "Describe a time when you had to make a difficult decision with limited information.",
+                "How would you handle a situation where you disagree with your manager?",
+                "Tell me about a time you failed and what you learned from it.",
+                "How do you stay current with industry trends?",
+                "Describe your leadership style."
+            ]
+        },
+        technical: {
+            beginner: [
+                "Explain the difference between a class and an object.",
+                "What is a database and why is it important?",
+                "Describe what an API is in simple terms."
+            ],
+            intermediate: [
+                "How would you optimize a slow database query?",
+                "Explain the concept of version control.",
+                "What are the benefits of automated testing?"
+            ],
+            advanced: [
+                "Design a system to handle 1 million concurrent users.",
+                "Explain microservices architecture and its trade-offs.",
+                "How would you implement a caching strategy?"
+            ]
+        }
     };
     
-    // Start the interview
-    document.getElementById('startInterviewBtn')?.addEventListener('click', startInterview);
+    // Training state
+    let currentSession = {
+        type: null,
+        difficulty: null,
+        questions: [],
+        currentIndex: 0,
+        responses: [],
+        startTime: null,
+        focusAreas: []
+    };
     
-    // Handle form submission
-    if (interviewForm) {
-        interviewForm.addEventListener('submit', handleResponse);
+    // Event Listeners
+    if (trainingSetupForm) {
+        trainingSetupForm.addEventListener('submit', startTrainingSession);
+    }
+    
+    if (responseForm) {
+        responseForm.addEventListener('submit', handleResponse);
+    }
+    
+    if (skipQuestion) {
+        skipQuestion.addEventListener('click', skipCurrentQuestion);
+    }
+    
+    if (resetSession) {
+        resetSession.addEventListener('click', resetTrainingSession);
+    }
+    
+    if (startNewSession) {
+        startNewSession.addEventListener('click', resetTrainingSession);
+    }
+    
+    if (downloadReport) {
+        downloadReport.addEventListener('click', downloadTrainingReport);
     }
     
     // Auto-resize textarea
-    if (candidateResponse) {
-        candidateResponse.addEventListener('input', function() {
+    if (userResponse) {
+        userResponse.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
     }
     
-    // Download PDF button
-    if (downloadPdfBtn) {
-        downloadPdfBtn.addEventListener('click', generatePdf);
-    }
-    
-    // Start the interview
-    function startInterview() {
+    // Start training session
+    function startTrainingSession(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const type = document.getElementById('trainingType').value;
+        const difficulty = document.getElementById('difficultyLevel').value;
+        
+        // Get focus areas
+        const focusAreas = [];
+        if (document.getElementById('communication').checked) focusAreas.push('communication');
+        if (document.getElementById('problemSolving').checked) focusAreas.push('problemSolving');
+        if (document.getElementById('leadership').checked) focusAreas.push('leadership');
+        
+        // Initialize session
+        currentSession = {
+            type,
+            difficulty,
+            questions: trainingQuestions[type]?.[difficulty] || trainingQuestions.interview.beginner,
+            currentIndex: 0,
+            responses: [],
+            startTime: new Date(),
+            focusAreas
+        };
+        
         // Update UI
-        startInterviewSection.classList.add('d-none');
-        interviewContainer.classList.remove('d-none');
-        interviewForm.classList.remove('d-none');
+        clearChat();
+        sessionStatus.textContent = 'Active';
+        sessionStatus.className = 'badge bg-success';
+        responseForm.classList.remove('d-none');
+        trainingSummary.classList.add('d-none');
         
-        // Initialize interview data
-        interviewData.startTime = new Date();
-        interviewData.responses = [];
+        // Update counters
+        totalQuestions.textContent = currentSession.questions.length;
+        questionCounter.textContent = '1';
         
-        // Add welcome message
-        addMessage("Hello! Welcome to your interview. I'll be asking you a few questions to learn more about your experience and skills. Let's get started!", 'ai');
+        // Start session
+        addMessage(`Welcome to your ${type} training session! I'll help you practice and improve your skills. Let's begin with the first question.`, 'ai');
         
-        // Ask first question
         setTimeout(() => {
             askQuestion();
-        }, 1000);
+        }, 1500);
     }
     
     // Ask the current question
-    function askQuestion() {
-        if (currentQuestionIndex < questions.length) {
-            const question = questions[currentQuestionIndex];
-            addMessage(question, 'ai');
+    async function askQuestion() {
+        if (currentSession.currentIndex < currentSession.questions.length) {
+            showTypingIndicator();
+            
+            try {
+                const questionResponse = await fetch('/api/ai/generate-question', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: currentSession.type,
+                        difficulty: currentSession.difficulty,
+                        questionIndex: currentSession.currentIndex,
+                        previousResponses: currentSession.responses
+                    })
+                });
+                
+                const data = await questionResponse.json();
+                hideTypingIndicator();
+                
+                if (data.success) {
+                    addMessage(data.question, 'ai');
+                } else {
+                    // Fallback to predefined questions
+                    const question = currentSession.questions[currentSession.currentIndex];
+                    addMessage(question, 'ai');
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                console.error('Error generating question:', error);
+                // Fallback to predefined questions
+                const question = currentSession.questions[currentSession.currentIndex];
+                addMessage(question, 'ai');
+            }
+            
+            userResponse.focus();
         } else {
-            // Interview complete
-            completeInterview();
+            completeTraining();
         }
     }
     
-    // Handle candidate's response
+    // Handle user response
     function handleResponse(e) {
         e.preventDefault();
         
-        const response = candidateResponse.value.trim();
+        const response = userResponse.value.trim();
         if (!response) return;
         
         // Disable form while processing
-        candidateResponse.disabled = true;
-        submitBtn.disabled = true;
+        userResponse.disabled = true;
+        submitResponse.disabled = true;
         submitText.textContent = 'Processing...';
         submitSpinner.classList.remove('d-none');
         
@@ -99,268 +209,382 @@ document.addEventListener('DOMContentLoaded', function() {
         addMessage(response, 'user');
         
         // Save response
-        interviewData.responses.push({
-            question: questions[currentQuestionIndex],
+        currentSession.responses.push({
+            question: currentSession.questions[currentSession.currentIndex],
             answer: response,
-            timestamp: new Date()
+            timestamp: new Date(),
+            skipped: false
         });
         
         // Clear input
-        candidateResponse.value = '';
-        candidateResponse.style.height = 'auto';
+        userResponse.value = '';
+        userResponse.style.height = 'auto';
         
-        // Simulate AI processing
-        setTimeout(() => {
+        // Generate AI feedback
+        generateAIFeedback(response).then(() => {
             // Move to next question
-            currentQuestionIndex++;
+            currentSession.currentIndex++;
+            questionCounter.textContent = currentSession.currentIndex + 1;
             
-            // Re-enable form for next question
-            candidateResponse.disabled = false;
-            submitBtn.disabled = false;
+            // Re-enable form
+            userResponse.disabled = false;
+            submitResponse.disabled = false;
             submitText.textContent = 'Submit';
             submitSpinner.classList.add('d-none');
             
-            // Ask next question or complete interview
-            if (currentQuestionIndex < questions.length) {
+            // Continue or complete
+            setTimeout(() => {
+                if (currentSession.currentIndex < currentSession.questions.length) {
+                    askQuestion();
+                } else {
+                    completeTraining();
+                }
+            }, 1500);
+        });
+    }
+    
+    // Skip current question
+    function skipCurrentQuestion() {
+        currentSession.responses.push({
+            question: currentSession.questions[currentSession.currentIndex],
+            answer: '[Skipped]',
+            timestamp: new Date(),
+            skipped: true
+        });
+        
+        addMessage('Question skipped. Let\'s move to the next one.', 'ai');
+        
+        currentSession.currentIndex++;
+        questionCounter.textContent = currentSession.currentIndex + 1;
+        
+        setTimeout(() => {
+            if (currentSession.currentIndex < currentSession.questions.length) {
                 askQuestion();
             } else {
-                completeInterview();
+                completeTraining();
             }
-            
-            // Focus on the input field
-            candidateResponse.focus();
         }, 1000);
     }
     
-    // Complete the interview and show summary
-    function completeInterview() {
-        interviewData.endTime = new Date();
-        interviewForm.classList.add('d-none');
+    // Complete training session
+    async function completeTraining() {
+        responseForm.classList.add('d-none');
+        sessionStatus.textContent = 'Completed';
+        sessionStatus.className = 'badge bg-success';
         
-        // Add completion message
-        addMessage("Thank you for completing the interview! Here's a summary of your responses.", 'ai');
+        addMessage('Excellent work! You\'ve completed the training session. Let me analyze your responses and provide comprehensive feedback.', 'ai');
         
-        // Generate and display summary
-        generateSummary();
+        showTypingIndicator();
         
-        // Show summary card
-        summaryCard.classList.remove('d-none');
-        
-        // Save interview data (in a real app, this would be an API call)
-        saveInterviewData();
-    }
-    
-    // Generate interview summary
-    function generateSummary() {
-        // Simple analysis (in a real app, this would be more sophisticated)
-        const wordCounts = interviewData.responses.map(r => r.answer.split(/\s+/).length);
-        const totalWords = wordCounts.reduce((a, b) => a + b, 0);
-        const avgWords = Math.round(totalWords / wordCounts.length);
-        
-        // Check for keywords
-        const keywords = {
-            'team': 0,
-            'problem': 0,
-            'solution': 0,
-            'learn': 0,
-            'improve': 0,
-            'challenge': 0,
-            'success': 0
-        };
-        
-        interviewData.responses.forEach(response => {
-            const answer = response.answer.toLowerCase();
-            Object.keys(keywords).forEach(keyword => {
-                if (answer.includes(keyword)) {
-                    keywords[keyword]++;
-                }
+        try {
+            const summaryResponse = await fetch('/api/ai/generate-summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    session: currentSession,
+                    responses: currentSession.responses
+                })
             });
-        });
+            
+            const data = await summaryResponse.json();
+            hideTypingIndicator();
+            
+            if (data.success) {
+                generateTrainingSummaryWithAI(data.summary);
+            } else {
+                generateTrainingSummary();
+            }
+        } catch (error) {
+            hideTypingIndicator();
+            console.error('Error generating AI summary:', error);
+            generateTrainingSummary();
+        }
         
-        // Generate summary HTML
-        let summaryHTML = `
-            <div class="mb-4">
-                <h5 class="mb-3">Interview Summary</h5>
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h6 class="card-title">Overview</h6>
-                                <p class="mb-1"><small>Questions Answered:</small> ${interviewData.responses.length}</p>
-                                <p class="mb-1"><small>Total Words:</small> ${totalWords}</p>
-                                <p class="mb-0"><small>Avg. Words per Answer:</small> ${avgWords}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h6 class="card-title">Key Themes</h6>
-                                <div class="d-flex flex-wrap gap-2">
-                                    ${Object.entries(keywords)
-                                        .filter(([_, count]) => count > 0)
-                                        .map(([word, count]) => 
-                                            `<span class="badge bg-primary">${word} (${count})</span>`
-                                        ).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <h5 class="mt-4 mb-3">Question & Answer Review</h5>
-        `;
-        
-        // Add each Q&A
-        interviewData.responses.forEach((response, index) => {
-            summaryHTML += `
-                <div class="card mb-3">
-                    <div class="card-header bg-light">
-                        <strong>Question ${index + 1}:</strong> ${response.question}
-                    </div>
-                    <div class="card-body">
-                        <p class="mb-0">${response.answer}</p>
-                        <div class="mt-2 text-muted">
-                            <small>Response length: ${wordCounts[index]} words</small>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        // Add overall feedback
-        summaryHTML += `
-            <div class="card border-success">
-                <div class="card-header bg-success text-white">
-                    <strong>Overall Feedback</strong>
-                </div>
-                <div class="card-body">
-                    <p>${generateOverallFeedback()}</p>
-                    <div class="alert alert-info mb-0">
-                        <i class="bi bi-info-circle me-2"></i>
-                        This feedback is generated automatically. A member of our team will review your responses and contact you with next steps.
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        interviewSummary.innerHTML = summaryHTML;
+        trainingSummary.classList.remove('d-none');
     }
     
-    // Generate overall feedback based on responses
-    function generateOverallFeedback() {
-        const wordCounts = interviewData.responses.map(r => r.answer.split(/\s+/).length);
-        const totalWords = wordCounts.reduce((a, b) => a + b, 0);
-        const avgWords = Math.round(totalWords / wordCounts.length);
+    // Generate AI feedback for response
+    async function generateAIFeedback(response) {
+        showTypingIndicator();
         
-        let feedback = "";
+        try {
+            const feedbackResponse = await fetch('/api/ai/generate-feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    response: response,
+                    question: currentSession.questions[currentSession.currentIndex],
+                    type: currentSession.type,
+                    difficulty: currentSession.difficulty
+                })
+            });
+            
+            const data = await feedbackResponse.json();
+            hideTypingIndicator();
+            
+            if (data.success) {
+                addMessage(data.feedback, 'ai');
+            } else {
+                addMessage('I\'m having trouble generating feedback right now. Let\'s continue with the next question.', 'ai');
+            }
+        } catch (error) {
+            hideTypingIndicator();
+            console.error('Error generating AI feedback:', error);
+            addMessage('Let\'s continue with the next question.', 'ai');
+        }
+    }
+    
+    // Generate contextual feedback
+    function generateContextualFeedback(response) {
+        const wordCount = response.split(/\s+/).length;
+        const hasExamples = response.toLowerCase().includes('example') || response.toLowerCase().includes('instance');
+        const isStructured = response.includes('.') && response.split('.').length > 2;
         
-        // Feedback based on response length
-        if (avgWords < 30) {
-            feedback += "Your responses were quite brief. In future interviews, try to provide more detailed examples to better showcase your experience and skills. ";
-        } else if (avgWords > 100) {
-            feedback += "Your responses were very detailed, which is great! Just be mindful of being too verbose to ensure you're directly answering the questions. ";
+        let feedback = "Good response! ";
+        
+        if (wordCount < 20) {
+            feedback += "Try to provide more detail and specific examples to strengthen your answer. ";
+        } else if (wordCount > 100) {
+            feedback += "Great detail! Just ensure you stay focused on the key points. ";
+        }
+        
+        if (hasExamples) {
+            feedback += "I appreciate that you included specific examples - this makes your response much stronger. ";
         } else {
-            feedback += "Your responses were well-balanced in terms of detail and conciseness. ";
+            feedback += "Consider adding a specific example to illustrate your point. ";
         }
         
-        // Check for specific content
-        const allText = interviewData.responses.map(r => r.answer.toLowerCase()).join(' ');
-        
-        if (allText.includes('i ') && allText.includes(' we ')) {
-            feedback += "You effectively balanced discussing both individual contributions and teamwork, which is excellent. ";
-        } else if (allText.includes('i ')) {
-            feedback += "You focused primarily on your individual contributions. Consider also highlighting how you've worked in team settings. ";
-        } else if (allText.includes(' we ')) {
-            feedback += "You emphasized teamwork, which is great. Don't forget to also highlight your specific contributions and achievements. ";
+        if (isStructured) {
+            feedback += "Your response is well-structured and easy to follow.";
+        } else {
+            feedback += "Try organizing your thoughts with clear beginning, middle, and end.";
         }
-        
-        // Check for problem-solving approach
-        if (allText.includes('problem') && allText.includes('solution')) {
-            feedback += "You demonstrated strong problem-solving skills by clearly explaining challenges and how you addressed them. ";
-        }
-        
-        // Check for learning/growth
-        if (allText.includes('learn') || allText.includes('grow') || allText.includes('improve')) {
-            feedback += "Your responses show a growth mindset and willingness to learn, which are valuable traits. ";
-        }
-        
-        // Final encouragement
-        feedback += "Overall, you presented yourself professionally. We appreciate the time you took to complete this interview.";
         
         return feedback;
     }
     
-    // Save interview data (mock function)
-    function saveInterviewData() {
-        // In a real app, this would be an API call to your backend
-        console.log('Saving interview data:', interviewData);
+    // Generate training summary
+    function generateTrainingSummary() {
+        const completedResponses = currentSession.responses.filter(r => !r.skipped);
+        const skippedCount = currentSession.responses.filter(r => r.skipped).length;
+        const avgWordCount = completedResponses.length > 0 ? 
+            Math.round(completedResponses.reduce((sum, r) => sum + r.answer.split(/\s+/).length, 0) / completedResponses.length) : 0;
         
-        // Store in localStorage for demo purposes
-        const interviews = JSON.parse(localStorage.getItem('interviews') || '[]');
-        interviews.push({
-            id: 'interview-' + Date.now(),
-            ...interviewData,
-            candidate: {
-                name: 'Demo Candidate',
-                position: 'Software Engineer',
-                applicationDate: new Date().toISOString()
-            }
-        });
-        localStorage.setItem('interviews', JSON.stringify(interviews));
+        const duration = Math.round((new Date() - currentSession.startTime) / 1000 / 60);
+        
+        let summaryHTML = `
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="display-6 text-primary">${completedResponses.length}</div>
+                        <small class="text-muted">Questions Completed</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="display-6 text-success">${avgWordCount}</div>
+                        <small class="text-muted">Avg Words/Response</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="display-6 text-info">${duration}</div>
+                        <small class="text-muted">Minutes</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="display-6 text-warning">${Math.max(85 - skippedCount * 10, 60)}</div>
+                        <small class="text-muted">Performance Score</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h6>Key Strengths:</h6>
+                <ul class="list-unstyled">
+                    ${avgWordCount > 30 ? '<li><i class="bi bi-check-circle text-success me-2"></i>Detailed responses</li>' : ''}
+                    ${skippedCount === 0 ? '<li><i class="bi bi-check-circle text-success me-2"></i>Completed all questions</li>' : ''}
+                    <li><i class="bi bi-check-circle text-success me-2"></i>Engaged throughout the session</li>
+                </ul>
+            </div>
+            
+            <div class="mb-4">
+                <h6>Areas for Improvement:</h6>
+                <ul class="list-unstyled">
+                    ${avgWordCount < 25 ? '<li><i class="bi bi-arrow-right text-warning me-2"></i>Provide more detailed examples</li>' : ''}
+                    ${skippedCount > 0 ? '<li><i class="bi bi-arrow-right text-warning me-2"></i>Practice answering all questions</li>' : ''}
+                    <li><i class="bi bi-arrow-right text-info me-2"></i>Continue practicing ${currentSession.type} skills</li>
+                </ul>
+            </div>
+            
+            <div class="alert alert-success">
+                <h6 class="alert-heading">Recommendation:</h6>
+                <p class="mb-0">Great job completing this ${currentSession.difficulty} level ${currentSession.type} training! 
+                ${avgWordCount > 40 ? 'Your responses show good depth and understanding.' : 'Focus on providing more specific examples in future practice sessions.'}
+                Keep practicing to build confidence!</p>
+            </div>
+        `;
+        
+        summaryContent.innerHTML = summaryHTML;
     }
     
-    // Generate PDF (mock function)
-    function generatePdf() {
-        // In a real app, this would use a library like jsPDF or make an API call
-        alert('In a real application, this would generate and download a PDF of your interview summary.');
+    // Generate training summary with AI feedback
+    function generateTrainingSummaryWithAI(aiSummary) {
+        const completedResponses = currentSession.responses.filter(r => !r.skipped);
+        const skippedCount = currentSession.responses.filter(r => r.skipped).length;
+        const avgWordCount = completedResponses.length > 0 ? 
+            Math.round(completedResponses.reduce((sum, r) => sum + r.answer.split(/\s+/).length, 0) / completedResponses.length) : 0;
         
-        // Example of what you might do:
-        /*
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        const duration = Math.round((new Date() - currentSession.startTime) / 1000 / 60);
         
-        // Add content to PDF
-        doc.text('Interview Summary', 20, 20);
-        // ... more PDF generation code ...
+        let summaryHTML = `
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="display-6 text-primary">${completedResponses.length}</div>
+                        <small class="text-muted">Questions Completed</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="display-6 text-success">${avgWordCount}</div>
+                        <small class="text-muted">Avg Words/Response</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="display-6 text-info">${duration}</div>
+                        <small class="text-muted">Minutes</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="display-6 text-warning">${Math.max(85 - skippedCount * 10, 60)}</div>
+                        <small class="text-muted">Performance Score</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <h6 class="alert-heading"><i class="bi bi-robot me-2"></i>AI Analysis:</h6>
+                <div style="white-space: pre-line;">${aiSummary}</div>
+            </div>
+        `;
         
-        // Save the PDF
-        doc.save('interview-summary.pdf');
-        */
+        summaryContent.innerHTML = summaryHTML;
     }
     
-    // Helper function to add a message to the chat
+    // Reset training session
+    function resetTrainingSession() {
+        currentSession = {
+            type: null,
+            difficulty: null,
+            questions: [],
+            currentIndex: 0,
+            responses: [],
+            startTime: null,
+            focusAreas: []
+        };
+        
+        clearChat();
+        responseForm.classList.add('d-none');
+        trainingSummary.classList.add('d-none');
+        sessionStatus.textContent = 'Ready';
+        sessionStatus.className = 'badge bg-primary';
+        
+        // Reset form
+        if (trainingSetupForm) {
+            trainingSetupForm.reset();
+        }
+        
+        // Show welcome message
+        addMessage('Welcome to AI Training! Configure your training session and click "Start Training Session" to begin.', 'ai');
+    }
+    
+    // Download training report
+    function downloadTrainingReport() {
+        const reportData = {
+            session: currentSession,
+            completedAt: new Date(),
+            summary: summaryContent.innerHTML
+        };
+        
+        // In a real app, this would generate a proper PDF
+        const dataStr = JSON.stringify(reportData, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `training-report-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        URL.revokeObjectURL(url);
+    }
+    
+    // Show/hide typing indicator
+    function showTypingIndicator() {
+        if (typingIndicator) {
+            typingIndicator.classList.remove('d-none');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
+    
+    function hideTypingIndicator() {
+        if (typingIndicator) {
+            typingIndicator.classList.add('d-none');
+        }
+    }
+    
+    // Clear chat container
+    function clearChat() {
+        if (chatContainer) {
+            chatContainer.innerHTML = '';
+        }
+    }
+    
+    // Add message to chat
     function addMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message message-${sender}`;
+        if (!chatContainer) return;
         
-        // Format the message with line breaks
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `mb-3`;
+        
         const formattedText = text.replace(/\n/g, '<br>');
         
-        // Add avatar for AI
         if (sender === 'ai') {
             messageDiv.innerHTML = `
                 <div class="d-flex">
-                    <div class="flex-shrink-0 me-2">
-                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                             <i class="bi bi-robot"></i>
                         </div>
                     </div>
-                    <div>
-                        <div class="message-content">${formattedText}</div>
-                        <div class="text-muted small mt-1">${formatTime(new Date())}</div>
+                    <div class="flex-grow-1">
+                        <div class="bg-dark bg-opacity-50 text-light p-3 rounded border border-secondary">
+                            <div class="fw-bold mb-1 text-primary">AI Trainer</div>
+                            <div>${formattedText}</div>
+                        </div>
+                        <small class="text-muted">${formatTime(new Date())}</small>
                     </div>
                 </div>
             `;
         } else {
-            // User message
             messageDiv.innerHTML = `
                 <div class="d-flex justify-content-end">
-                    <div class="text-end" style="max-width: 80%;">
-                        <div class="message-content">${formattedText}</div>
-                        <div class="text-muted small mt-1">${formatTime(new Date())}</div>
+                    <div class="flex-grow-1 text-end">
+                        <div class="bg-primary text-white p-3 rounded d-inline-block" style="max-width: 80%;">
+                            <div>${formattedText}</div>
+                        </div>
+                        <div><small class="text-muted">${formatTime(new Date())}</small></div>
                     </div>
-                    <div class="flex-shrink-0 ms-2">
-                        <div class="avatar-sm bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                    <div class="flex-shrink-0 ms-3">
+                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                             <i class="bi bi-person"></i>
                         </div>
                     </div>
@@ -372,8 +596,11 @@ document.addEventListener('DOMContentLoaded', function() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
-    // Helper function to format time
+    // Format time helper
     function formatTime(date) {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
+    
+    // Initialize the page
+    resetTrainingSession();
 });

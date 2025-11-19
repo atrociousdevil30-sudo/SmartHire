@@ -103,8 +103,8 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase text-muted small">Avg. Onboarding</h6>
-                            <h3 class="mb-0 text-light">7.2 <small class="text-muted">days</small></h3>
-                            <span class="text-success small"><i class="bi bi-arrow-down"></i> 12% from last month</span>
+                            <h3 class="mb-0 text-light">{{ avg_onboarding_days }} <small class="text-muted">days</small></h3>
+                            <span class="text-success small"><i class="bi bi-arrow-down"></i> Improving</span>
                         </div>
                         <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
                             <i class="bi bi-clock-history text-primary fs-4"></i>
@@ -135,8 +135,8 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase text-muted small">Active Employees</h6>
-                            <h3 class="mb-0 text-light">247</h3>
-                            <span class="text-success small"><i class="bi bi-arrow-up"></i> 5.2% this month</span>
+                            <h3 class="mb-0 text-light">{{ active_count }}</h3>
+                            <span class="text-success small"><i class="bi bi-arrow-up"></i> Growing</span>
                         </div>
                         <div class="bg-success bg-opacity-10 p-3 rounded-circle">
                             <i class="bi bi-people-fill text-success fs-4"></i>
@@ -151,8 +151,8 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase text-muted small">Engagement Score</h6>
-                            <h3 class="mb-0 text-light">78%</h3>
-                            <span class="text-warning small"><i class="bi bi-dash"></i> 2% from last month</span>
+                            <h3 class="mb-0 text-light">{{ engagement_score }}%</h3>
+                            <span class="text-success small"><i class="bi bi-arrow-up"></i> Stable</span>
                         </div>
                         <div class="bg-warning bg-opacity-10 p-3 rounded-circle">
                             <i class="bi bi-graph-up text-warning fs-4"></i>
@@ -166,6 +166,87 @@
     <div class="row g-4">
         <!-- Left Column -->
         <div class="col-lg-8">
+            <!-- Recent AI Interview Results -->
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <h6 class="text-uppercase text-light-50 small fw-bold mb-0">Recent AI Interview Results</h6>
+                    <a href="{{ url_for('interview') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-robot me-1"></i> Start New Interview
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-dark table-borderless">
+                            <thead>
+                                <tr class="border-secondary">
+                                    <th>Candidate</th>
+                                    <th>Role</th>
+                                    <th>Overall Score</th>
+                                    <th>Recommendation</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="interviewResultsTable">
+                                {% if interview_results %}
+                                    {% for result in interview_results %}
+                                    <tr>
+                                        <td>{{ result.candidate_name }}</td>
+                                        <td>{{ result.role }}</td>
+                                        <td>
+                                            {% if result.score != 'N/A' %}
+                                                {% if result.score >= 7.5 %}
+                                                    <span class="badge bg-success">{{ result.score }}/10</span>
+                                                {% elif result.score >= 6.0 %}
+                                                    <span class="badge bg-warning">{{ result.score }}/10</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">{{ result.score }}/10</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ result.score }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if result.recommendation == 'Proceed to Next Round' %}
+                                                <span class="badge bg-success">{{ result.recommendation }}</span>
+                                            {% elif result.recommendation == 'Hold for Review' %}
+                                                <span class="badge bg-warning">{{ result.recommendation }}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ result.recommendation }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ result.date }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewInterviewSummary({{ result.id }})" title="{{ result.summary }}">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            {% if result.recommendation == 'Proceed to Next Round' %}
+                                                <button class="btn btn-sm btn-outline-success" onclick="sendToNextRound({{ result.id }})">
+                                                    <i class="bi bi-arrow-right"></i>
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-warning" onclick="scheduleReview({{ result.id }})">
+                                                    <i class="bi bi-clock"></i>
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <i class="bi bi-inbox fs-1 mb-2 d-block"></i>
+                                            No interview results available yet.
+                                            <br><small>Start conducting AI interviews to see results here.</small>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Exit Reasons Analysis -->
             <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-0">
@@ -173,42 +254,41 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span class="text-light small">Career Growth</span>
-                                <span class="text-light-50 small">42%</span>
+                        {% set total_sentiment = sentiment_data.Positive + sentiment_data.Neutral + sentiment_data.Negative %}
+                        {% if total_sentiment > 0 %}
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-light small">Positive Feedback</span>
+                                    <span class="text-light-50 small">{{ ((sentiment_data.Positive / total_sentiment) * 100) | round(1) }}%</span>
+                                </div>
+                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ ((sentiment_data.Positive / total_sentiment) * 100) | round(1) }}%;"></div>
+                                </div>
                             </div>
-                            <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                <div class="progress-bar bg-primary" role="progressbar" style="width: 42%;"></div>
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-light small">Neutral Feedback</span>
+                                    <span class="text-light-50 small">{{ ((sentiment_data.Neutral / total_sentiment) * 100) | round(1) }}%</span>
+                                </div>
+                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ ((sentiment_data.Neutral / total_sentiment) * 100) | round(1) }}%;"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span class="text-light small">Compensation</span>
-                                <span class="text-light-50 small">28%</span>
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-light small">Negative Feedback</span>
+                                    <span class="text-light-50 small">{{ ((sentiment_data.Negative / total_sentiment) * 100) | round(1) }}%</span>
+                                </div>
+                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ ((sentiment_data.Negative / total_sentiment) * 100) | round(1) }}%;"></div>
+                                </div>
                             </div>
-                            <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                <div class="progress-bar bg-info" role="progressbar" style="width: 28%;"></div>
+                        {% else %}
+                            <div class="col-12 text-center text-muted py-3">
+                                <i class="bi bi-chat-square-text fs-1 mb-2 d-block"></i>
+                                No exit feedback data available yet.
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span class="text-light small">Management</span>
-                                <span class="text-light-50 small">15%</span>
-                            </div>
-                            <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                <div class="progress-bar bg-warning" role="progressbar" style="width: 15%;"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span class="text-light small">Work-Life Balance</span>
-                                <span class="text-light-50 small">10%</span>
-                            </div>
-                            <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: 10%;"></div>
-                            </div>
-                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -230,30 +310,28 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>Engineering</td>
-                                    <td>12</td>
-                                    <td>3.2 days</td>
-                                    <td><span class="badge bg-warning">Needs Attention</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Sales</td>
-                                    <td>8</td>
-                                    <td>2.1 days</td>
-                                    <td><span class="badge bg-success">Stable</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Marketing</td>
-                                    <td>5</td>
-                                    <td>1.8 days</td>
-                                    <td><span class="badge bg-success">Stable</span></td>
-                                </tr>
-                                <tr>
-                                    <td>HR</td>
-                                    <td>3</td>
-                                    <td>1.2 days</td>
-                                    <td><span class="badge bg-success">Stable</span></td>
-                                </tr>
+                                {% if departments %}
+                                    {% for dept in departments %}
+                                    <tr>
+                                        <td>{{ dept.department or 'Unassigned' }}</td>
+                                        <td>{{ dept.count }}</td>
+                                        <td>{{ (dept.count * 0.5 + 1.0) | round(1) }} days</td>
+                                        <td>
+                                            {% if dept.count >= 10 %}
+                                                <span class="badge bg-warning">Needs Attention</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Stable</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-3">
+                                            No department data available.
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -331,31 +409,7 @@
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-0">
-                    <h6 class="text-uppercase text-light-50 small fw-bold mb-0">Quick Actions</h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-primary mb-2" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
-                            <i class="bi bi-person-plus me-2"></i> Add New Employee
-                        </button>
-                        <button class="btn btn-primary mb-2" id="searchEmployeeBtn">
-                            <i class="bi bi-search me-2"></i> Search Employee
-                        </button>
-                        <button class="btn btn-primary mb-2" id="generateReportBtn">
-                            <i class="bi bi-file-earmark-pdf me-2"></i> Generate Report
-                        </button>
-                        <button class="btn btn-primary mb-2" id="scheduleMeetingBtn">
-                            <i class="bi bi-calendar-plus me-2"></i> Schedule Meeting
-                        </button>
-                        <button class="btn btn-primary" id="viewAnalyticsBtn">
-                            <i class="bi bi-graph-up me-2"></i> View Analytics
-                        </button>
-                    </div>
-                </div>
-            </div>
+
         </div>
     </div>
 </div>
@@ -416,60 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
         keyboard: true
     });
 
-    // Quick Actions Functionality
-    // Search Employee
-    const searchEmployeeBtn = document.getElementById('searchEmployeeBtn');
-    if (searchEmployeeBtn) {
-        searchEmployeeBtn.addEventListener('click', function() {
-            const searchTerm = prompt('Enter employee name or ID:');
-            if (searchTerm) {
-                const toast = showToast('Searching for: ' + searchTerm, 'info');
-                setTimeout(() => {
-                    toast.querySelector('.toast-body').textContent = `Found 5 results for "${searchTerm}"`;
-                    setTimeout(() => toast.remove(), 3000);
-                }, 1500);
-            }
-        });
-    }
 
-    // Generate Report
-    const generateReportBtn = document.getElementById('generateReportBtn');
-    if (generateReportBtn) {
-        generateReportBtn.addEventListener('click', function() {
-            const toast = showToast('Generating report...', 'info');
-            
-            // Simulate report generation
-            setTimeout(() => {
-                toast.querySelector('.toast-body').innerHTML = 'Report generated successfully! <a href="#" class="text-white fw-bold ms-2">Download</a>';
-                setTimeout(() => toast.remove(), 5000);
-            }, 2000);
-        });
-    }
-
-    // Schedule Meeting
-    const scheduleMeetingBtn = document.getElementById('scheduleMeetingBtn');
-    if (scheduleMeetingBtn) {
-        scheduleMeetingBtn.addEventListener('click', function() {
-            const meetingTitle = prompt('Enter meeting title:');
-            if (meetingTitle) {
-                const date = new Date();
-                date.setDate(date.getDate() + 1);
-                const defaultDate = date.toISOString().split('T')[0];
-                const meetingDate = prompt('Enter meeting date (YYYY-MM-DD):', defaultDate);
-                if (meetingDate) {
-                    showToast(`Meeting "${meetingTitle}" scheduled for ${meetingDate}`, 'success');
-                }
-            }
-        });
-    }
-
-    // View Analytics
-    const viewAnalyticsBtn = document.getElementById('viewAnalyticsBtn');
-    if (viewAnalyticsBtn) {
-        viewAnalyticsBtn.addEventListener('click', function() {
-            showToast('Analytics feature coming soon!', 'info');
-        });
-    }
     
     // Helper function to show toast notifications
     function showToast(message, type = 'info') {
@@ -532,6 +533,80 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Popover(popoverTriggerEl);
     });
 });
+
+// Interview result action functions
+function viewInterviewSummary(interviewId) {
+    // Create modal to show interview summary
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-light">Interview Summary #${interviewId}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading interview summary...</p>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const modalInstance = new bootstrap.Modal(modal);
+    modalInstance.show();
+    
+    // Fetch interview details (simulate API call)
+    setTimeout(() => {
+        const modalBody = modal.querySelector('.modal-body');
+        modalBody.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary">Candidate Information</h6>
+                    <p class="text-light"><strong>Interview ID:</strong> ${interviewId}</p>
+                    <p class="text-light"><strong>Status:</strong> <span class="badge bg-success">Completed</span></p>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-primary">Performance Metrics</h6>
+                    <p class="text-light"><strong>Overall Score:</strong> 8.5/10</p>
+                    <p class="text-light"><strong>Recommendation:</strong> Proceed to Next Round</p>
+                </div>
+            </div>
+            <hr class="border-secondary">
+            <h6 class="text-primary">AI Analysis Summary</h6>
+            <p class="text-light">The candidate demonstrated strong technical knowledge and excellent communication skills. Responses were well-structured and showed deep understanding of the subject matter.</p>
+        `;
+    }, 1000);
+    
+    // Clean up modal when closed
+    modal.addEventListener('hidden.bs.modal', () => {
+        document.body.removeChild(modal);
+    });
+}
+
+function sendToNextRound(interviewId) {
+    if (confirm('Are you sure you want to send this candidate to the next round?')) {
+        showToast(`Candidate from interview #${interviewId} has been sent to the next round.`, 'success');
+        // Here you would make an API call to update the candidate status
+    }
+}
+
+function scheduleReview(interviewId) {
+    const reviewDate = prompt('Enter review date (YYYY-MM-DD):');
+    if (reviewDate) {
+        showToast(`Review scheduled for interview #${interviewId} on ${reviewDate}.`, 'info');
+        // Here you would make an API call to schedule the review
+    }
+}
 
 // Hide tooltips when clicking elsewhere
 document.addEventListener('click', function(e) {

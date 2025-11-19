@@ -57,7 +57,7 @@
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold">Onboarding Progress</h6>
-                    <span class="text-primary">Day {{ employee.onboarding_progress.current_day }} of {{ employee.onboarding_progress.total_days }}</span>
+                    <span class="text-primary">Day {{ employee['onboarding_progress']['current_day'] }} of {{ employee['onboarding_progress']['total_days'] }}</span>
                 </div>
                 <div class="card-body">
                     <div class="progress mb-3" style="height: 20px;">
@@ -85,14 +85,14 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group">
-                        {% for task in employee.pending_tasks %}
+                        {% for task in employee['pending_tasks'] %}
                         <a href="{{ url_for('onboarding_tasks') }}" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">{{ task.title }}</h6>
-                                <small class="{% if task.priority == 'high' %}text-danger{% elif task.priority == 'medium' %}text-warning{% else %}text-info{% endif %}">{{ task.due }}</small>
+                                <h6 class="mb-1">{{ task['title'] }}</h6>
+                                <small class="{% if task['priority'] == 'high' %}text-danger{% elif task['priority'] == 'medium' %}text-warning{% else %}text-info{% endif %}">{{ task['due'] }}</small>
                             </div>
-                            <p class="mb-1">{% if task.title == 'Submit timesheet' %}Complete your weekly timesheet in the employee portal.{% elif task.title == 'Complete training module' %}Mandatory training module for new employees.{% else %}Update project documentation as assigned.{% endif %}</p>
-                            <small>{% if task.priority == 'high' %}HR Department{% elif task.priority == 'medium' %}IT Department{% else %}Operations{% endif %}</small>
+                            <p class="mb-1">{% if task['title'] == 'Submit timesheet' %}Complete your weekly timesheet in the employee portal.{% elif task['title'] == 'Complete training module' %}Mandatory training module for new employees.{% else %}Update project documentation as assigned.{% endif %}</p>
+                            <small>{% if task['priority'] == 'high' %}HR Department{% elif task['priority'] == 'medium' %}IT Department{% else %}Operations{% endif %}</small>
                         </a>
                         {% endfor %}
                     </div>
@@ -238,7 +238,140 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ super() }}
 <script>
+// Profile Modal Functions
+function loadProfileModal() {
+    fetch('/api/employee/profile', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            document.getElementById('fullName').value = data.data.full_name;
+            document.getElementById('email').value = data.data.email;
+            document.getElementById('phone').value = data.data.phone;
+            document.getElementById('department').value = data.data.department;
+            document.getElementById('position').value = data.data.position;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function saveProfile() {
+    const formData = new FormData();
+    formData.append('phone', document.getElementById('phone').value);
+    formData.append('department', document.getElementById('department').value);
+    formData.append('position', document.getElementById('position').value);
+    
+    fetch('/api/employee/profile', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Profile updated successfully!');
+            bootstrap.Modal.getInstance(document.getElementById('profileModal')).hide();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to save profile');
+    });
+}
+
+// Documents Modal Functions
+function loadDocumentsModal() {
+    fetch('/api/employee/documents', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const documentsList = document.getElementById('documentsList');
+            if (data.data.length === 0) {
+                documentsList.innerHTML = '<p class="text-muted">No documents uploaded yet.</p>';
+            } else {
+                let html = '<div class="list-group">';
+                data.data.forEach(doc => {
+                    html += `<div class="list-group-item"><strong>${doc.file_name}</strong> (${doc.document_type})</div>`;
+                });
+                html += '</div>';
+                documentsList.innerHTML = html;
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Settings Modal Functions
+function loadSettingsModal() {
+    fetch('/api/employee/settings', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            document.getElementById('emailNotifications').checked = data.data.email_notifications;
+            document.getElementById('smsNotifications').checked = data.data.sms_notifications;
+            document.getElementById('notificationFrequency').value = data.data.notification_frequency;
+            document.getElementById('theme').value = data.data.theme;
+            document.getElementById('language').value = data.data.language;
+            document.getElementById('twoFactorAuth').checked = data.data.two_factor_enabled;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function saveSettings() {
+    const formData = new FormData();
+    formData.append('email_notifications', document.getElementById('emailNotifications').checked);
+    formData.append('sms_notifications', document.getElementById('smsNotifications').checked);
+    formData.append('notification_frequency', document.getElementById('notificationFrequency').value);
+    formData.append('theme', document.getElementById('theme').value);
+    formData.append('language', document.getElementById('language').value);
+    formData.append('two_factor_enabled', document.getElementById('twoFactorAuth').checked);
+    
+    fetch('/api/employee/settings', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Settings updated successfully!');
+            bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to save settings');
+    });
+}
+
 function messageHR() {
     // Get HR email from the template
     const hrEmail = '{{ hr_contact.email if hr_contact else "hr@company.com" }}';
