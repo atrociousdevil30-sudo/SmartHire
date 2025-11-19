@@ -354,8 +354,15 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/employee-portal.js') }}"></script>
 <script>
-    // Add active class to current nav item
+    // Initialize Bootstrap dropdowns
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize all Bootstrap dropdowns
+        const dropdownElements = document.querySelectorAll('.dropdown-toggle');
+        dropdownElements.forEach(element => {
+            new bootstrap.Dropdown(element);
+        });
+        
+        // Add active class to current nav item
         const currentPage = window.location.pathname;
         document.querySelectorAll('.nav-link').forEach(link => {
             if (link.getAttribute('href') === currentPage) {
