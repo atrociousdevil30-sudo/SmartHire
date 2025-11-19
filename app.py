@@ -430,17 +430,13 @@ def add_employee():
             # Get form data
             username = request.form.get('username')
             email = request.form.get('email')
-            password = request.form.get('password')
             full_name = request.form.get('full_name')
             phone = request.form.get('phone')
             department = request.form.get('department')
             position = request.form.get('position')
-            hire_date_str = request.form.get('hire_date')
             manager_id = request.form.get('manager_id')
-            
-            # Convert hire_date string to date object
-            hire_date = datetime.strptime(hire_date_str, '%Y-%m-%d').date() if hire_date_str else datetime.utcnow().date()
-            
+            password = request.form.get('password')
+
             # Create new user with 'Onboarding' status
             user = User(
                 username=username,
@@ -450,7 +446,6 @@ def add_employee():
                 role='employee',
                 department=department,
                 position=position,
-                hire_date=hire_date,
                 manager_id=manager_id if manager_id != 'None' else None,
                 status='Onboarding',
                 is_active=True
@@ -470,8 +465,9 @@ def add_employee():
             db.session.add(checklist)
             
             db.session.commit()
-            
-            flash(f'Employee {full_name} added successfully! Onboarding checklist has been created.', 'success')
+
+            # Inform HR that the employee was added; HR will share the credentials they entered
+            flash(f"Employee {full_name} added successfully!", 'success')
             return redirect(url_for('view_employee', employee_id=user.id))
             
         except Exception as e:
@@ -617,321 +613,160 @@ def employee_dashboard():
                          user=user,
                          hr_contact=hr_contact,
                          current_user=user,  # For compatibility with existing templates
-                         title=f'{user.full_name}\\s Dashboard')
+                         title=f'{user.full_name}\s Dashboard')
+
+@app.route('/employee/profile', methods=['GET', 'POST'])
+@login_required('employee')
+def employee_profile():
+    user = User.query.get(session['user_id'])
+
+    if request.method == 'POST':
+        try:
+            user.phone = request.form.get('phone', user.phone)
+            user.department = request.form.get('department', user.department)
+            user.position = request.form.get('position', user.position)
+
+            db.session.commit()
+            flash('Your profile has been updated successfully.', 'success')
+            return redirect(url_for('employee_profile'))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f'Error updating employee profile: {str(e)}')
+            flash('An error occurred while updating your profile. Please try again.', 'danger')
+
+    return render_template('employee_profile.html', user=user, current_user=user)
 
 # Onboarding Tasks
 @app.route('/employee/onboarding-tasks')
 @login_required('employee')
 def onboarding_tasks():
-    # Sample onboarding tasks data - in a real app, this would come from the database
-    onboarding_data = {
-        'tasks': [
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+
+    checklist = OnboardingChecklist.query.filter_by(employee_id=user.id).first()
+
+    tasks = []
+    if checklist:
+        tasks = [
             {
                 'id': 1,
-                'title': 'Upload Aadhaar Card',
+                'field': 'paperwork_completed',
+                'title': 'Complete HR paperwork',
                 'category': 'Documentation',
-                'due_date': (datetime.utcnow() + timedelta(days=3)).strftime('%b %d, %Y'),
-                'status': 'completed',
-                'completed': True,
-                'description': 'Please upload a clear scan of your Aadhaar card for verification.',
-                'file_uploaded': 'aadhaar_card.pdf',
-                'uploaded_at': (datetime.utcnow() - timedelta(days=1)).strftime('%b %d, %Y')
+                'due_date': (checklist.created_at + timedelta(days=3)).strftime('%b %d, %Y'),
+                'completed': bool(checklist.paperwork_completed),
             },
             {
                 'id': 2,
-                'title': 'Upload PAN Card',
+                'field': 'equipment_assigned',
+                'title': 'Confirm equipment received',
                 'category': 'Documentation',
-                'due_date': (datetime.utcnow() + timedelta(days=3)).strftime('%b %d, %Y'),
-                'status': 'pending',
-                'completed': False,
-                'description': 'Please upload a clear scan of your PAN card for tax purposes.'
+                'due_date': (checklist.created_at + timedelta(days=5)).strftime('%b %d, %Y'),
+                'completed': bool(checklist.equipment_assigned),
             },
             {
                 'id': 3,
-                'title': 'Complete Personal Information Form',
-                'category': 'Personal Information',
-                'due_date': (datetime.utcnow() + timedelta(days=5)).strftime('%b %d, %Y'),
-                'status': 'in_progress',
-                'completed': False,
-                'description': 'Please complete your personal details in the employee portal.',
-                'progress': 40
+                'field': 'training_completed',
+                'title': 'Complete mandatory training',
+                'category': 'Orientation',
+                'due_date': (checklist.created_at + timedelta(days=14)).strftime('%b %d, %Y'),
+                'completed': bool(checklist.training_completed),
             },
             {
                 'id': 4,
-                'title': 'Submit Bank Details',
-                'category': 'Documentation',
-                'due_date': (datetime.utcnow() + timedelta(days=7)).strftime('%b %d, %Y'),
-                'status': 'not_started',
-                'completed': False,
-                'description': 'Provide your bank account details for salary processing.'
+                'field': 'hr_orientation',
+                'title': 'Attend HR orientation',
+                'category': 'Orientation',
+                'due_date': (checklist.created_at + timedelta(days=7)).strftime('%b %d, %Y'),
+                'completed': bool(checklist.hr_orientation),
             },
             {
                 'id': 5,
-                'title': 'Sign Offer Letter',
-                'category': 'Documentation',
-                'due_date': (datetime.utcnow() - timedelta(days=1)).strftime('%b %d, %Y'),
-                'status': 'overdue',
-                'completed': False,
-                'description': 'Please review and sign your offer letter.'
-            },
-            {
-                'id': 6,
-                'title': 'Watch Company Introduction Video',
+                'field': 'team_introduction',
+                'title': 'Meet your team',
                 'category': 'Orientation',
-                'due_date': (datetime.utcnow() + timedelta(days=14)).strftime('%b %d, %Y'),
-                'status': 'completed',
-                'completed': True,
-                'description': 'Watch the company introduction video to learn about our culture and values.',
-                'video_url': '#'
+                'due_date': (checklist.created_at + timedelta(days=10)).strftime('%b %d, %Y'),
+                'completed': bool(checklist.team_introduction),
             },
-            {
-                'id': 7,
-                'title': 'Acknowledge Company Policies',
-                'category': 'Orientation',
-                'due_date': (datetime.utcnow() + timedelta(days=10)).strftime('%b %d, %Y'),
-                'status': 'pending',
-                'completed': False,
-                'description': 'Please review and acknowledge the company policies.'
-            }
-        ],
-        'stats': {
-            'total_tasks': 7,
-            'completed_tasks': 2,
-            'in_progress_tasks': 1,
-            'pending_tasks': 3,
-            'overdue_tasks': 1,
-            'completion_percentage': 29  # 2/7 tasks completed
-        },
-        'comments': [
-            {
-                'author': 'HR Team',
-                'avatar': 'HR',
-                'content': 'Please make sure to upload high-quality scans of your documents. Blurry images will not be accepted.',
-                'time_ago': '2 hours ago',
-                'timestamp': (datetime.utcnow() - timedelta(hours=2)).isoformat()
-            }
         ]
-    }
-    
-    return render_template('onboarding_tasks.html', 
-                         tasks=onboarding_data['tasks'],
-                         stats=onboarding_data['stats'],
-                         comments=onboarding_data['comments'],
-                         now=datetime.utcnow())
 
-# Offboarding Tasks
+    total_tasks = len(tasks)
+    completed_tasks = sum(1 for t in tasks if t['completed'])
+    in_progress_tasks = 0
+    pending_tasks = total_tasks - completed_tasks
+    overdue_tasks = 0
+
+    stats = {
+        'total_tasks': total_tasks,
+        'completed_tasks': completed_tasks,
+        'in_progress_tasks': in_progress_tasks,
+        'pending_tasks': pending_tasks,
+        'overdue_tasks': overdue_tasks,
+        'completion_percentage': checklist.get_progress() if checklist else 0,
+    }
+
+    comments = []
+
+    return render_template(
+        'onboarding_tasks.html',
+        tasks=tasks,
+        stats=stats,
+        comments=comments,
+        now=datetime.utcnow(),
+    )
+
+
 @app.route('/employee/offboarding-tasks')
 @login_required('employee')
 def offboarding_tasks():
-    # Sample offboarding data - in a real app, this would come from the database
-    offboarding_data = {
-        'status': 'in_progress',
-        'progress_percentage': 40,
-        'assets': [
-            {
-                'id': 1,
-                'name': 'Dell XPS 15',
-                'type': 'Laptop',
-                'asset_id': 'IT-2022-0456',
-                'condition': 'Good',
-                'due_date': (datetime.utcnow() + timedelta(days=3)).strftime('%b %d, %Y'),
-                'status': 'to_be_returned',
-                'returned': False
-            },
-            {
-                'id': 2,
-                'name': 'iPhone 13',
-                'type': 'Mobile',
-                'asset_id': 'MB-2022-0789',
-                'condition': 'Good',
-                'due_date': (datetime.utcnow() + timedelta(days=3)).strftime('%b %d, %Y'),
-                'status': 'returned',
-                'returned': True,
-                'returned_date': (datetime.utcnow() - timedelta(days=1)).strftime('%b %d, %Y')
-            },
-            {
-                'id': 3,
-                'name': 'Access Card',
-                'type': 'Security',
-                'asset_id': 'AC-2022-1234',
-                'condition': 'Good',
-                'due_date': (datetime.utcnow() + timedelta(days=3)).strftime('%b %d, %Y'),
-                'status': 'to_be_returned',
-                'returned': False
-            }
-        ],
-        'exit_interview': {
-            'scheduled': True,
-            'date': (datetime.utcnow() + timedelta(days=1)).strftime('%b %d, %Y, %I:%M %p'),
-            'with': 'Sarah Johnson (HR Manager)',
-            'completed': False,
-            'form': {
-                'reason_for_leaving': '',
-                'enjoyed_most': '',
-                'could_improve': '',
-                'contact_consent': False
-            }
-        },
-        'documents': [
-            {
-                'id': 1,
-                'name': 'Resignation Acceptance Letter',
-                'type': 'pdf',
-                'status': 'available',
-                'download_url': '#'
-            },
-            {
-                'id': 2,
-                'name': 'Exit Checklist',
-                'type': 'doc',
-                'status': 'available',
-                'download_url': '#'
-            },
-            {
-                'id': 3,
-                'name': 'Experience Letter',
-                'type': 'pdf',
-                'status': 'pending',
-                'message': 'Will be available after clearance'
-            },
-            {
-                'id': 4,
-                'name': 'Tax Forms (Form 16)',
-                'type': 'pdf',
-                'status': 'processing',
-                'message': 'Will be available after your last working day'
-            }
-        ],
-        'clearances': [
-            {
-                'department': 'IT',
-                'status': 'cleared',
-                'cleared_at': (datetime.utcnow() - timedelta(days=1)).strftime('%b %d, %Y')
-            },
-            {
-                'department': 'Finance',
-                'status': 'pending',
-                'assigned_to': 'finance@company.com'
-            },
-            {
-                'department': 'HR',
-                'status': 'cleared',
-                'cleared_at': (datetime.utcnow() - timedelta(hours=2)).strftime('%b %d, %Y')
-            },
-            {
-                'department': 'Admin',
-                'status': 'pending',
-                'assigned_to': 'admin@company.com'
-            },
-            {
-                'department': 'Facilities',
-                'status': 'cleared',
-                'cleared_at': (datetime.utcnow() - timedelta(days=1)).strftime('%b %d, %Y')
-            }
-        ],
-        'settlement': {
-            'basic_salary': 85000.00,
-            'leave_balance': 12,
-            'leave_encashment': 39310.34,
-            'deductions': 0.00,
-            'net_payable': 124310.34,
-            'payment_date': (datetime.utcnow() + timedelta(days=7)).strftime('%b %d, %Y'),
-            'bank_details': {
-                'account_holder': 'Alex Johnson',
-                'bank_name': 'HDFC Bank',
-                'account_number': 'XXXXXX7890',
-                'ifsc_code': 'HDFC0001234'
-            }
-        }
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+
+    status = user.status or 'Active'
+    exit_date = user.exit_date
+
+    offboarding = {
+        'status': status,
+        'exit_date': exit_date,
     }
-    
-    return render_template('offboarding_tasks.html', 
-                         assets=offboarding_data['assets'],
-                         exit_interview=offboarding_data['exit_interview'],
-                         documents=offboarding_data['documents'],
-                         clearances=offboarding_data['clearances'],
-                         settlement=offboarding_data['settlement'],
-                         now=datetime.utcnow(),
-                         timedelta=timedelta)
 
-# Candidate routes have been removed - candidates now use the employee dashboard
-
-# Sample candidate data for demonstration
-SAMPLE_CANDIDATES = [
-    {
-        'name': 'John Smith',
-        'job_desc': 'Senior Python Developer',
-        'resume_text': """EXPERIENCE:
-- Senior Python Developer at TechCorp (2018-Present)
-  - Led a team of 5 developers to build a scalable microservices architecture
-  - Implemented CI/CD pipelines reducing deployment time by 40%
-  - Technologies: Python, Django, Flask, AWS, Docker, Kubernetes
-
-- Software Engineer at WebSolutions (2015-2018)
-  - Developed RESTful APIs using Flask and Django
-  - Improved application performance by 30% through query optimization
-
-EDUCATION:
-- MS in Computer Science, Stanford University (2013-2015)
-- BS in Computer Science, University of California (2009-2013)
-
-SKILLS:
-- Python, Django, Flask, FastAPI
-- PostgreSQL, MongoDB, Redis
-- AWS, Docker, Kubernetes
-- Machine Learning, Data Analysis"""
-    },
-    {
-        'name': 'Sarah Johnson',
-        'job_desc': 'UX/UI Designer',
-        'resume_text': """EXPERIENCE:
-- Senior UX Designer at DesignHub (2019-Present)
-  - Led UX design for enterprise SaaS products
-  - Conducted user research and usability testing
-  - Created design systems and component libraries
-
-- UI/UX Designer at CreativeMinds (2016-2019)
-  - Designed mobile and web applications
-  - Created wireframes, prototypes, and user flows
-
-EDUCATION:
-- BFA in Graphic Design, Rhode Island School of Design
-- UX Design Certification, Nielsen Norman Group
-
-SKILLS:
-- Figma, Sketch, Adobe XD
-- User Research, Wireframing, Prototyping
-- HTML, CSS, JavaScript"""
-    },
-    {
-        'name': 'Michael Chen',
-        'job_desc': 'Data Scientist',
-        'resume_text': """EXPERIENCE:
-- Data Scientist at DataInsights (2019-Present)
-  - Built predictive models with 90% accuracy
-  - Developed recommendation systems using collaborative filtering
-  - Technologies: Python, TensorFlow, PyTorch, Spark
-
-- Data Analyst at AnalyticsPro (2017-2019)
-  - Created dashboards and visualizations
-  - Performed statistical analysis on large datasets
-
-EDUCATION:
-- PhD in Data Science, MIT (2012-2017)
-- MS in Statistics, Stanford University (2010-2012)
-
-SKILLS:
-- Machine Learning, Deep Learning
-- Python, R, SQL
-- Data Visualization, Big Data"""
-    }
-]
+    return render_template('offboarding_tasks.html', offboarding=offboarding)
 
 @app.route('/pre-onboarding')
 @login_required('hr')
 def pre_onboarding():
-    candidates = Candidate.query.order_by(Candidate.created_at.desc()).all()
-    return render_template('pre-onboarding.html', sample_candidates=candidates)
+    # Show employees who are currently in the Onboarding stage
+    employees = User.query.filter_by(role='employee', status='Onboarding').order_by(User.created_at.desc()).all()
+    return render_template('pre-onboarding.html', employees=employees)
+
+@app.route('/hr/start-onboarding', methods=['POST'])
+@login_required('hr')
+def hr_start_onboarding():
+    try:
+        employee_id = request.form.get('employee_id')
+        hire_date_str = request.form.get('hire_date')
+
+        if not employee_id or not hire_date_str:
+            flash('Employee and hire date are required to start onboarding.', 'danger')
+            return redirect(url_for('pre_onboarding'))
+
+        employee = User.query.filter_by(id=int(employee_id), role='employee').first_or_404()
+
+        # Parse hire date
+        hire_date = datetime.strptime(hire_date_str, '%Y-%m-%d').date()
+        employee.hire_date = hire_date
+
+        db.session.commit()
+
+        flash(f'Onboarding started for {employee.full_name} with hire date {hire_date.strftime("%B %d, %Y")}.', 'success')
+        # Redirect to onboarding page, passing hire date
+        return redirect(url_for('onboarding', employee_id=employee.id, hire_date=hire_date_str))
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error starting onboarding: {str(e)}')
+        flash('Failed to start onboarding. Please try again.', 'danger')
+        return redirect(url_for('pre_onboarding'))
 
 @app.route('/onboarding', methods=['GET', 'POST'])
 @login_required('hr')
@@ -1088,8 +923,44 @@ def analytics_data():
 @app.route('/support')
 @login_required('employee')
 def support():
-    """Render the support page for employees."""
-    return render_template('support.html', title='Support')
+    """Render the support page for employees with recent issues from the database."""
+    recent_issues = []
+
+    try:
+        # Lazily detect a Ticket/Issue-style model if it exists to avoid breaking imports
+        TicketModel = None
+
+        for candidate_name in ['Ticket', 'Issue', 'SupportTicket', 'ITIssue']:
+            try:
+                TicketModel = globals().get(candidate_name)
+                if TicketModel is not None:
+                    break
+            except Exception:
+                TicketModel = None
+
+        if TicketModel is not None:
+            user_id = session.get('user_id')
+            if user_id:
+                # Try common field names for user reference and timestamps
+                query = TicketModel.query
+
+                if hasattr(TicketModel, 'user_id'):
+                    query = query.filter(TicketModel.user_id == user_id)
+                elif hasattr(TicketModel, 'employee_id'):
+                    query = query.filter(TicketModel.employee_id == user_id)
+
+                # Order by recent update/creation if available
+                if hasattr(TicketModel, 'updated_at'):
+                    query = query.order_by(TicketModel.updated_at.desc())
+                elif hasattr(TicketModel, 'created_at'):
+                    query = query.order_by(TicketModel.created_at.desc())
+
+                recent_issues = query.limit(5).all()
+    except Exception as e:
+        app.logger.error(f"Error loading recent issues for support page: {str(e)}")
+        recent_issues = []
+
+    return render_template('support.html', title='Support', recent_issues=recent_issues)
 
 @app.route('/onboarding-assistant')
 @login_required('employee')
@@ -1414,26 +1285,45 @@ def generate_welcome_email():
 @login_required('employee')
 def submit_feedback():
     try:
-        data = request.json
-        mood_rating = data.get('mood_rating')
-        confidence_rating = data.get('confidence_rating')
-        feedback = data.get('feedback', '')
-        
-        # Validate ratings (1-5)
+        data = request.get_json(silent=True) or {}
+
+        # Safely coerce ratings to integers
+        try:
+            mood_rating_raw = data.get('mood_rating')
+            confidence_rating_raw = data.get('confidence_rating')
+
+            mood_rating = int(mood_rating_raw) if mood_rating_raw is not None else None
+            confidence_rating = int(confidence_rating_raw) if confidence_rating_raw is not None else None
+        except (TypeError, ValueError):
+            app.logger.warning(f"Invalid rating types in feedback payload: {data}")
+            return jsonify({'status': 'error', 'message': 'Ratings must be numbers between 1 and 5'}), 400
+
+        feedback = data.get('feedback', '') or ''
+
+        # Validate presence
+        if mood_rating is None or confidence_rating is None:
+            return jsonify({'status': 'error', 'message': 'Both mood and confidence ratings are required'}), 400
+
+        # Validate range (1-5)
         if not (1 <= mood_rating <= 5) or not (1 <= confidence_rating <= 5):
             return jsonify({'status': 'error', 'message': 'Ratings must be between 1 and 5'}), 400
-        
+
+        user_id = session.get('user_id')
+        if not user_id:
+            app.logger.warning('Feedback submit attempted without user in session')
+            return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+
         # Create new feedback entry
         new_feedback = EmployeeFeedback(
-            user_id=session['user_id'],
+            user_id=user_id,
             mood_rating=mood_rating,
             confidence_rating=confidence_rating,
             feedback=feedback
         )
-        
+
         db.session.add(new_feedback)
         db.session.commit()
-        
+
         return jsonify({
             'status': 'success',
             'message': 'Feedback submitted successfully',
@@ -1442,9 +1332,10 @@ def submit_feedback():
                 'created_at': new_feedback.created_at.isoformat()
             }
         })
-        
+
     except Exception as e:
-        app.logger.error(f"Error submitting feedback: {str(e)}")
+        db.session.rollback()
+        app.logger.error(f"Error submitting feedback: {str(e)}", exc_info=True)
         return jsonify({
             'status': 'error',
             'message': 'Failed to submit feedback. Please try again.'

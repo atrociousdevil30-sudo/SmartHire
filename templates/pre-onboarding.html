@@ -12,35 +12,33 @@
     </div>
     
     <div class="row">
-        <!-- Left Column - Sample Candidates -->
+        <!-- Left Column - Employees in Onboarding -->
         <div class="col-lg-4 mb-4">
             <div class="card h-100">
                 <div class="card-header bg-light">
-                    <h5 class="mb-0">Sample Candidates</h5>
+                    <h5 class="mb-0">Employees in Onboarding</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
-                        {% for candidate in sample_candidates %}
-                        <a href="#" class="list-group-item list-group-item-action sample-candidate" 
-                           data-name="{{ candidate.name }}" 
-                           data-job="{{ candidate.job_desc }}"
-                           data-resume="{{ candidate.resume_text|replace('\n', '\\n')|replace('"', '\\"')|replace("'", "\\'") }}">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">{{ candidate.name }}</h6>
-                                <small class="badge bg-{{ 'success' if candidate.score >= 80 else 'warning' if candidate.score >= 60 else 'danger' }}">
-                                    {{ "%.1f"|format(candidate.score) }}%
-                                </small>
+                        {% if employees and employees|length > 0 %}
+                            {% for emp in employees %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ emp.full_name }}</h6>
+                                    <p class="mb-0 small text-muted">
+                                        {{ emp.position or 'Employee' }}
+                                        {% if emp.department %} · {{ emp.department }}{% endif %}
+                                    </p>
+                                </div>
+                                <span class="badge bg-info text-dark">Onboarding</span>
                             </div>
-                            <p class="mb-1 text-muted small">{{ candidate.job_desc }}</p>
-                            {% if candidate.summary %}
-                            <p class="mb-0 small text-muted">{{ candidate.summary[:100] }}{% if candidate.summary|length > 100 %}...{% endif %}</p>
-                            {% endif %}
-                        </a>
-                        {% endfor %}
+                            {% endfor %}
+                        {% else %}
+                            <div class="list-group-item">
+                                <small class="text-muted">No employees currently in onboarding.</small>
+                            </div>
+                        {% endif %}
                     </div>
-                </div>
-                <div class="card-footer bg-light">
-                    <small class="text-muted">Click on a sample to fill the form</small>
                 </div>
             </div>
         </div>

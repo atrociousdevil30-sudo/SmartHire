@@ -214,42 +214,74 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>#INC-00123</td>
-                        <td>Laptop not yet provided</td>
-                        <td><span class="badge bg-warning text-dark">In Progress</span></td>
-                        <td>Nov 15, 2023</td>
-                        <td>Nov 17, 2023</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View Details">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>#INC-00118</td>
-                        <td>Email access issues</td>
-                        <td><span class="badge bg-success">Resolved</span></td>
-                        <td>Nov 10, 2023</td>
-                        <td>Nov 10, 2023</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View Details">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>#INC-00095</td>
-                        <td>WiFi connectivity problems</td>
-                        <td><span class="badge bg-success">Resolved</span></td>
-                        <td>Nov 5, 2023</td>
-                        <td>Nov 6, 2023</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View Details">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </td>
-                    </tr>
+                    {% if recent_issues and recent_issues|length > 0 %}
+                        {% for issue in recent_issues %}
+                        <tr>
+                            <td>
+                                {% if issue.ticket_number %}
+                                    {{ issue.ticket_number }}
+                                {% elif issue.id %}
+                                    #INC-{{ '%05d'|format(issue.id) }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if issue.title %}
+                                    {{ issue.title }}
+                                {% elif issue.summary %}
+                                    {{ issue.summary }}
+                                {% elif issue.description %}
+                                    {{ issue.description[:60] }}{% if issue.description|length > 60 %}...{% endif %}
+                                {% else %}
+                                    (No title)
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set status = (issue.status if issue.status is defined else issue.state if issue.state is defined else 'Open') %}
+                                {% if status.lower() in ['resolved', 'closed'] %}
+                                    <span class="badge bg-success">{{ status }}</span>
+                                {% elif status.lower() in ['in progress', 'assigned'] %}
+                                    <span class="badge bg-warning text-dark">{{ status }}</span>
+                                {% elif status.lower() in ['critical', 'blocked'] %}
+                                    <span class="badge bg-danger">{{ status }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if issue.created_at %}
+                                    {{ issue.created_at.strftime('%b %d, %Y') }}
+                                {% elif issue.opened_at %}
+                                    {{ issue.opened_at.strftime('%b %d, %Y') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if issue.updated_at %}
+                                    {{ issue.updated_at.strftime('%b %d, %Y') }}
+                                {% elif issue.resolved_at %}
+                                    {{ issue.resolved_at.strftime('%b %d, %Y') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle me-2"></i>
+                                You have no recent issues. Great job! If you face any problem, raise a new issue using the form above.
+                            </td>
+                        </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>

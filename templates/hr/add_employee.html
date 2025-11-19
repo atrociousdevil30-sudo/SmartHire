@@ -78,10 +78,6 @@
                                             <input type="text" class="form-control bg-dark text-light border-secondary" id="position" name="position" required>
                                         </div>
                                         <div class="mb-3">
-                                            <label for="hire_date" class="form-label text-light">Hire Date <span class="text-danger">*</span></label>
-                                            <input type="date" class="form-control bg-dark text-light border-secondary" id="hire_date" name="hire_date" required>
-                                        </div>
-                                        <div class="mb-3">
                                             <label for="manager_id" class="form-label text-light">Manager</label>
                                             <select class="form-select bg-dark text-light border-secondary" id="manager_id" name="manager_id">
                                                 <option value="" selected>No Manager</option>
@@ -174,10 +170,6 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Set default hire date to today
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('hire_date').value = today;
-        
         // Generate username from email
         const emailInput = document.getElementById('email');
         const usernameInput = document.getElementById('username');
