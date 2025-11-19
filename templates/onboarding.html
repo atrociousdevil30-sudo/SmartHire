@@ -70,8 +70,61 @@
     </div>
 
     <div class="row">
+        <!-- Employee/Candidate Selection Sidebar -->
+        <div class="col-lg-4 mb-4 order-lg-2">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-user-tie me-2"></i>Select Employee/Candidate
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="employeeSearch" class="form-label text-light">Search Employee</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" 
+                               id="employeeSearch" placeholder="Search by name...">
+                    </div>
+                    <div id="employeeList" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                        <div class="text-muted text-center py-3">
+                            <i class="fas fa-search me-2"></i>Search or select an employee
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Selected Employee Details -->
+            <div class="card bg-dark bg-opacity-25 border-secondary mt-4 d-none" id="selectedEmployeeCard">
+                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-user me-2"></i>Selected Employee
+                    </h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Name</label>
+                        <p class="text-light mb-0" id="selectedName">-</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Email</label>
+                        <p class="text-light mb-0" id="selectedEmail">-</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Position</label>
+                        <p class="text-light mb-0" id="selectedPosition">-</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Department</label>
+                        <p class="text-light mb-0" id="selectedDepartment">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Main Content -->
-        <div class="col-lg-8">
+        <div class="col-lg-8 order-lg-1">
             <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 text-light">
@@ -511,6 +564,22 @@
 
         <!-- Sidebar -->
         <div class="col-lg-4">
+            <!-- Job Description Card -->
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4 d-none" id="jobDescriptionCard">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-briefcase me-2"></i>Job Description
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="jobDescriptionContent" class="text-light" style="max-height: 300px; overflow-y: auto;">
+                        <div class="text-muted text-center py-3">
+                            Select an employee to view job description
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Task Filters -->
             <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-secondary">
@@ -1751,4 +1820,8 @@ function resetOnboarding() {
         }
     });
 </script>
+
+<!-- Employee Selection and Auto-fill Script -->
+<script src="{{ url_for('static', filename='js/onboarding-selection.js') }}"></script>
+
 {% endblock %}

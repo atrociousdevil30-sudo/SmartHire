@@ -219,6 +219,39 @@ class EmployeeFeedback(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.relationship('User', backref=db.backref('feedbacks', lazy=True))
 
+
+class EmployeeDocument(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'),
+                        nullable=False)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    document_type = db.Column(db.String(100), nullable=True)
+    file_size = db.Column(db.Integer, nullable=True)  # in bytes
+    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+    description = db.Column(db.Text, nullable=True)
+    is_verified = db.Column(db.Boolean, default=False)
+    user = db.relationship('User',
+                           backref=db.backref('documents', lazy=True))
+
+
+class EmployeeSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'),
+                        nullable=False, unique=True)
+    email_notifications = db.Column(db.Boolean, default=True)
+    sms_notifications = db.Column(db.Boolean, default=False)
+    notification_frequency = db.Column(db.String(50),
+                                       default='immediately')
+    theme = db.Column(db.String(50), default='light')  # light/dark
+    language = db.Column(db.String(10), default='en')
+    two_factor_enabled = db.Column(db.Boolean, default=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow,
+                           onupdate=datetime.utcnow)
+    user = db.relationship('User',
+                           backref=db.backref('settings', uselist=False,
+                                              lazy=True))
+
 # Create database tables
 with app.app_context():
     db.create_all()
@@ -768,6 +801,38 @@ def hr_start_onboarding():
         flash('Failed to start onboarding. Please try again.', 'danger')
         return redirect(url_for('pre_onboarding'))
 
+@app.route('/api/candidates', methods=['GET'])
+@login_required('hr')
+def get_candidates_list():
+    """Get list of all candidates for employee selection"""
+    try:
+        candidates = Candidate.query.order_by(
+            Candidate.created_at.desc()).all()
+
+        candidates_list = []
+        for candidate in candidates:
+            candidates_list.append({
+                'id': candidate.id,
+                'name': candidate.name,
+                'email': candidate.email or 'N/A',
+                'job_desc': candidate.job_desc or 'N/A',
+                'score': round(float(candidate.score), 1) if (
+                    candidate.score) else None,
+                'summary': candidate.summary or '',
+                'created_at': candidate.created_at.strftime(
+                    '%Y-%m-%d')
+            })
+
+        return jsonify({
+            'status': 'success',
+            'data': candidates_list
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching candidates: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to fetch candidates'}), 500
+
+
 @app.route('/onboarding', methods=['GET', 'POST'])
 @login_required('hr')
 def onboarding():
@@ -1090,40 +1155,198 @@ def extract_name(text):
         return first_line
     return ''
 
+def calculate_ats_score(resume_data, job_description):
+    """
+    Calculate ATS (Applicant Tracking System) score based on resume
+    and job description match.
+    Score is out of 100.
+    """
+    score = 0
+    feedback = []
+
+    # Normalize text for comparison
+    resume_text = ' '.join(resume_data.get('skills', [])).lower()
+
+    # 1. Skills Match (35 points max)
+    resume_skills = set([s.lower() for s in resume_data.get('skills', [])])
+    job_skills = extract_skills(job_description)
+    job_skills_set = set([s.lower() for s in job_skills])
+
+    if job_skills_set:
+        matched_skills = resume_skills.intersection(job_skills_set)
+        skill_match_percentage = len(matched_skills) / len(job_skills_set)
+        skills_score = skill_match_percentage * 35
+        score += skills_score
+
+        if matched_skills:
+            matched_list = list(matched_skills)[:3]
+            feedback.append(
+                f"Matched {len(matched_skills)}/{len(job_skills_set)} "
+                f"required skills: {', '.join(matched_list)}"
+            )
+        else:
+            required_skills = list(job_skills_set)[:3]
+            feedback.append(
+                f"No matching skills found. Required: "
+                f"{', '.join(required_skills)}"
+            )
+
+    # 2. Experience (30 points max)
+    experience_count = len(resume_data.get('experience', []))
+    if experience_count >= 4:
+        score += 30
+        feedback.append("Strong experience level (4+ years)")
+    elif experience_count >= 2:
+        score += 20
+        feedback.append("Moderate experience level (2-4 years)")
+    elif experience_count >= 1:
+        score += 10
+        feedback.append("Entry-level experience")
+
+    # 3. Education (20 points max)
+    education = resume_data.get('education', [])
+    education_text = ' '.join([str(e) for e in education]).lower()
+
+    has_bachelor = ('bachelor' in education_text or
+                    'b.tech' in education_text or
+                    'b.s.' in education_text)
+    has_master = ('master' in education_text or
+                  'm.tech' in education_text or
+                  'diploma' in education_text)
+
+    if has_bachelor:
+        score += 15
+        feedback.append("Bachelor's degree found")
+    elif has_master:
+        score += 20
+        feedback.append("Advanced degree found")
+    elif education:
+        score += 10
+        feedback.append("Education information provided")
+
+    # 4. Contact Information (10 points max)
+    contact_score = 0
+    if resume_data.get('email'):
+        contact_score += 5
+    if resume_data.get('phone'):
+        contact_score += 5
+    score += contact_score
+
+    if contact_score >= 10:
+        feedback.append("Complete contact information provided")
+
+    # 5. Keyword Presence (5 points max)
+    keywords = ['python', 'javascript', 'api', 'database', 'agile', 'git']
+    found_keywords = sum(1 for kw in keywords if kw in resume_text)
+    keyword_score = (found_keywords / len(keywords)) * 5
+    score += keyword_score
+
+    # Normalize score to 0-100
+    final_score = min(100, max(0, score))
+
+    return {
+        'score': round(final_score, 1),
+        'feedback': feedback,
+        'recommendation': 'PASS' if final_score >= 70 else 'REVIEW'
+    }
+
+
 @app.route('/analyze-resume', methods=['POST'])
 def analyze_resume():
     if 'resume' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
-    
+
     file = request.files['resume']
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
-    
+
+    # Get job description from request
+    job_description = request.form.get('jobDescription', '')
+
+    if not job_description:
+        return jsonify({'error': 'Job description is required'}), 400
+
     try:
         filename = file.filename.lower()
         file_stream = file.stream
-        
+
         if filename.endswith('.pdf'):
             text = extract_text_from_pdf(file_stream)
         elif filename.endswith(('.doc', '.docx')):
             text = extract_text_from_docx(file_stream)
         else:
-            return jsonify({'error': 'Unsupported file format. Please upload a PDF or Word document.'}), 400
-        
+            error_msg = (
+                'Unsupported file format. Please upload a PDF or '
+                'Word document.'
+            )
+            return jsonify({'error': error_msg}), 400
+
         # Extract information
-        result = {
+        resume_data = {
             'name': extract_name(text),
             'email': extract_email(text),
+            'phone': '',
             'skills': extract_skills(text),
             'experience': extract_experience(text),
-            'education': extract_education(text)
+            'education': extract_education(text),
+            'raw_text': text
         }
-        
+
+        # Calculate ATS score
+        ats_result = calculate_ats_score(resume_data, job_description)
+
+        # Prepare AI summary using the AI response function
+        summary_prompt = (
+            f"Provide a brief (2-3 sentences) summary of how well this "
+            f"candidate matches the job description. Skills found: "
+            f"{', '.join(resume_data['skills'][:5])}. "
+            f"Experience count: {len(resume_data['experience'])}. "
+            f"Focus on strengths relevant to: {job_description[:200]}"
+        )
+
+        ai_summary = "Resume analyzed. Candidate profile processed."
+        try:
+            ai_messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an HR AI assistant. Provide brief, "
+                        "professional summaries."
+                    )
+                },
+                {"role": "user", "content": summary_prompt}
+            ]
+            ai_response = generate_ai_response(
+                ai_messages, max_tokens=150, temperature=0.7)
+            if ai_response:
+                ai_summary = ai_response
+        except Exception as e:
+            app.logger.warning(f"Could not generate AI summary: {str(e)}")
+            ai_summary = (
+                f"Candidate has {len(resume_data['skills'])} relevant skills "
+                f"and {len(resume_data['experience'])} years of experience."
+            )
+
+        result = {
+            'name': resume_data['name'],
+            'email': resume_data['email'],
+            'phone': resume_data['phone'],
+            'skills': resume_data['skills'],
+            'experience': resume_data['experience'],
+            'education': resume_data['education'],
+            'ats_score': ats_result['score'],
+            'ats_feedback': ats_result['feedback'],
+            'ats_recommendation': ats_result['recommendation'],
+            'ai_summary': ai_summary,
+            'pass_screening': ats_result['score'] >= 70
+        }
+
         return jsonify(result)
-        
+
     except Exception as e:
         app.logger.error(f"Error processing resume: {str(e)}")
-        return jsonify({'error': 'Error processing resume. Please try again.'}), 500
+        return jsonify(
+            {'error': 'Error processing resume. Please try again.'}), 500
 
 def generate_ai_response(messages, max_tokens=500, temperature=0.7):
     """Helper function to generate AI responses using Gemini"""
@@ -1420,6 +1643,360 @@ def get_feedback_summary():
             'status': 'error',
             'message': 'Failed to fetch feedback summary.'
         }), 500
+
+
+# ============ EMPLOYEE PROFILE, DOCUMENTS & SETTINGS ENDPOINTS ============
+
+@app.route('/api/employee/profile', methods=['GET'])
+@login_required('employee')
+def get_employee_profile():
+    """Get employee profile data"""
+    try:
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'status': 'error',
+                           'message': 'User not found'}), 404
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'full_name': user.full_name,
+                'email': user.email,
+                'phone': user.phone or '',
+                'department': user.department or '',
+                'position': user.position or '',
+                'employee_id': user.employee_id or f'EMP-{user.id:04d}',
+                'hire_date': (
+                    user.hire_date.strftime('%Y-%m-%d')
+                    if user.hire_date else ''),
+                'status': user.status or 'Active'
+            }
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching profile: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to fetch profile'}), 500
+
+
+@app.route('/api/employee/profile', methods=['POST'])
+@login_required('employee')
+def update_employee_profile():
+    """Update employee profile"""
+    try:
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'status': 'error',
+                           'message': 'User not found'}), 404
+        
+        # Update user profile
+        user.phone = request.form.get('phone', user.phone)
+        user.department = request.form.get(
+            'department', user.department)
+        user.position = request.form.get('position', user.position)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Profile updated successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error updating profile: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to update profile'}), 500
+
+
+@app.route('/api/employee/documents', methods=['GET'])
+@login_required('employee')
+def get_employee_documents():
+    """Get list of employee documents"""
+    try:
+        documents = EmployeeDocument.query.filter_by(
+            user_id=session['user_id']
+        ).order_by(EmployeeDocument.upload_date.desc()).all()
+        
+        docs_list = []
+        for doc in documents:
+            docs_list.append({
+                'id': doc.id,
+                'file_name': doc.file_name,
+                'document_type': doc.document_type or 'Other',
+                'upload_date': doc.upload_date.strftime('%Y-%m-%d %H:%M'),
+                'file_size': doc.file_size,
+                'description': doc.description or '',
+                'is_verified': doc.is_verified
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'data': docs_list
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching documents: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to fetch documents'}), 500
+
+
+@app.route('/api/employee/documents/upload', methods=['POST'])
+@login_required('employee')
+def upload_employee_document():
+    """Upload employee document"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'status': 'error',
+                           'message': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'status': 'error',
+                           'message': 'No file selected'}), 400
+        
+        # Allowed file extensions
+        allowed_extensions = {
+            'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'txt', 'xlsx'
+        }
+        
+        if not ('.' in file.filename and
+                file.filename.rsplit('.', 1)[1].lower()
+                in allowed_extensions):
+            return jsonify({
+                'status': 'error',
+                'message': 'File type not allowed'
+            }), 400
+        
+        # Check file size (max 10MB)
+        file_size = len(file.read())
+        file.seek(0)
+        if file_size > 10 * 1024 * 1024:
+            return jsonify({
+                'status': 'error',
+                'message': 'File size exceeds 10MB limit'
+            }), 400
+        
+        # Create documents directory if it doesn't exist
+        doc_dir = os.path.join(app.root_path, 'uploads', 'documents')
+        os.makedirs(doc_dir, exist_ok=True)
+        
+        # Generate unique filename
+        user_id = session['user_id']
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        filename = f"{user_id}_{timestamp}_{file.filename}"
+        file_path = os.path.join(doc_dir, filename)
+        
+        # Save file
+        file.save(file_path)
+        
+        # Create database entry
+        document = EmployeeDocument(
+            user_id=user_id,
+            file_name=file.filename,
+            file_path=f"/uploads/documents/{filename}",
+            document_type=request.form.get(
+                'document_type', 'Other'),
+            file_size=file_size,
+            description=request.form.get('description', ''),
+            is_verified=False
+        )
+        
+        db.session.add(document)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Document uploaded successfully',
+            'data': {
+                'id': document.id,
+                'file_name': document.file_name,
+                'upload_date': document.upload_date.strftime(
+                    '%Y-%m-%d %H:%M')
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error uploading document: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to upload document'}), 500
+
+
+@app.route('/api/employee/documents/<int:doc_id>', methods=['DELETE'])
+@login_required('employee')
+def delete_employee_document(doc_id):
+    """Delete employee document"""
+    try:
+        document = EmployeeDocument.query.get_or_404(doc_id)
+        
+        # Verify ownership
+        if document.user_id != session['user_id']:
+            return jsonify({'status': 'error',
+                           'message': 'Unauthorized'}), 403
+        
+        # Delete file
+        file_path = os.path.join(
+            app.root_path, 'uploads', 'documents',
+            os.path.basename(document.file_path))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        # Delete database entry
+        db.session.delete(document)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Document deleted successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error deleting document: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to delete document'}), 500
+
+
+@app.route('/api/employee/settings', methods=['GET'])
+@login_required('employee')
+def get_employee_settings():
+    """Get employee settings"""
+    try:
+        settings = EmployeeSettings.query.filter_by(
+            user_id=session['user_id']
+        ).first()
+        
+        if not settings:
+            # Create default settings if not exists
+            settings = EmployeeSettings(user_id=session['user_id'])
+            db.session.add(settings)
+            db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'email_notifications': settings.email_notifications,
+                'sms_notifications': settings.sms_notifications,
+                'notification_frequency': (
+                    settings.notification_frequency),
+                'theme': settings.theme,
+                'language': settings.language,
+                'two_factor_enabled': settings.two_factor_enabled
+            }
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching settings: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to fetch settings'}), 500
+
+
+@app.route('/api/employee/settings', methods=['POST'])
+@login_required('employee')
+def update_employee_settings():
+    """Update employee settings"""
+    try:
+        settings = EmployeeSettings.query.filter_by(
+            user_id=session['user_id']
+        ).first()
+        
+        if not settings:
+            settings = EmployeeSettings(user_id=session['user_id'])
+            db.session.add(settings)
+        
+        # Update settings
+        settings.email_notifications = request.form.get(
+            'email_notifications', 'false').lower() == 'true'
+        settings.sms_notifications = request.form.get(
+            'sms_notifications', 'false').lower() == 'true'
+        settings.notification_frequency = request.form.get(
+            'notification_frequency', 'immediately')
+        settings.theme = request.form.get('theme', 'light')
+        settings.language = request.form.get('language', 'en')
+        settings.two_factor_enabled = request.form.get(
+            'two_factor_enabled', 'false').lower() == 'true'
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Settings updated successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error updating settings: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to update settings'}), 500
+
+
+@app.route('/api/employee/change-password', methods=['POST'])
+@login_required('employee')
+def change_employee_password():
+    """Change employee password"""
+    try:
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'status': 'error',
+                           'message': 'User not found'}), 404
+        
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validate current password
+        if not user.check_password(current_password):
+            return jsonify({'status': 'error',
+                           'message': 'Current password is incorrect'}),
+            401
+        
+        # Validate new password
+        if len(new_password) < 8:
+            return jsonify({
+                'status': 'error',
+                'message': 'Password must be at least 8 characters'
+            }), 400
+        
+        # Validate passwords match
+        if new_password != confirm_password:
+            return jsonify({'status': 'error',
+                           'message': 'Passwords do not match'}), 400
+        
+        # Update password
+        user.set_password(new_password)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Password changed successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error changing password: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to change password'}), 500
+
+
+@app.route('/uploads/documents/<path:filename>')
+@login_required('employee')
+def download_document(filename):
+    """Download document (with access control)"""
+    try:
+        # Verify the user has access to this document
+        document = EmployeeDocument.query.filter_by(
+            file_path=f"/uploads/documents/{filename}"
+        ).first()
+        
+        if not document:
+            return jsonify({'status': 'error',
+                           'message': 'Document not found'}), 404
+        
+        if document.user_id != session['user_id']:
+            return jsonify({'status': 'error',
+                           'message': 'Access denied'}), 403
+        
+        doc_dir = os.path.join(
+            app.root_path, 'uploads', 'documents')
+        return send_from_directory(doc_dir, filename)
+    except Exception as e:
+        app.logger.error(f'Error downloading document: {str(e)}')
+        return jsonify({'status': 'error',
+                       'message': 'Failed to download document'}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)

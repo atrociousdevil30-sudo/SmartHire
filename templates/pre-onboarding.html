@@ -81,42 +81,62 @@
         </div>
 
             <div id="resultCard" class="card d-none mt-4">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <h3 class="h5 mb-0">Analysis Results</h3>
-                    <button id="startOnboardingBtn" class="btn btn-sm btn-light d-none">
-                        <i class="bi bi-person-check-fill me-1"></i> Start Onboarding
+                <div class="card-header bg-primary text-white d-flex 
+                    justify-content-between align-items-center">
+                    <h3 class="h5 mb-0">
+                        <i class="fas fa-tasks me-2"></i>ATS Screening Results
+                    </h3>
+                    <button id="startOnboardingBtn" 
+                        class="btn btn-sm btn-success d-none">
+                        <i class="fas fa-play me-1"></i> Start Onboarding
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <h4 class="h6 text-muted mb-1">AI Summary</h4>
-                            <p id="aiSummary" class="mb-0"></p>
+                    <!-- ATS Score Section -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center 
+                            justify-content-between mb-2">
+                            <h5 class="h6 text-muted mb-0">
+                                ATS Match Score
+                            </h5>
+                            <span id="scoreValue" class="fw-bold h5 mb-0">
+                                0%
+                            </span>
                         </div>
-                        <div class="col-md-6">
-                            <h4 class="h6 text-muted mb-1">Match Score</h4>
-                            <div class="d-flex align-items-center">
-                                <div class="progress flex-grow-1 me-3" style="height: 20px;">
-                                    <div id="scoreProgress" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <span id="scoreValue" class="fw-bold">0%</span>
+                        <div class="progress" style="height: 25px;">
+                            <div id="scoreProgress" class="progress-bar" 
+                                role="progressbar" style="width: 0%" 
+                                aria-valuenow="0" aria-valuemin="0" 
+                                aria-valuemax="100">
                             </div>
                         </div>
+                        <small class="text-muted d-block mt-1">
+                            Score above 70% qualifies for onboarding
+                        </small>
                     </div>
-                    
-                    <div class="mt-4">
-                        <div class="d-flex justify-content-between">
-                            <button class="btn btn-outline-secondary" id="startInterviewBtn">
-                                <i class="bi bi-chat-left-text me-2"></i>Start AI Interview
-                            </button>
-                            <div>
-                            <button class="btn btn-outline-primary me-2" id="saveCandidateBtn">
-                                <i class="bi bi-save me-2"></i>Save Candidate
-                            </button>
-                            <button class="btn btn-primary" id="notifyItBtn">
-                                <i class="bi bi-bell me-2"></i>Notify IT Department
-                            </button>
+
+                    <!-- AI Summary Section -->
+                    <div class="mb-4">
+                        <h5 class="h6 text-muted mb-2">Summary</h5>
+                        <div class="alert alert-light border">
+                            <p id="aiSummary" class="mb-0 small">
+                                Analyzing resume...
+                            </p>
                         </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2">
+                        <button id="startOnboardingBtn" 
+                            class="btn btn-success btn-lg d-none">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Start Onboarding
+                        </button>
+                        <button class="btn btn-outline-secondary" 
+                            id="reviewBtn">
+                            <i class="fas fa-eye me-2"></i>
+                            Review Candidate Details
+                        </button>
                     </div>
                 </div>
             </div>
@@ -135,49 +155,37 @@
         const startOnboardingBtn = document.getElementById('startOnboardingBtn');
         const analyzeBtn = document.getElementById('analyzeBtn');
         const resultCard = document.getElementById('resultCard');
-        const resultScore = document.getElementById('scoreValue');
-        const resultSummary = document.getElementById('aiSummary');
+        const scoreProgress = document.getElementById('scoreProgress');
+        const scoreValue = document.getElementById('scoreValue');
+        const aiSummary = document.getElementById('aiSummary');
         const candidateName = document.getElementById('candidateName');
         const jobDescription = document.getElementById('jobDescription');
         const resumeFile = document.getElementById('resumeFile');
-        
-        // Make sample candidates clickable
-        const sampleCandidates = document.querySelectorAll('.sample-candidate');
-        sampleCandidates.forEach(candidate => {
-            candidate.addEventListener('click', function(e) {
-                e.preventDefault();
-                // Remove active class from all candidates
-                sampleCandidates.forEach(c => c.classList.remove('active', 'bg-light', 'text-dark'));
-                // Add active class to clicked candidate
-                this.classList.add('active', 'bg-light', 'text-dark');
-                
-                // Auto-fill the form with candidate data
-                const name = this.dataset.name;
-                const job = this.dataset.job;
-                
-                if (candidateName) candidateName.value = name;
-                if (jobDescription) jobDescription.value = job;
-                
-                // Reset analysis state
-                if (resultCard) resultCard.classList.add('d-none');
-                if (analyzeBtn) analyzeBtn.disabled = false;
-            });
-        });
-        
+        let analysisData = null;
+
         // Handle analyze button click
         if (analyzeBtn) {
             analyzeBtn.addEventListener('click', async function() {
-                if (!resumeFile || !resumeFile.files || !resumeFile.files[0]) {
+                if (!resumeFile || !resumeFile.files || 
+                    !resumeFile.files[0]) {
                     alert('Please upload a resume file first');
+                    return;
+                }
+
+                if (!jobDescription || !jobDescription.value.trim()) {
+                    alert('Please enter a job description');
                     return;
                 }
 
                 const file = resumeFile.files[0];
                 const formData = new FormData();
                 formData.append('resume', file);
+                formData.append('jobDescription', 
+                               jobDescription.value);
 
                 const analyzeText = analyzeBtn.querySelector('#analyzeText');
-                const analyzeSpinner = analyzeBtn.querySelector('#analyzeSpinner');
+                const analyzeSpinner = analyzeBtn.querySelector(
+                    '#analyzeSpinner');
                 analyzeBtn.disabled = true;
                 analyzeText.textContent = 'Analyzing...';
                 analyzeSpinner.classList.remove('d-none');
@@ -189,19 +197,78 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to analyze resume');
+                        const error = await response.json();
+                        throw new Error(error.error || 
+                                      'Failed to analyze resume');
                     }
 
                     const data = await response.json();
+                    analysisData = data;
 
-                    let message = 'Resume analyzed successfully.';
-                    if (data.skills && data.skills.length) {
-                        message += `\nSkills: ${data.skills.join(', ')}`;
+                    // Display ATS score
+                    const score = data.ats_score;
+                    scoreProgress.style.width = score + '%';
+                    scoreProgress.setAttribute('aria-valuenow', score);
+                    scoreValue.textContent = score + '%';
+
+                    // Set color based on score
+                    if (score >= 70) {
+                        scoreProgress.className = 
+                            'progress-bar bg-success';
+                    } else if (score >= 50) {
+                        scoreProgress.className = 
+                            'progress-bar bg-warning';
+                    } else {
+                        scoreProgress.className = 
+                            'progress-bar bg-danger';
                     }
-                    alert(message);
+
+                    // Display AI summary
+                    aiSummary.textContent = data.ai_summary || 
+                        'Resume analysis completed.';
+
+                    // Show feedback
+                    let feedbackHtml = '<div class="mt-3">';
+                    feedbackHtml += '<h5 class="h6">Screening Feedback:</h5>';
+                    feedbackHtml += '<ul class="small mb-0">';
+                    
+                    if (data.ats_feedback && 
+                        data.ats_feedback.length > 0) {
+                        data.ats_feedback.forEach(feedback => {
+                            const icon = score >= 70 ? 
+                                '✓' : '○';
+                            feedbackHtml += `<li>${icon} ${feedback}</li>`;
+                        });
+                    }
+                    
+                    feedbackHtml += '</ul></div>';
+
+                    // Insert feedback after summary
+                    const summaryDiv = aiSummary.parentElement;
+                    if (summaryDiv) {
+                        const existingFeedback = summaryDiv.querySelector(
+                            '[class*="mt-3"]');
+                        if (existingFeedback) {
+                            existingFeedback.remove();
+                        }
+                        summaryDiv.insertAdjacentHTML(
+                            'afterend', feedbackHtml);
+                    }
+
+                    // Show result card
+                    resultCard.classList.remove('d-none');
+
+                    // Show/hide start onboarding button
+                    const passedScreening = data.pass_screening;
+                    if (passedScreening) {
+                        startOnboardingBtn.classList.remove('d-none');
+                    } else {
+                        startOnboardingBtn.classList.add('d-none');
+                    }
+
                 } catch (error) {
                     console.error('Error analyzing resume:', error);
-                    alert('Failed to analyze resume. Please try again.');
+                    alert(`Failed to analyze resume: ${error.message}`);
                 } finally {
                     analyzeText.textContent = 'Analyze Resume';
                     analyzeSpinner.classList.add('d-none');
@@ -209,27 +276,45 @@
                 }
             });
         }
-        
+
         // Handle start onboarding button click
         if (startOnboardingBtn) {
             startOnboardingBtn.addEventListener('click', function() {
-                const activeCandidate = document.querySelector('.sample-candidate.active');
-                if (activeCandidate) {
-                    // Get all candidate data
-                    const candidateData = {
-                        id: activeCandidate.dataset.id,
-                        name: activeCandidate.dataset.name,
-                        email: activeCandidate.dataset.email || '',
-                        position: activeCandidate.dataset.job,
-                        resume: activeCandidate.dataset.resume.replace(/\\n/g, '\n')
-                    };
-                    
-                    // Store candidate data in sessionStorage
-                    sessionStorage.setItem('selectedCandidate', JSON.stringify(candidateData));
-                    
-                    // Navigate to onboarding page
-                    window.location.href = '/onboarding';
+                if (!analysisData) {
+                    alert('Please analyze a resume first');
+                    return;
                 }
+
+                // Prepare candidate data
+                const candidateData = {
+                    name: analysisData.name,
+                    email: analysisData.email,
+                    phone: analysisData.phone,
+                    skills: analysisData.skills,
+                    experience: analysisData.experience,
+                    education: analysisData.education,
+                    ats_score: analysisData.ats_score,
+                    job_description: jobDescription.value
+                };
+
+                // Store in session storage
+                sessionStorage.setItem('selectedCandidate', 
+                                     JSON.stringify(candidateData));
+
+                // Navigate to onboarding page
+                window.location.href = '/onboarding';
+            });
+        }
+
+        // Handle clear form button
+        const clearFormBtn = document.getElementById('clearForm');
+        if (clearFormBtn) {
+            clearFormBtn.addEventListener('click', function() {
+                candidateName.value = '';
+                jobDescription.value = '';
+                resumeFile.value = '';
+                resultCard.classList.add('d-none');
+                analysisData = null;
             });
         }
     });
