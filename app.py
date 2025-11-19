@@ -301,6 +301,9 @@ def login(role):
                 app.logger.info(f'User {user.username} logged in successfully')
                 flash(f'Welcome back, {user.full_name}!', 'success')
                 
+                # Store display name for welcome bar / navbar
+                session['username'] = user.full_name
+                
                 # Redirect based on role
                 if role == 'employee':
                     return redirect(url_for('employee_dashboard'))

@@ -63,14 +63,13 @@
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label for="resumeText" class="form-label mb-0">Resume Text</label>
+                                <label for="resumeFile" class="form-label mb-0">Resume (PDF/DOC/DOCX)</label>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="clearForm">
                                     <i class="fas fa-eraser me-1"></i>Clear Form
                                 </button>
                             </div>
-                            <textarea class="form-control font-monospace" id="resumeText" rows="10" required 
-                                      placeholder="Paste the candidate's resume text here..."></textarea>
-                            <div class="form-text">For best results, use plain text format (no images or tables).</div>
+                            <input type="file" class="form-control" id="resumeFile" accept=".pdf,.doc,.docx">
+                            <div class="form-text">Upload the candidate's resume, then click Analyze Resume.</div>
                         </div>
                         <div class="d-grid">
                             <button type="button" id="analyzeBtn" class="btn btn-primary">
@@ -142,7 +141,7 @@
         const resultSummary = document.getElementById('aiSummary');
         const candidateName = document.getElementById('candidateName');
         const jobDescription = document.getElementById('jobDescription');
-        const resumeText = document.getElementById('resumeText');
+        const resumeFile = document.getElementById('resumeFile');
         
         // Make sample candidates clickable
         const sampleCandidates = document.querySelectorAll('.sample-candidate');
@@ -157,11 +156,9 @@
                 // Auto-fill the form with candidate data
                 const name = this.dataset.name;
                 const job = this.dataset.job;
-                const resume = this.dataset.resume.replace(/\\n/g, '\n');
                 
                 if (candidateName) candidateName.value = name;
                 if (jobDescription) jobDescription.value = job;
-                if (resumeText) resumeText.value = resume;
                 
                 // Reset analysis state
                 if (resultCard) resultCard.classList.add('d-none');
@@ -171,98 +168,47 @@
         
         // Handle analyze button click
         if (analyzeBtn) {
-            analyzeBtn.addEventListener('click', function() {
-                const activeCandidate = document.querySelector('.sample-candidate.active');
-                if (!activeCandidate) {
-                    alert('Please select a candidate first');
+            analyzeBtn.addEventListener('click', async function() {
+                if (!resumeFile || !resumeFile.files || !resumeFile.files[0]) {
+                    alert('Please upload a resume file first');
                     return;
                 }
-                
-                // Show loading state
+
+                const file = resumeFile.files[0];
+                const formData = new FormData();
+                formData.append('resume', file);
+
                 const analyzeText = analyzeBtn.querySelector('#analyzeText');
                 const analyzeSpinner = analyzeBtn.querySelector('#analyzeSpinner');
                 analyzeBtn.disabled = true;
                 analyzeText.textContent = 'Analyzing...';
                 analyzeSpinner.classList.remove('d-none');
-                
-                // Simulate analysis with progress updates
-                const totalSteps = 5;
-                let currentStep = 0;
-                
-                // Reset UI state
-                if (resultCard) resultCard.classList.add('d-none');
-                if (startOnboardingBtn) startOnboardingBtn.classList.add('d-none');
-                
-                const progressInterval = setInterval(() => {
-                    currentStep++;
-                    const progress = Math.min(100, Math.round((currentStep / totalSteps) * 100));
-                    
-                    // Update progress bar
-                    const progressBar = document.getElementById('scoreProgress');
-                    if (progressBar) {
-                        progressBar.style.width = `${progress}%`;
-                        progressBar.setAttribute('aria-valuenow', progress);
-                        document.getElementById('scoreValue').textContent = `${progress}%`;
+
+                try {
+                    const response = await fetch('/analyze-resume', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to analyze resume');
                     }
-                    
-                    // Update status text
-                    if (analyzeText) {
-                        const statuses = [
-                            'Analyzing resume...',
-                            'Matching skills...',
-                            'Evaluating experience...',
-                            'Checking references...',
-                            'Finalizing analysis...'
-                        ];
-                        if (currentStep <= statuses.length) {
-                            analyzeText.textContent = statuses[currentStep - 1];
-                        }
+
+                    const data = await response.json();
+
+                    let message = 'Resume analyzed successfully.';
+                    if (data.skills && data.skills.length) {
+                        message += `\nSkills: ${data.skills.join(', ')}`;
                     }
-                    
-                    // When analysis is complete
-                    if (currentStep >= totalSteps) {
-                        clearInterval(progressInterval);
-                        
-                        // Generate final score (60-90)
-                        const score = Math.floor(Math.random() * 30) + 60;
-                        const summary = score >= HIRING_THRESHOLD 
-                            ? 'This candidate meets our hiring criteria. You may proceed with onboarding.'
-                            : 'This candidate does not meet the minimum score requirement for this position.';
-                        
-                        // Update UI with final results
-                        if (resultScore) resultScore.textContent = `${score}%`;
-                        if (resultSummary) resultSummary.textContent = summary;
-                        if (resultCard) resultCard.classList.remove('d-none');
-                        
-                        // Update progress bar color based on score
-                        if (progressBar) {
-                            progressBar.style.width = `${score}%`;
-                            progressBar.setAttribute('aria-valuenow', score);
-                            
-                            if (score >= 80) {
-                                progressBar.className = 'progress-bar bg-success';
-                            } else if (score >= 60) {
-                                progressBar.className = 'progress-bar bg-warning';
-                            } else {
-                                progressBar.className = 'progress-bar bg-danger';
-                            }
-                        }
-                        
-                        // Show/hide start onboarding button based on score
-                        if (startOnboardingBtn) {
-                            if (score >= HIRING_THRESHOLD) {
-                                startOnboardingBtn.classList.remove('d-none');
-                            } else {
-                                startOnboardingBtn.classList.add('d-none');
-                            }
-                        }
-                        
-                        // Reset button state
-                        analyzeText.textContent = 'Re-analyze Resume';
-                        analyzeSpinner.classList.add('d-none');
-                        analyzeBtn.disabled = false;
-                    }
-                }, 800); // Update progress every 800ms
+                    alert(message);
+                } catch (error) {
+                    console.error('Error analyzing resume:', error);
+                    alert('Failed to analyze resume. Please try again.');
+                } finally {
+                    analyzeText.textContent = 'Analyze Resume';
+                    analyzeSpinner.classList.add('d-none');
+                    analyzeBtn.disabled = false;
+                }
             });
         }
         
