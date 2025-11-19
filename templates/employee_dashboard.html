@@ -8,11 +8,11 @@
     <!-- Welcome Message -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-user-circle me-2"></i>Welcome, {{ session.get('username', 'Employee') }}!
+            <i class="fas fa-user-circle me-2"></i>Welcome, {{ user.full_name or user.username }}!
         </h1>
         <div class="d-flex">
             <span class="me-2">
-                <span class="badge bg-primary">New Hire</span>
+                <span class="badge bg-primary">{{ user.role or 'Employee' }}</span>
             </span>
             <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#helpModal">
                 <i class="fas fa-question-circle me-1"></i> Help
@@ -129,13 +129,26 @@
                     <h6 class="m-0 font-weight-bold">Your HR Contact</h6>
                 </div>
                 <div class="card-body text-center">
-                    <img src="https://ui-avatars.com/api/?name=Alex+Morgan&background=7b2cbf&color=fff&size=100" 
-                         class="rounded-circle mb-3" alt="HR Contact" width="100">
-                    <h5>Alex Morgan</h5>
-                    <p class="text-muted mb-1">HR Business Partner</p>
-                    <p class="mb-3"><i class="fas fa-envelope me-2"></i>alex.morgan@company.com</p>
-                    <button class="btn btn-primary btn-sm me-2"><i class="fas fa-envelope me-1"></i> Message</button>
-                    <button class="btn btn-outline-primary btn-sm"><i class="fas fa-phone me-1"></i> Call</button>
+                    <div class="avatar-xl mb-3">
+                        <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-1">{{ hr_contact.full_name if hr_contact else 'HR Department' }}</h5>
+                    <p class="text-muted mb-1">{{ hr_contact.position if hr_contact and hr_contact.position else 'HR Business Partner' }}</p>
+                    <p class="mb-3">
+                        <a href="mailto:{{ hr_contact.email if hr_contact else 'hr@company.com' }}" class="text-primary">
+                            <i class="fas fa-envelope me-2"></i>{{ hr_contact.email if hr_contact else 'hr@company.com' }}
+                        </a>
+                    </p>
+                    <button class="btn btn-primary btn-sm me-2" onclick="messageHR()">
+                        <i class="fas fa-envelope me-1"></i> Message
+                    </button>
+                    {% if hr_contact and hr_contact.phone %}
+                    <a href="tel:{{ hr_contact.phone }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-phone me-1"></i> Call
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -190,14 +203,16 @@
             <div class="modal-body">
                 <p>If you need assistance with your onboarding process, please contact:</p>
                 <ul class="list-unstyled">
-                    <li><i class="fas fa-envelope me-2"></i>hr@company.com</li>
-                    <li><i class="fas fa-phone me-2"></i>+1 (555) 123-4567</li>
+                    <li><i class="fas fa-envelope me-2"></i>{{ hr_contact.email if hr_contact else 'hr@company.com' }}</li>
+                    <li><i class="fas fa-phone me-2"></i>{{ hr_contact.phone if hr_contact else '+1 (555) 123-4567' }}</li>
                 </ul>
                 <p class="mb-0">Our HR team is available Monday-Friday, 9:00 AM - 5:00 PM EST.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary">Send Message</button>
+                <button type="button" class="btn btn-success" onclick="sendWhatsAppMessage()">
+                    <i class="fab fa-whatsapp me-1"></i> Send Message
+                </button>
             </div>
         </div>
     </div>
@@ -207,6 +222,28 @@
 
 {% block extra_js %}
 <script>
-    // Add any JavaScript specific to the dashboard here
+function messageHR() {
+    // Get HR email from the template
+    const hrEmail = '{{ hr_contact.email if hr_contact else "hr@company.com" }}';
+    const subject = encodeURIComponent('Employee Dashboard Inquiry');
+    const body = encodeURIComponent('Hi,\n\nI have a question regarding my onboarding/employment.\n\nThank you.');
+    
+    // Open default email client
+    window.location.href = `mailto:${hrEmail}?subject=${subject}&body=${body}`;
+}
+
+function sendWhatsAppMessage() {
+    // Get HR phone from the template exactly as shown
+    let hrPhone = '{{ hr_contact.phone if hr_contact else "+1 (555) 123-4567" }}';
+    
+    // Remove all non-digit characters for WhatsApp URL
+    hrPhone = hrPhone.replace(/\D/g, '');
+    
+    // Predefined message
+    const message = encodeURIComponent('Hi, I need assistance with my onboarding process. Could you please help me?');
+    
+    // Open WhatsApp with the HR contact's phone number
+    window.open(`https://wa.me/${hrPhone}?text=${message}`, '_blank');
+}
 </script>
 {% endblock %}

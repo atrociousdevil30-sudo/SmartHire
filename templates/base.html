@@ -139,8 +139,8 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navigation - Show for all authenticated users -->
-    {% if 'user_id' in session %}
+    <!-- Navigation - Show for all authenticated users except employee pages -->
+    {% if 'user_id' in session and not request.path.startswith('/employee/') %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <!-- User Info -->

@@ -104,6 +104,8 @@ class User(db.Model):
     hire_date = db.Column(db.Date, nullable=True)
     position = db.Column(db.String(100), nullable=True)
     manager_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    employee_id = db.Column(db.String(20), nullable=True)
+    exit_date = db.Column(db.Date, nullable=True)
     
     # Relationships
     manager = db.relationship('User', remote_side=[id], backref=db.backref('direct_reports', lazy=True))
@@ -570,6 +572,9 @@ def employee_dashboard():
     # Get the logged-in user
     user = User.query.get(session['user_id'])
     
+    # Get HR contact information
+    hr_contact = User.query.filter_by(role='hr').first()
+    
     # Generate employee data based on the logged-in user
     employee_data = {
         'name': user.full_name,
@@ -577,17 +582,17 @@ def employee_dashboard():
         'email': user.email,
         'phone': user.phone,
         'department': user.department or 'Not specified',
-        'position': 'Employee',  # You might want to add a position field to the User model
-        'hire_date': user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A',
-        'onboarding_progress': random.randint(30, 100),  # Sample progress
-        'tasks_completed': random.randint(5, 15),
-        'tasks_in_progress': random.randint(1, 5),
-        'tasks_upcoming': random.randint(1, 5),
-        'tasks_not_started': random.randint(1, 5),
-        'upcoming_events': [
-            {'title': 'Team Standup', 'time': '10:00 AM', 'type': 'meeting', 'location': 'Zoom'},
-            {'title': 'Code Review', 'time': '2:00 PM', 'type': 'review', 'location': 'GitHub'},
-            {'title': 'Training Session', 'time': '4:00 PM', 'type': 'training', 'location': 'Conference Room B'}
+        'position': user.position or 'Employee',
+        'hire_date': user.hire_date.strftime('%B %d, %Y') if user.hire_date else 'Not specified',
+        'employee_id': user.employee_id or f'EMP-{user.id:04d}',
+        'status': user.status or 'Active',
+        'manager': 'Sarah Johnson',  # This would come from manager relationship
+        'location': 'Main Office',
+        'work_schedule': '9:00 AM - 5:00 PM',
+        'team_members': [
+            {'name': 'John Smith', 'role': 'Senior Developer', 'status': 'online'},
+            {'name': 'Emily Chen', 'role': 'Product Designer', 'status': 'busy'},
+            {'name': 'Michael Brown', 'role': 'DevOps Engineer', 'status': 'offline'}
         ],
         'pending_tasks': [
             {'id': 1, 'title': 'Submit timesheet', 'due': 'Today', 'priority': 'high'},
@@ -610,6 +615,7 @@ def employee_dashboard():
     return render_template('employee_dashboard.html', 
                          employee=employee_data, 
                          user=user,
+                         hr_contact=hr_contact,
                          current_user=user,  # For compatibility with existing templates
                          title=f'{user.full_name}\\s Dashboard')
 
@@ -1006,25 +1012,14 @@ def exit_interview():
         reason = request.form.get('reason')
         feedback = request.form.get('feedback', '')
         
-        # Simple sentiment analysis
-        positive_words = ['good', 'great', 'excellent', 'happy', 'satisfied']
-        negative_words = ['bad', 'poor', 'stress', 'unhappy', 'dissatisfied']
-        
-        sentiment = 'Neutral'
-        feedback_lower = feedback.lower()
-        if any(word in feedback_lower for word in positive_words):
-            sentiment = 'Positive'
-        elif any(word in feedback_lower for word in negative_words):
-            sentiment = 'Negative'
-        
         try:
+            # Create new exit feedback entry
             exit_feedback = ExitFeedback(
                 name=name,
                 reason=reason,
-                feedback=feedback,
-                sentiment=sentiment,
-                user_id=employee.id
+                feedback=feedback
             )
+            
             db.session.add(exit_feedback)
             db.session.commit()
             
@@ -1042,8 +1037,21 @@ def exit_interview():
                 'message': 'An error occurred while submitting your feedback. Please try again.'
             }), 500
     
-    # For GET request, render the template with employee data
-    return render_template('exit.html', employee=employee)
+    # For GET request, get exit feedback data
+    if session.get('role') == 'hr':
+        # HR can see all exit feedback
+        exit_feedbacks = ExitFeedback.query.order_by(ExitFeedback.created_at.desc()).limit(10).all()
+    else:
+        # Employees can only see their own feedback
+        exit_feedbacks = ExitFeedback.query.filter(
+            ExitFeedback.name.like(f"%{employee.full_name}%")
+        ).order_by(ExitFeedback.created_at.desc()).limit(10).all()
+    
+    # Get HR contact information
+    hr_contact = User.query.filter_by(role='hr').first()
+    
+    # Render the template with employee data, exit feedbacks, and HR contact
+    return render_template('exit.html', employee=employee, exit_feedbacks=exit_feedbacks, hr_contact=hr_contact)
 
 @app.route('/analytics')
 def analytics():
