@@ -107,6 +107,10 @@ class User(db.Model):
     employee_id = db.Column(db.String(20), nullable=True)
     exit_date = db.Column(db.Date, nullable=True)
     
+    # Password reset fields
+    reset_token = db.Column(db.String(255), nullable=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
+    
     # Relationships
     manager = db.relationship('User', remote_side=[id], backref=db.backref('direct_reports', lazy=True))
     onboarding_checklist = db.relationship('OnboardingChecklist', 
@@ -124,6 +128,24 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password, password)
+    
+    def generate_reset_token(self, expires_in=3600):
+        import secrets
+        token = secrets.token_urlsafe(32)
+        self.reset_token = token
+        self.reset_token_expires = datetime.utcnow() + timedelta(seconds=expires_in)
+        return token
+    
+    def verify_reset_token(self, token):
+        if self.reset_token != token:
+            return False
+        if datetime.utcnow() > self.reset_token_expires:
+            return False
+        return True
+    
+    def clear_reset_token(self):
+        self.reset_token = None
+        self.reset_token_expires = None
 
 
 class OnboardingTask(db.Model):
@@ -327,21 +349,30 @@ def login(role):
             remember = True if request.form.get('remember') else False
             
             if not username or not password:
-                flash('Please enter both username and password', 'danger')
+                flash('Please enter both username/email and password', 'danger')
                 return redirect(url_for('login', role=role))
             
             try:
-                # Find user by username and role (case-insensitive)
-                user = User.query.filter(
-                    db.func.lower(User.username) == username.lower(),
-                    User.role == role,
-                    User.is_active == True
-                ).first()
+                # Check if input is email or username
+                if '@' in username:
+                    # Login with email
+                    user = User.query.filter(
+                        db.func.lower(User.email) == username.lower(),
+                        User.role == role,
+                        User.is_active == True
+                    ).first()
+                else:
+                    # Login with username
+                    user = User.query.filter(
+                        db.func.lower(User.username) == username.lower(),
+                        User.role == role,
+                        User.is_active == True
+                    ).first()
                 
                 # Check if user exists and password is correct
                 if not user or not user.check_password(password):
-                    app.logger.warning(f'Failed login attempt for username: {username}')
-                    flash('Invalid username or password', 'danger')
+                    app.logger.warning(f'Failed login attempt for: {username}')
+                    flash('Invalid username/email or password', 'danger')
                     return redirect(url_for('login', role=role))
                 
                 # Update last login
@@ -375,6 +406,109 @@ def login(role):
         
     except Exception as e:
         app.logger.error(f'Unexpected error in login route: {str(e)}')
+        flash('An unexpected error occurred. Please try again later.', 'danger')
+        return redirect(url_for('select_role'))
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    try:
+        if request.method == 'POST':
+            email = request.form.get('email')
+            role = request.form.get('role')
+            
+            if not email or not role:
+                flash('Please provide both email and account type', 'danger')
+                return redirect(url_for('forgot_password'))
+            
+            # Validate role
+            valid_roles = ['hr', 'employee', 'candidate']
+            if role not in valid_roles:
+                flash('Invalid account type selected', 'danger')
+                return redirect(url_for('forgot_password'))
+            
+            try:
+                # Find user by email and role
+                user = User.query.filter(
+                    db.func.lower(User.email) == email.lower(),
+                    User.role == role,
+                    User.is_active == True
+                ).first()
+                
+                if user:
+                    # Generate reset token
+                    reset_token = user.generate_reset_token()
+                    db.session.commit()
+                    
+                    # In a real application, you would send an email with the reset link
+                    # For now, we'll redirect directly to the reset page with the token
+                    app.logger.info(f'Password reset token generated for user: {user.username} ({user.email})')
+                    flash(f'Password reset link generated. You will be redirected to reset your password.', 'success')
+                    return redirect(url_for('reset_password', token=reset_token))
+                else:
+                    # Don't reveal that the user doesn't exist for security
+                    flash('If an account with that email exists, you would receive a reset link.', 'info')
+                    return redirect(url_for('select_role'))
+                
+            except Exception as e:
+                app.logger.error(f'Error during password reset: {str(e)}')
+                flash('An error occurred. Please try again later.', 'danger')
+                return redirect(url_for('forgot_password'))
+        
+        # For GET request, show forgot password form
+        return render_template('forgot_password.html')
+        
+    except Exception as e:
+        app.logger.error(f'Unexpected error in forgot_password route: {str(e)}')
+        flash('An unexpected error occurred. Please try again later.', 'danger')
+        return redirect(url_for('select_role'))
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        # Find user with valid reset token
+        user = User.query.filter_by(reset_token=token).first()
+        
+        if not user or not user.verify_reset_token(token):
+            flash('Invalid or expired reset link. Please request a new password reset.', 'danger')
+            return redirect(url_for('forgot_password'))
+        
+        if request.method == 'POST':
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+            
+            if not password or not confirm_password:
+                flash('Please provide both password fields', 'danger')
+                return redirect(url_for('reset_password', token=token))
+            
+            if password != confirm_password:
+                flash('Passwords do not match', 'danger')
+                return redirect(url_for('reset_password', token=token))
+            
+            if len(password) < 8:
+                flash('Password must be at least 8 characters long', 'danger')
+                return redirect(url_for('reset_password', token=token))
+            
+            try:
+                # Update password and clear reset token
+                user.set_password(password)
+                user.clear_reset_token()
+                db.session.commit()
+                
+                app.logger.info(f'Password reset successfully for user: {user.username}')
+                flash('Your password has been reset successfully. You can now login with your new password.', 'success')
+                return redirect(url_for('select_role'))
+                
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'Error during password reset: {str(e)}')
+                flash('An error occurred. Please try again.', 'danger')
+                return redirect(url_for('reset_password', token=token))
+        
+        # For GET request, show reset password form
+        return render_template('reset_password.html', token=token)
+        
+    except Exception as e:
+        app.logger.error(f'Unexpected error in reset_password route: {str(e)}')
         flash('An unexpected error occurred. Please try again later.', 'danger')
         return redirect(url_for('select_role'))
 

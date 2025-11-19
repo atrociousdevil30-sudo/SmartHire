@@ -23,12 +23,12 @@
                     
                     <form method="POST" action="{{ url_for('login', role=role.lower()) }}" class="needs-validation" novalidate>
                         <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
+                            <label for="username" class="form-label">Username or Email</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                <input type="text" class="form-control" id="username" name="username" autocomplete="username" required>
+                                <input type="text" class="form-control" id="username" name="username" autocomplete="username" placeholder="Enter username or email" required>
                                 <div class="invalid-feedback">
-                                    Please enter your username.
+                                    Please enter your username or email.
                                 </div>
                             </div>
                         </div>
@@ -48,7 +48,7 @@
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="remember" name="remember" autocomplete="on">
                             <label class="form-check-label" for="remember">Remember me</label>
-                            <a href="#" class="float-end text-decoration-none">Forgot password?</a>
+                            <a href="{{ url_for('forgot_password') }}" class="float-end text-decoration-none">Forgot password?</a>
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">
