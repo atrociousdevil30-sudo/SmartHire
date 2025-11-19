@@ -292,7 +292,7 @@
                         </div>
                         <div class="ms-auto">
                             <button class="btn btn-outline-light btn-sm" onclick="messageHR()">
-                                <i class="fas fa-envelope me-1"></i> Message
+                                <i class="fab fa-whatsapp me-1"></i> WhatsApp
                             </button>
                         </div>
                     </div>
@@ -506,13 +506,34 @@ function saveChecklist() {
 }
 
 function messageHR() {
-    // Get HR email from the template
-    const hrEmail = '{{ hr_contact.email if hr_contact else "hr@company.com" }}';
-    const subject = encodeURIComponent('Exit Process Inquiry');
-    const body = encodeURIComponent('Hi,\n\nI have a question regarding my exit process.\n\nThank you.');
+    // Get HR phone number from the template
+    const hrPhone = '{{ hr_contact.phone if hr_contact else "" }}';
     
-    // Open default email client
-    window.location.href = `mailto:${hrEmail}?subject=${subject}&body=${body}`;
+    if (!hrPhone) {
+        alert('HR contact phone number is not available');
+        return;
+    }
+    
+    // Format phone number (remove any spaces, dashes, parentheses)
+    const cleanPhone = hrPhone.replace(/[\s\-()]/g, '');
+    
+    // Ensure phone number starts with country code (add +91 for India if not present)
+    let formattedPhone = cleanPhone;
+    if (!cleanPhone.startsWith('+')) {
+        if (cleanPhone.length === 10) {
+            formattedPhone = '+91' + cleanPhone; // India country code
+        } else if (!cleanPhone.startsWith('91')) {
+            formattedPhone = '+91' + cleanPhone;
+        } else {
+            formattedPhone = '+' + cleanPhone;
+        }
+    }
+    
+    // Create WhatsApp message
+    const message = encodeURIComponent('Hi,\n\nI have a question regarding my exit process.\n\nThank you.');
+    
+    // Open WhatsApp chat
+    window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
 }
 
 // ... existing code ...
