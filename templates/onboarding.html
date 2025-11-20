@@ -39,10 +39,10 @@
                             </div>
                             <div class="d-flex justify-content-between">
                                 <small class="text-muted">{{ "%.0f"|format(checklist.get_progress()) }}% Complete</small>
-                                {% set overdue_count = checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length %}
-                                {% if overdue_count > 0 %}
+                                {% set pending_count = checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length %}
+                                {% if pending_count > 0 %}
                                 <small class="text-warning">
-                                    <i class="fas fa-exclamation-triangle me-1"></i> {{ overdue_count }} task{{ 's' if overdue_count > 1 else '' }} pending
+                                    <i class="fas fa-exclamation-triangle me-1"></i> {{ pending_count }} task{{ 's' if pending_count > 1 else '' }} pending
                                 </small>
                                 {% endif %}
                             </div>
@@ -62,7 +62,7 @@
                                     <small class="text-muted">Pending</small>
                                 </div>
                                 <div>
-                                    <h6 class="text-info mb-1">{{ (now() - checklist.created_at).days }}</h6>
+                                    <h6 class="text-info mb-1">{{ (now() - checklist.created_at).days if checklist.created_at else 0 }}</h6>
                                     <small class="text-muted">Days Since Start</small>
                                 </div>
                             </div>
