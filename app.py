@@ -1954,6 +1954,57 @@ def interview():
     
     return render_template('interview.html')
 
+@app.route('/api/interviews/<int:interview_id>', methods=['GET'])
+@login_required('hr')
+def get_interview_details(interview_id):
+    """Get full details for a specific interview and its candidate for review."""
+    try:
+        interview = Interview.query.get_or_404(interview_id)
+        candidate = interview.candidate
+
+        if not candidate:
+            return jsonify({
+                'status': 'error',
+                'message': 'Candidate not found for this interview'
+            }), 404
+
+        score = float(candidate.score) if candidate.score is not None else None
+
+        if score is not None:
+            if score >= 7.5:
+                recommendation = 'Proceed to Next Round'
+            elif score >= 6.0:
+                recommendation = 'Hold for Review'
+            else:
+                recommendation = 'Reject'
+        else:
+            recommendation = 'Not Scored'
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'interview_id': interview.id,
+                'created_at': interview.created_at.strftime('%Y-%m-%d %H:%M:%S') if interview.created_at else None,
+                'summary': interview.summary,
+                'responses': interview.responses or {},
+                'candidate': {
+                    'id': candidate.id,
+                    'name': candidate.name,
+                    'job_desc': candidate.job_desc,
+                    'resume_text': candidate.resume_text,
+                    'score': score,
+                    'recommendation': recommendation,
+                    'created_at': candidate.created_at.strftime('%Y-%m-%d %H:%M:%S') if candidate.created_at else None
+                }
+            }
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching interview details: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch interview details'
+        }), 500
+
 @app.route('/exit', methods=['GET', 'POST'])
 @login_required(['employee', 'hr'])  # Allow both employees and HR to access
 def exit_interview():
@@ -2136,26 +2187,73 @@ def extract_skills(text):
     return found_skills[:15]  # Return max 15 skills to avoid clutter
 
 def extract_experience(text):
-    # Look for job experience patterns
+    # Look for job experience patterns and return concise highlights
     experience = []
-    
+
     # Look for date patterns like 2020 - 2022 or 01/2020 - Present
     date_patterns = [
         r'(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4})\s*[-–]\s*(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}|Present\b)',
         r'(\d{1,2}/\d{4})\s*[-–]\s*(\d{1,2}/\d{4}|Present\b)',
         r'(\d{4})\s*[-–]\s*(\d{4}|Present\b)'
     ]
-    
+
+    # Patterns for lines we want to ignore (personal/contact details, links, headers)
+    ignore_patterns = [
+        r'@',                          # emails
+        r'https?://',                  # URLs
+        r'linkedin\.com',
+        r'github\.com',
+        r'phone',
+        r'contact',
+        r'\baddress\b',
+        r'\bsummary\b',
+        r'\bobjective\b',
+        r'\bskills?\b',
+        r'\beducation\b',
+        r'\bprojects?\b',
+    ]
+
+    def is_personal_or_header(line: str) -> bool:
+        lower = line.lower()
+        if len(lower) < 3:
+            return True
+        for pat in ignore_patterns:
+            if re.search(pat, lower):
+                return True
+        # Lines that are mostly punctuation or links
+        if len(re.sub(r'[^a-zA-Z]', '', lower)) < 3:
+            return True
+        return False
+
+    # Collect contextual snippets around date ranges
     for pattern in date_patterns:
         matches = list(re.finditer(pattern, text, re.IGNORECASE))
         for i, match in enumerate(matches):
-            if i < 3:  # Limit to first 3 experiences
-                start = max(0, match.start() - 150)
-                end = min(len(text), match.end() + 150)
-                context = text[start:end].strip()
-                experience.append(context)
-    
-    return experience if experience else ["Experience not found in standard format"]
+            if i >= 3:
+                break  # Limit to first 3 experiences per pattern
+            start = max(0, match.start() - 200)
+            end = min(len(text), match.end() + 200)
+            context = text[start:end]
+            # Split context into lines and filter
+            for raw_line in context.split('\n'):
+                line = raw_line.strip()
+                if not line:
+                    continue
+                if is_personal_or_header(line):
+                    continue
+                # Prefer lines that look like responsibilities/roles
+                if any(kw in line.lower() for kw in ['developer', 'engineer', 'intern', 'manager', 'lead', 'built', 'developed', 'implemented', 'designed']):
+                    experience.append(line)
+
+    # Deduplicate while preserving order
+    seen = set()
+    unique_experience = []
+    for line in experience:
+        if line not in seen:
+            seen.add(line)
+            unique_experience.append(line)
+
+    return unique_experience[:5] if unique_experience else ["Experience not found in standard format"]
 
 def extract_education(text):
     education = []

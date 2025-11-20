@@ -317,6 +317,83 @@
                 analysisData = null;
             });
         }
+
+        // Handle "Review Candidate Details" button
+        const reviewBtn = document.getElementById('reviewBtn');
+        if (reviewBtn) {
+            reviewBtn.addEventListener('click', function() {
+                if (!analysisData) {
+                    alert('Please analyze a resume first to review candidate details.');
+                    return;
+                }
+
+                // Build candidate details from analysis data
+                const details = analysisData;
+
+                const modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content bg-dark text-light border-secondary">
+                            <div class="modal-header border-secondary">
+                                <h5 class="modal-title">Candidate Details Review</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Basic Information</h6>
+                                        <p class="mb-1"><strong>Name:</strong> ${details.name || candidateName.value || 'N/A'}</p>
+                                        <p class="mb-1"><strong>Email:</strong> ${details.email || 'N/A'}</p>
+                                        <p class="mb-1"><strong>Phone:</strong> ${details.phone || 'N/A'}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Screening Summary</h6>
+                                        <p class="mb-1"><strong>ATS Match Score:</strong> ${details.ats_score != null ? details.ats_score + '%' : 'N/A'}</p>
+                                        <p class="mb-1"><strong>Qualified for Onboarding:</strong> ${details.pass_screening ? 'Yes' : 'No'}</p>
+                                    </div>
+                                </div>
+                                <hr class="border-secondary">
+                                <h6 class="text-primary">AI Summary</h6>
+                                <p class="small">${details.ai_summary || 'No AI summary available.'}</p>
+                                <hr class="border-secondary">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="text-primary">Key Skills</h6>
+                                        <ul class="small mb-0">
+                                            ${(details.skills || []).map(skill => `<li>${skill}</li>`).join('') || '<li>No skills extracted.</li>'}
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="text-primary">Education</h6>
+                                        <ul class="small mb-0">
+                                            ${(details.education || []).map(item => `<li>${item}</li>`).join('') || '<li>No education details extracted.</li>'}
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <h6 class="text-primary">Experience Highlights</h6>
+                                    <ul class="small mb-0">
+                                        ${(details.experience || []).map(item => `<li>${item}</li>`).join('') || '<li>No experience details extracted.</li>'}
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-secondary">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+                const modalInstance = new bootstrap.Modal(modal);
+                modalInstance.show();
+
+                modal.addEventListener('hidden.bs.modal', function() {
+                    document.body.removeChild(modal);
+                });
+            });
+        }
     });
 </script>
 {% endblock %}

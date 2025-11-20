@@ -565,27 +565,55 @@ function viewInterviewSummary(interviewId) {
     const modalInstance = new bootstrap.Modal(modal);
     modalInstance.show();
     
-    // Fetch interview details (simulate API call)
-    setTimeout(() => {
-        const modalBody = modal.querySelector('.modal-body');
-        modalBody.innerHTML = `
-            <div class="row">
-                <div class="col-md-6">
-                    <h6 class="text-primary">Candidate Information</h6>
-                    <p class="text-light"><strong>Interview ID:</strong> ${interviewId}</p>
-                    <p class="text-light"><strong>Status:</strong> <span class="badge bg-success">Completed</span></p>
+    // Fetch interview details from backend
+    fetch(`/api/interviews/${interviewId}`)
+        .then(response => response.json())
+        .then(data => {
+            const modalBody = modal.querySelector('.modal-body');
+
+            if (!data || data.status !== 'success') {
+                modalBody.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        Failed to load interview details. ${data && data.message ? data.message : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            const interview = data.data;
+            const candidate = interview.candidate || {};
+            const score = candidate.score !== null && candidate.score !== undefined ? candidate.score : 'N/A';
+            const recommendation = candidate.recommendation || 'N/A';
+
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Candidate Information</h6>
+                        <p class="text-light"><strong>Name:</strong> ${candidate.name || 'Unknown'}</p>
+                        <p class="text-light"><strong>Role:</strong> ${candidate.job_desc || 'N/A'}</p>
+                        <p class="text-light"><strong>Interview ID:</strong> ${interview.interview_id}</p>
+                        <p class="text-light"><strong>Interview Date:</strong> ${interview.created_at || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Performance Metrics</h6>
+                        <p class="text-light"><strong>Overall Score:</strong> ${score !== 'N/A' ? score + '/10' : 'N/A'}</p>
+                        <p class="text-light"><strong>Recommendation:</strong> ${recommendation}</p>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <h6 class="text-primary">Performance Metrics</h6>
-                    <p class="text-light"><strong>Overall Score:</strong> 8.5/10</p>
-                    <p class="text-light"><strong>Recommendation:</strong> Proceed to Next Round</p>
+                <hr class="border-secondary">
+                <h6 class="text-primary">AI Analysis Summary</h6>
+                <p class="text-light">${interview.summary || 'No summary available.'}</p>
+            `;
+        })
+        .catch(error => {
+            const modalBody = modal.querySelector('.modal-body');
+            modalBody.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    An error occurred while loading interview details.
                 </div>
-            </div>
-            <hr class="border-secondary">
-            <h6 class="text-primary">AI Analysis Summary</h6>
-            <p class="text-light">The candidate demonstrated strong technical knowledge and excellent communication skills. Responses were well-structured and showed deep understanding of the subject matter.</p>
-        `;
-    }, 1000);
+            `;
+            console.error('Error fetching interview details:', error);
+        });
     
     // Clean up modal when closed
     modal.addEventListener('hidden.bs.modal', () => {
