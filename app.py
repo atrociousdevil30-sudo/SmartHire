@@ -425,10 +425,13 @@ class Message(db.Model):
     replies = db.relationship('Message', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
 
 
-# Make timedelta available in templates
+# Make timedelta and datetime available in templates
 @app.context_processor
 def inject_datetime():
-    return {'timedelta': timedelta}
+    return {
+        'timedelta': timedelta,
+        'now': datetime.utcnow
+    }
 
 # Create database tables
 with app.app_context():
@@ -1873,8 +1876,15 @@ def onboarding():
     # Check if employee_id is provided in URL parameters
     employee_id = request.args.get('employee_id')
     if employee_id:
-        # Redirect to view employee's onboarding checklist
-        return redirect(url_for('view_employee', employee_id=employee_id))
+        # Get employee and their onboarding checklist
+        employee = User.query.get_or_404(employee_id)
+        checklist = OnboardingChecklist.query.filter_by(employee_id=employee_id).first()
+        
+        # Render onboarding template with employee's specific data
+        return render_template('onboarding.html', 
+                             selected_employee=employee,
+                             checklist=checklist,
+                             sample_candidates=[])
     
     candidates = Candidate.query.order_by(Candidate.created_at.desc()).all()
     selected_candidate = None
@@ -3593,6 +3603,34 @@ def delete_onboarding_task(task_id):
         return jsonify({
             'status': 'error',
             'message': 'Failed to delete task'
+        }), 500
+
+@app.route('/api/onboarding/tasks/<int:task_id>/toggle', methods=['PUT'])
+@login_required('hr')
+def toggle_onboarding_task(task_id):
+    """Toggle onboarding task completion status"""
+    try:
+        task = OnboardingTask.query.get_or_404(task_id)
+        data = request.get_json()
+        
+        task.is_completed = data.get('completed', False)
+        if task.is_completed:
+            task.completed_at = datetime.utcnow()
+        else:
+            task.completed_at = None
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Task updated successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error toggling task: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to update task'
         }), 500
 
 @app.route('/api/onboarding/checklist/<int:checklist_id>/tasks', methods=['PUT'])
