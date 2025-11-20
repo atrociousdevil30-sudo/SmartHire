@@ -1870,6 +1870,12 @@ def get_candidates_list():
 @app.route('/onboarding', methods=['GET', 'POST'])
 @login_required('hr')
 def onboarding():
+    # Check if employee_id is provided in URL parameters
+    employee_id = request.args.get('employee_id')
+    if employee_id:
+        # Redirect to view employee's onboarding checklist
+        return redirect(url_for('view_employee', employee_id=employee_id))
+    
     candidates = Candidate.query.order_by(Candidate.created_at.desc()).all()
     selected_candidate = None
     selected_candidate_id = request.args.get('candidate_id')

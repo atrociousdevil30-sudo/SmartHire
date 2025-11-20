@@ -137,7 +137,7 @@
                                         </li>
                                         {% if employee.status == 'Onboarding' %}
                                         <li>
-                                            <a class="dropdown-item" href="#">
+                                            <a class="dropdown-item" href="{{ url_for('onboarding', employee_id=employee.id) }}">
                                                 <i class="fas fa-clipboard-check me-2"></i> View Onboarding
                                             </a>
                                         </li>
