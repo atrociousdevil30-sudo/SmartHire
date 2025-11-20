@@ -1007,8 +1007,8 @@ def list_employees():
     department_filter = request.args.get('department', '')
     status_filter = request.args.get('status', '')
     
-    # Build query
-    query = User.query.filter_by(role='employee')
+    # Build query - Only show employees, exclude HR users
+    query = User.query.filter(User.role == 'employee')
     
     # Apply filters
     if search:
@@ -1028,7 +1028,7 @@ def list_employees():
     
     employees = query.order_by(User.created_at.desc()).all()
     
-    # Get unique departments for filter dropdown
+    # Get unique departments for filter dropdown - only from employees, not HR
     departments = db.session.query(User.department).filter(
         User.role == 'employee',
         User.department.isnot(None)
@@ -1048,10 +1048,10 @@ def hr_dashboard():
     # Get the logged-in user
     user = User.query.get(session['user_id'])
     
-    # Get real counts from database
+    # Get real counts from database - only count employees, not HR
     total_employees = User.query.filter_by(role='employee').count()
-    onboarding_count = User.query.filter_by(status='Onboarding').count()
-    active_count = User.query.filter_by(status='Active').count()
+    onboarding_count = User.query.filter(User.role == 'employee', User.status == 'Onboarding').count()
+    active_count = User.query.filter(User.role == 'employee', User.status == 'Active').count()
     
     # Get recent AI interview results from database
     recent_interviews = Interview.query.order_by(Interview.created_at.desc()).limit(10).all()
@@ -1166,7 +1166,10 @@ def employee_dashboard():
             {'id': 3, 'title': 'Update project documentation', 'due': 'Next week', 'priority': 'low'}
         ],
         'support_team': [
-            {'name': 'HR Department', 'role': 'HR Team', 'email': 'hr@company.com', 'phone': '+1 (555) 123-4567'},
+            {'name': hr_contact.full_name if hr_contact else 'HR Department', 
+             'role': 'HR Team', 
+             'email': hr_contact.email if hr_contact else 'hr@company.com', 
+             'phone': hr_contact.phone if hr_contact else '+1 (555) 123-4567'},
             {'name': 'IT Support', 'role': 'Technical Support', 'email': 'support@company.com', 'phone': '+1 (555) 987-6543'}
         ],
         'resources': [
@@ -2068,8 +2071,13 @@ def exit_interview():
             ExitFeedback.name.like(f"%{employee.full_name}%")
         ).order_by(ExitFeedback.created_at.desc()).limit(10).all()
     
-    # Get HR contact information
-    hr_contact = User.query.filter_by(role='hr').first()
+    # Get HR contact information - use current user if HR, otherwise find an HR user
+    if session.get('role') == 'hr':
+        hr_contact = User.query.get(session['user_id'])
+    else:
+        hr_contact = User.query.filter_by(role='hr', is_active=True).first()
+        if not hr_contact:
+            hr_contact = User.query.filter_by(role='hr').first()
     
     # Render the template with employee data, exit feedbacks, and HR contact
     return render_template('exit.html', employee=employee, exit_feedbacks=exit_feedbacks, hr_contact=hr_contact)

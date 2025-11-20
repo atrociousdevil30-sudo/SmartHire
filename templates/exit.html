@@ -163,8 +163,10 @@
                 </div>
             </div>
         </div>
+    </div>
         
-        <!-- Sidebar -->
+    <!-- Sidebar -->
+    <div class="row">
         <div class="col-lg-4">
             <!-- Employee Details -->
             <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
@@ -174,68 +176,78 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% if employee %}
+                    {% set offboarding_employee = None %}
+                    {% if session.get('role') == 'employee' and employee and employee.status == 'Offboarding' %}
+                        {% set offboarding_employee = employee %}
+                    {% elif session.get('role') == 'hr' %}
+                        {# HR can see any offboarding employee - for demo, we'll check if current employee is offboarding #}
+                        {% if employee and employee.status == 'Offboarding' %}
+                            {% set offboarding_employee = employee %}
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if offboarding_employee %}
                     <div class="text-center mb-4">
                         <div class="avatar-xxl mb-3">
                             <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle display-4">
-                                {{ employee.full_name|first|upper }}
+                                {{ offboarding_employee.full_name|first|upper }}
                             </div>
                         </div>
-                        <h4 class="mb-1 text-light">{{ employee.full_name }}</h4>
-                        <p class="text-muted">{{ employee.position or employee.role or 'Employee' }}</p>
+                        <h4 class="mb-1 text-light">{{ offboarding_employee.full_name }}</h4>
+                        <p class="text-muted">{{ offboarding_employee.position or offboarding_employee.role or 'Employee' }}</p>
                         <div class="d-flex justify-content-center gap-2 mb-3 flex-wrap">
-                            <span class="badge bg-primary">Employee ID: {{ employee.employee_id or 'EMP-' + employee.id|string }}</span>
-                            <span class="badge bg-secondary">Department: {{ employee.department or 'General' }}</span>
+                            <span class="badge bg-primary">Employee ID: {{ offboarding_employee.employee_id or 'EMP-' + offboarding_employee.id|string }}</span>
+                            <span class="badge bg-secondary">Department: {{ offboarding_employee.department or 'General' }}</span>
                         </div>
                     </div>
                     
                     <div class="border-top border-secondary pt-3">
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Email:</span>
-                            <a href="mailto:{{ employee.email }}" class="text-light">{{ employee.email }}</a>
+                            <a href="mailto:{{ offboarding_employee.email }}" class="text-light">{{ offboarding_employee.email }}</a>
                         </div>
-                        {% if employee.phone %}
+                        {% if offboarding_employee.phone %}
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Phone:</span>
-                            <a href="tel:{{ employee.phone }}" class="text-light">{{ employee.phone }}</a>
+                            <a href="tel:{{ offboarding_employee.phone }}" class="text-light">{{ offboarding_employee.phone }}</a>
                         </div>
                         {% endif %}
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Hire Date:</span>
-                            <span class="text-light">{{ employee.hire_date.strftime('%B %d, %Y') if employee.hire_date else employee.created_at.strftime('%B %d, %Y') if employee.created_at else 'N/A' }}</span>
+                            <span class="text-light">{{ offboarding_employee.hire_date.strftime('%B %d, %Y') if offboarding_employee.hire_date else offboarding_employee.created_at.strftime('%B %d, %Y') if offboarding_employee.created_at else 'N/A' }}</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Exit Date:</span>
-                            <span class="text-light">{{ employee.exit_date.strftime('%B %d, %Y') if employee.exit_date else 'Not set' }}</span>
+                            <span class="text-light">{{ offboarding_employee.exit_date.strftime('%B %d, %Y') if offboarding_employee.exit_date else 'Not set' }}</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Notice Period:</span>
-                            <span class="text-light">{{ ((employee.exit_date - now().date()).days if employee.exit_date and employee.exit_date > now().date() else 0) }} days</span>
+                            <span class="text-light">{{ ((offboarding_employee.exit_date - now().date()).days if offboarding_employee.exit_date and offboarding_employee.exit_date > now().date() else 0) }} days</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Exit Type:</span>
-                            <span class="text-light">{{ 'Resignation' if employee.status == 'Offboarding' else 'Voluntary' }}</span>
+                            <span class="text-light">{{ 'Resignation' if offboarding_employee.status == 'Offboarding' else 'Voluntary' }}</span>
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">Status:</span>
-                            <span class="badge bg-{{ 'warning' if employee.status == 'Offboarding' else 'success' if employee.status == 'Active' else 'secondary' }}">{{ employee.status or 'Active' }}</span>
+                            <span class="badge bg-{{ 'warning' if offboarding_employee.status == 'Offboarding' else 'success' if offboarding_employee.status == 'Active' else 'secondary' }}">{{ offboarding_employee.status or 'Active' }}</span>
                         </div>
                     </div>
                     {% else %}
                     <div class="text-center py-5">
                         <div class="mb-4">
-                            <i class="fas fa-user-check fa-3x text-muted" style="opacity: 0.5;"></i>
+                            <i class="fas fa-user-times fa-3x text-muted" style="opacity: 0.5;"></i>
                         </div>
-                        <h5 class="text-light mb-2">No Employee Exiting</h5>
-                        <p class="text-muted mb-0">No employee is currently exiting the organization.</p>
-                        <p class="text-muted small mt-2">Once an employee initiates their exit process, their details will appear here.</p>
+                        <h5 class="text-light mb-2">No Employee Offboarding</h5>
+                        <p class="text-muted mb-0">No employee is currently in the offboarding process.</p>
+                        <p class="text-muted small mt-2">When an employee begins their exit process, their details will appear here for tracking and management.</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
             
             <!-- Quick Actions -->
-            {% if employee and employee.exit_date %}
+            {% if offboarding_employee and session.get('role') == 'hr' %}
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-header bg-transparent border-0">
                     <h5 class="mb-0 text-light">
@@ -280,11 +292,11 @@
                             </div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1 text-light">{{ hr_contact.full_name if hr_contact else 'HR Department' }}</h6>
+                            <h6 class="mb-1 text-light">{{ hr_contact.full_name if hr_contact else 'Test HR' }}</h6>
                             <p class="text-muted mb-1">{{ hr_contact.position if hr_contact and hr_contact.position else 'HR Business Partner' }}</p>
                             <p class="text-muted mb-0">
-                                <a href="mailto:{{ hr_contact.email if hr_contact else 'hr@company.com' }}" class="text-light">
-                                    {{ hr_contact.email if hr_contact else 'hr@company.com' }}
+                                <a href="mailto:{{ hr_contact.email if hr_contact else 'testhr@company.com' }}" class="text-light">
+                                    {{ hr_contact.email if hr_contact else 'testhr@company.com' }}
                                 </a>
                             </p>
                         </div>
@@ -480,11 +492,11 @@ tasks.forEach(task => {
 
 // Checklist functionality
 function updateChecklistProgress() {
-    const checkboxes = document.querySelectorAll('#checklistProgress').closest('.card-body').querySelectorAll('input[type="checkbox"]');
-    const checked = document.querySelectorAll('#checklistProgress').closest('.card-body').querySelectorAll('input[type="checkbox"]:checked');
+    const checkboxes = document.querySelectorAll('.form-check-input');
+    const checked = document.querySelectorAll('.form-check-input:checked');
     const progress = checked.length;
     const total = checkboxes.length;
-    const percentage = (progress / total) * 100;
+    const percentage = total > 0 ? (progress / total) * 100 : 0;
     
     document.getElementById('checklistProgress').textContent = progress;
     document.getElementById('checklistProgressBar').style.width = percentage + '%';
@@ -496,9 +508,15 @@ document.addEventListener('DOMContentLoaded', function() {
     checkboxes.forEach(checkbox => {
         checkbox.addEventListener('change', updateChecklistProgress);
     });
+    
+    // Initialize progress on page load
+    updateChecklistProgress();
 });
 
 function saveChecklist() {
+    // Update progress before saving
+    updateChecklistProgress();
+    
     // Here you can add functionality to save the checklist state
     alert('Checklist progress saved!');
 }
