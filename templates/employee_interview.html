@@ -12,11 +12,11 @@
                     <h1 class="h3 mb-1">
                         <i class="fas fa-microphone me-2"></i>AI Interview Session
                     </h1>
-                    <p class="text-muted mb-0" id="interviewStatus">Preparing interview...</p>
+                    <p class="text-muted mb-0" id="interviewStatus">Ready to start interview</p>
                 </div>
                 <div>
-                    <span class="badge bg-primary me-2" id="timerBadge">00:00</span>
-                    <button class="btn btn-outline-danger" id="exitBtn" onclick="confirmExit()">
+                    <span class="badge bg-primary me-2" id="timerBadge" style="display:none;">00:00</span>
+                    <button class="btn btn-outline-danger" id="exitBtn" onclick="confirmExit()" style="display:none;">
                         <i class="fas fa-times me-1"></i>Exit Interview
                     </button>
                 </div>
@@ -25,7 +25,7 @@
     </div>
 
     <div class="row">
-        <!-- Left Column - Interview Instructions & Info -->
+        <!-- Left Column - Interview Info -->
         <div class="col-lg-3 mb-4">
             <!-- Interview Details Card -->
             <div class="card shadow mb-4">
@@ -56,41 +56,6 @@
                 </div>
             </div>
 
-            <!-- Instructions Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header bg-info text-white">
-                    <h6 class="mb-0"><i class="fas fa-list-check me-2"></i>Instructions</h6>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled small">
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <span>Speak clearly and naturally</span>
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <span>Take your time to think before answering</span>
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <span>Provide detailed and relevant answers</span>
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <span>Use examples from your experience</span>
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <span>You can skip questions if needed</span>
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <span>Maintain professional demeanor</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
             <!-- HR Instructions Card -->
             <div class="card shadow">
                 <div class="card-header bg-warning text-dark">
@@ -106,8 +71,54 @@
 
         <!-- Right Column - Interview Area -->
         <div class="col-lg-9">
+            <!-- Waiting for HR Container -->
+            <div id="waitingContainer" class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-hourglass-start text-primary mb-3" style="font-size: 3rem;"></i>
+                    <h4 class="mb-3">Ready to Start Interview?</h4>
+                    <p class="text-muted mb-4">Send a message to HR confirming you are ready. HR will start the interview and send you a join link.</p>
+                    
+                    <div class="mb-4">
+                        <textarea class="form-control mb-3" id="readyMessage" rows="3" placeholder="Optional message to HR (e.g., 'I am ready for the interview')"></textarea>
+                        <button class="btn btn-primary btn-lg" onclick="sendReadyMessage()">
+                            <i class="fas fa-paper-plane me-2"></i>I'm Ready - Notify HR
+                        </button>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Once you send this message, HR will be notified and will start your interview session.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Waiting for HR Response Container -->
+            <div id="waitingForHRContainer" class="card shadow d-none">
+                <div class="card-body text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h4 class="mb-3">Waiting for HR to Start Interview</h4>
+                    <p class="text-muted mb-4">Your message has been sent to HR. Please wait for them to start your interview session.</p>
+                    <p class="text-muted small">This page will automatically update when HR starts your interview.</p>
+                </div>
+            </div>
+
+            <!-- Interview Ready Container -->
+            <div id="interviewReadyContainer" class="card shadow d-none">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                    <h4 class="mb-3">Interview Ready!</h4>
+                    <p class="text-muted mb-4">HR has started your interview session. Click the button below to join.</p>
+                    
+                    <button class="btn btn-success btn-lg" onclick="joinInterview()">
+                        <i class="fas fa-video me-2"></i>Join Interview
+                    </button>
+                </div>
+            </div>
+
             <!-- Interview Container -->
-            <div class="card shadow">
+            <div id="interviewContainer" class="card shadow d-none">
                 <div class="card-body">
                     <!-- Progress Bar -->
                     <div class="mb-4">
@@ -281,17 +292,18 @@ let currentQuestion = 0;
 let totalQuestions = 5;
 let responses = [];
 let skippedQuestions = [];
-let startTime = new Date();
+let startTime = null;
 let interviewData = {};
+let interviewStatus = 'waiting'; // waiting, ready, in_progress, completed
 
-// Initialize interview
+// Initialize
 document.addEventListener('DOMContentLoaded', function() {
     loadInterviewData();
-    startTimer();
-    loadQuestion();
+    checkInterviewStatus();
+    setInterval(checkInterviewStatus, 3000); // Check every 3 seconds
 });
 
-// Load interview data from session/URL
+// Load interview data
 function loadInterviewData() {
     const urlParams = new URLSearchParams(window.location.search);
     interviewData = {
@@ -307,7 +319,62 @@ function loadInterviewData() {
     document.getElementById('difficultyLevel').textContent = interviewData.difficulty;
     document.getElementById('duration').textContent = interviewData.duration + ' minutes';
     document.getElementById('hrInstructions').innerHTML = `<p>${interviewData.instructions}</p>`;
-    document.getElementById('interviewStatus').textContent = 'Interview in progress';
+}
+
+// Send ready message to HR
+function sendReadyMessage() {
+    const message = document.getElementById('readyMessage').value || 'I am ready for the interview';
+    
+    fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            recipients: [], // Will be sent to all HR users
+            subject: 'Employee Ready for Interview',
+            content: message,
+            message_type: 'interview_ready',
+            priority: 'high'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            document.getElementById('waitingContainer').classList.add('d-none');
+            document.getElementById('waitingForHRContainer').classList.remove('d-none');
+            interviewStatus = 'waiting_for_hr';
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Check interview status
+function checkInterviewStatus() {
+    fetch('/api/employee/interview/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ready') {
+                interviewStatus = 'ready';
+                document.getElementById('waitingForHRContainer').classList.add('d-none');
+                document.getElementById('interviewReadyContainer').classList.remove('d-none');
+                document.getElementById('interviewStatus').textContent = 'Interview is ready - Click Join to start';
+            }
+        })
+        .catch(error => console.error('Error checking status:', error));
+}
+
+// Join interview
+function joinInterview() {
+    document.getElementById('interviewReadyContainer').classList.add('d-none');
+    document.getElementById('interviewContainer').classList.remove('d-none');
+    document.getElementById('timerBadge').style.display = 'inline-block';
+    document.getElementById('exitBtn').style.display = 'inline-block';
+    
+    startTime = new Date();
+    interviewStatus = 'in_progress';
+    startTimer();
+    loadQuestion();
 }
 
 // Load question
@@ -326,7 +393,6 @@ function loadQuestion() {
         </div>
     `;
 
-    // Simulate API call to get question
     setTimeout(() => {
         const questions = [
             "Tell me about your most challenging project and how you overcame the obstacles.",
@@ -368,14 +434,12 @@ function submitResponse() {
     document.getElementById('submitText').classList.add('d-none');
     document.getElementById('submitSpinner').classList.remove('d-none');
 
-    // Store response
     responses.push({
         question: currentQuestion + 1,
         answer: response,
         timestamp: new Date()
     });
 
-    // Simulate AI feedback
     setTimeout(() => {
         document.getElementById('responseContainer').classList.add('d-none');
         document.getElementById('feedbackContainer').classList.remove('d-none');
@@ -424,6 +488,8 @@ function completeInterview() {
     document.getElementById('skippedCount').textContent = skippedQuestions.length;
     document.getElementById('totalDuration').textContent = String(duration).padStart(2, '0') + ':00';
     document.getElementById('performanceScore').textContent = Math.round((responses.length / totalQuestions) * 100) + '%';
+    
+    interviewStatus = 'completed';
 }
 
 // Exit interview
@@ -472,12 +538,14 @@ function updateProgress() {
 // Timer
 function startTimer() {
     setInterval(() => {
-        const now = new Date();
-        const elapsed = Math.floor((now - startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        document.getElementById('timerBadge').textContent = 
-            String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+        if (startTime && interviewStatus === 'in_progress') {
+            const now = new Date();
+            const elapsed = Math.floor((now - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('timerBadge').textContent = 
+                String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+        }
     }, 1000);
 }
 </script>
