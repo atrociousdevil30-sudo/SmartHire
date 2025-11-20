@@ -122,6 +122,45 @@
     <div class="row">
         <!-- Employee/Candidate Selection Sidebar -->
         <div class="col-lg-4 mb-4 order-lg-2">
+            {% if selected_employee %}
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-user me-2"></i>Employee Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Name</label>
+                        <p class="text-light mb-0">{{ selected_employee.full_name }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Email</label>
+                        <p class="text-light mb-0">{{ selected_employee.email }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Position</label>
+                        <p class="text-light mb-0">{{ selected_employee.position or 'N/A' }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Department</label>
+                        <p class="text-light mb-0">{{ selected_employee.department or 'N/A' }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Status</label>
+                        <p class="text-light mb-0">
+                            <span class="badge bg-{{ 'success' if selected_employee.status == 'Active' else 'warning' if selected_employee.status == 'Onboarding' else 'secondary' }} bg-opacity-25 text-{{ 'success' if selected_employee.status == 'Active' else 'warning' if selected_employee.status == 'Onboarding' else 'secondary' }}">
+                                {{ selected_employee.status or 'N/A' }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Hire Date</label>
+                        <p class="text-light mb-0">{{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+            {% else %}
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-header bg-transparent border-secondary">
                     <h5 class="mb-0 text-light">
@@ -141,36 +180,8 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Selected Employee Details -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mt-4 d-none" id="selectedEmployeeCard">
-                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-user me-2"></i>Selected Employee
-                    </h5>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Name</label>
-                        <p class="text-light mb-0" id="selectedName">-</p>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Email</label>
-                        <p class="text-light mb-0" id="selectedEmail">-</p>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Position</label>
-                        <p class="text-light mb-0" id="selectedPosition">-</p>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Department</label>
-                        <p class="text-light mb-0" id="selectedDepartment">-</p>
-                    </div>
-                </div>
-            </div>
+            {% endif %}
+
         </div>
         
         <!-- Main Content -->
