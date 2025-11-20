@@ -1,32 +1,48 @@
-@app.route('/api/hr/interview/start/<int:session_id>', methods=['POST'])
-@login_required('hr')
-def hr_start_interview(session_id):
-    """HR starts interview for ready employee"""
+@app.route('/api/employee/interview/status')
+@login_required('employee')
+def get_interview_status():
+    """Check if HR has started the interview for this employee"""
     try:
-        session_record = InterviewSession.query.get_or_404(session_id)
+        user_id = session['user_id']
+        interview_start = Message.query.filter_by(
+            recipient_id=user_id,
+            message_type='interview_start',
+            status='unread'
+        ).first()
         
-        session_record.status = 'in_progress'
-        session_record.hr_id = session.get('user_id')
-        session_record.started_at = datetime.utcnow()
+        if interview_start:
+            interview_start.status = 'read'
+            db.session.commit()
+            return jsonify({'status': 'ready'})
         
-        db.session.commit()
+        return jsonify({'status': 'waiting'})
+    except Exception as e:
+        app.logger.error(f'Error checking interview status: {str(e)}')
+        return jsonify({'status': 'error'}), 500
+
+@app.route('/api/hr/start-interview/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def start_employee_interview(employee_id):
+    """HR starts interview for an employee"""
+    try:
+        employee = User.query.get_or_404(employee_id)
         
-        employee = session_record.employee
-        notification = Message(
-            subject='Interview Started - Join Now',
-            content='Your interview has started. Click the Join button to begin.',
-            sender_id=session.get('user_id'),
-            recipient_id=employee.id,
-            message_type='interview_join',
-            priority='high'
+        message = Message(
+            subject='Your Interview is Ready',
+            content='HR has started your interview session. Click Join to begin.',
+            sender_id=session['user_id'],
+            recipient_id=employee_id,
+            message_type='interview_start',
+            priority='high',
+            status='unread'
         )
-        db.session.add(notification)
+        
+        db.session.add(message)
         db.session.commit()
         
         return jsonify({
             'status': 'success',
-            'message': 'Interview started',
-            'session_id': session_record.id
+            'message': 'Interview started for employee'
         })
     except Exception as e:
         db.session.rollback()
@@ -34,35 +50,4 @@ def hr_start_interview(session_id):
         return jsonify({
             'status': 'error',
             'message': 'Failed to start interview'
-        }), 500
-
-@app.route('/api/hr/ready-employees', methods=['GET'])
-@login_required('hr')
-def get_ready_employees():
-    """Get list of employees ready for interview"""
-    try:
-        ready_sessions = InterviewSession.query.filter_by(
-            status='ready'
-        ).order_by(InterviewSession.created_at.desc()).all()
-        
-        employees = []
-        for sess in ready_sessions:
-            employees.append({
-                'session_id': sess.id,
-                'employee_id': sess.employee_id,
-                'employee_name': sess.employee.full_name,
-                'email': sess.employee.email,
-                'department': sess.employee.department,
-                'ready_since': sess.created_at.isoformat()
-            })
-        
-        return jsonify({
-            'status': 'success',
-            'employees': employees
-        })
-    except Exception as e:
-        app.logger.error(f'Error fetching ready employees: {str(e)}')
-        return jsonify({
-            'status': 'error',
-            'message': 'Failed to fetch ready employees'
         }), 500
