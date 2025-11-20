@@ -156,7 +156,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label text-muted small">Hire Date</label>
-                        <p class="text-light mb-0">{{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else 'N/A' }}</p>
+                        <p class="text-light mb-0">{{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else selected_employee.created_at.strftime('%B %d, %Y') if selected_employee.created_at else 'N/A' }}</p>
                     </div>
                 </div>
             </div>
