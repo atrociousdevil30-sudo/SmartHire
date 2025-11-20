@@ -285,9 +285,24 @@ class Candidate(db.Model):
 class Interview(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     candidate_id = db.Column(db.Integer, db.ForeignKey('candidate.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     responses = db.Column(db.JSON, nullable=True)
     summary = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+class InterviewSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    hr_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    status = db.Column(db.String(20), default='ready')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    employee = db.relationship('User', foreign_keys=[employee_id], backref='interview_sessions')
+    hr = db.relationship('User', foreign_keys=[hr_id])
 
 class ExitFeedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2083,6 +2098,50 @@ def employee_interview():
     """Employee AI interview session"""
     return render_template('employee_interview.html')
 
+@app.route('/api/employee/interview/ready', methods=['POST'])
+@login_required('employee')
+def employee_ready_for_interview():
+    """Employee sends ready message for interview"""
+    try:
+        user_id = session['user_id']
+        
+        session_record = InterviewSession(
+            employee_id=user_id,
+            status='ready',
+            created_at=datetime.utcnow()
+        )
+        
+        db.session.add(session_record)
+        db.session.commit()
+        
+        user = User.query.get(user_id)
+        hr_users = User.query.filter_by(role='hr').all()
+        for hr_user in hr_users:
+            notification = Message(
+                subject='Employee Ready for Interview',
+                content=f'{user.full_name} is ready for their interview session.',
+                sender_id=user_id,
+                recipient_id=hr_user.id,
+                message_type='interview_ready',
+                priority='high'
+            )
+            db.session.add(notification)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Ready message sent to HR',
+            'session_id': session_record.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error sending ready message: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to send ready message'
+        }), 500
+
 @app.route('/api/employee/interview/status', methods=['GET'])
 @login_required('employee')
 def check_interview_status():
@@ -2090,24 +2149,25 @@ def check_interview_status():
     try:
         user_id = session['user_id']
         
-        # Get the most recent interview for this user
-        recent_interview = Interview.query.filter_by(
-            candidate_id=None
-        ).order_by(Interview.created_at.desc()).first()
+        recent_session = InterviewSession.query.filter_by(
+            employee_id=user_id
+        ).order_by(InterviewSession.created_at.desc()).first()
         
-        if recent_interview:
+        if recent_session:
             return jsonify({
                 'status': 'success',
-                'interview_status': 'active',
-                'interview_id': recent_interview.id,
-                'created_at': recent_interview.created_at.isoformat(),
-                'has_summary': bool(recent_interview.summary)
+                'interview_status': recent_session.status,
+                'session_id': recent_session.id,
+                'created_at': recent_session.created_at.isoformat(),
+                'started_at': recent_session.started_at.isoformat() if recent_session.started_at else None,
+                'can_join': recent_session.status == 'in_progress'
             })
         else:
             return jsonify({
                 'status': 'success',
-                'interview_status': 'no_active_interview',
-                'interview_id': None
+                'interview_status': 'no_session',
+                'session_id': None,
+                'can_join': False
             })
     except Exception as e:
         app.logger.error(f'Error checking interview status: {str(e)}')
