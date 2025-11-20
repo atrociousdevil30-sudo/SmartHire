@@ -2083,6 +2083,39 @@ def employee_interview():
     """Employee AI interview session"""
     return render_template('employee_interview.html')
 
+@app.route('/api/employee/interview/status', methods=['GET'])
+@login_required('employee')
+def check_interview_status():
+    """Check interview session status"""
+    try:
+        user_id = session['user_id']
+        
+        # Get the most recent interview for this user
+        recent_interview = Interview.query.filter_by(
+            candidate_id=None
+        ).order_by(Interview.created_at.desc()).first()
+        
+        if recent_interview:
+            return jsonify({
+                'status': 'success',
+                'interview_status': 'active',
+                'interview_id': recent_interview.id,
+                'created_at': recent_interview.created_at.isoformat(),
+                'has_summary': bool(recent_interview.summary)
+            })
+        else:
+            return jsonify({
+                'status': 'success',
+                'interview_status': 'no_active_interview',
+                'interview_id': None
+            })
+    except Exception as e:
+        app.logger.error(f'Error checking interview status: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to check interview status'
+        }), 500
+
 @app.route('/api/employee/interview/submit', methods=['POST'])
 @login_required('employee')
 def submit_employee_interview():
@@ -4786,27 +4819,31 @@ def mark_notification_read(message_id):
 
 
 @app.route('/api/notifications/send', methods=['POST'])
-@login_required('hr')
+@login_required(['hr', 'employee'])
 def send_notification():
     """Send notification to users"""
     try:
         data = request.get_json()
         
-        recipients = data.get('recipients', [])  # Array of user IDs
+        recipients = data.get('recipients', [])
         subject = data.get('subject', '')
         content = data.get('content', '')
         message_type = data.get('message_type', 'notification')
         priority = data.get('priority', 'normal')
         
-        if not recipients or not subject or not content:
+        if not subject or not content:
             return jsonify({
                 'status': 'error',
-                'message': 'Recipients, subject, and content are required'
+                'message': 'Subject and content are required'
             }), 400
         
         sender_id = session['user_id']
-        sent_messages = []
         
+        if not recipients:
+            hr_users = User.query.filter_by(role='hr').all()
+            recipients = [u.id for u in hr_users]
+        
+        sent_messages = []
         for recipient_id in recipients:
             message = Message(
                 subject=subject,
@@ -5202,3 +5239,70 @@ atexit.register(lambda: scheduler.shutdown())
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+@app.route('/api/employee/interview/status', methods=['GET'])
+@login_required('employee')
+def check_interview_status():
+    try:
+        user_id = session['user_id']
+        interview_session = db.session.query(db.func.count(Message.id)).filter(
+            Message.recipient_id == user_id,
+            Message.message_type == 'interview_ready',
+            Message.status == 'unread'
+        ).scalar()
+        if interview_session > 0:
+            return jsonify({'status': 'ready', 'interview_status': 'ready'})
+        return jsonify({'status': 'success', 'interview_status': 'waiting'})
+    except Exception as e:
+        app.logger.error(f'Error checking interview status: {str(e)}')
+        return jsonify({'status': 'error', 'message': 'Failed to check interview status'}), 500
+
+@app.route('/api/hr/start-interview/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def start_interview(employee_id):
+    try:
+        data = request.get_json()
+        instructions = data.get('instructions', 'Conduct a professional interview')
+        employee = User.query.get_or_404(employee_id)
+        notification = Message(
+            subject='Interview Ready',
+            content='Your interview is ready to start.',
+            sender_id=session['user_id'],
+            recipient_id=employee_id,
+            message_type='interview_ready',
+            priority='high',
+            status='unread',
+            notification_data={'instructions': instructions}
+        )
+        db.session.add(notification)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': f'Interview started for {employee.full_name}'})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error starting interview: {str(e)}')
+        return jsonify({'status': 'error', 'message': 'Failed to start interview'}), 500
+
+@app.route('/api/employee/interview/questions', methods=['GET'])
+@login_required('employee')
+def get_interview_questions():
+    try:
+        user_id = session['user_id']
+        notification = Message.query.filter_by(
+            recipient_id=user_id,
+            message_type='interview_ready'
+        ).order_by(Message.sent_at.desc()).first()
+        if not notification:
+            return jsonify({'status': 'error', 'message': 'No active interview'}), 404
+        instructions = notification.notification_data.get('instructions', '') if notification.notification_data else ''
+        questions = [
+            "Tell me about yourself and your professional background.",
+            "What are your key strengths and how do they apply to this role?",
+            "Describe a challenging situation you faced and how you resolved it.",
+            "Where do you see yourself in 5 years?",
+            "Why are you interested in this position?"
+        ]
+        return jsonify({'status': 'success', 'questions': questions, 'instructions': instructions})
+    except Exception as e:
+        app.logger.error(f'Error getting interview questions: {str(e)}')
+        return jsonify({'status': 'error', 'message': 'Failed to get questions'}), 500

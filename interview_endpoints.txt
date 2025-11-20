@@ -1,0 +1,53 @@
+@app.route('/api/employee/interview/status')
+@login_required('employee')
+def get_interview_status():
+    """Check if HR has started the interview for this employee"""
+    try:
+        user_id = session['user_id']
+        interview_start = Message.query.filter_by(
+            recipient_id=user_id,
+            message_type='interview_start',
+            status='unread'
+        ).first()
+        
+        if interview_start:
+            interview_start.status = 'read'
+            db.session.commit()
+            return jsonify({'status': 'ready'})
+        
+        return jsonify({'status': 'waiting'})
+    except Exception as e:
+        app.logger.error(f'Error checking interview status: {str(e)}')
+        return jsonify({'status': 'error'}), 500
+
+@app.route('/api/hr/start-interview/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def start_employee_interview(employee_id):
+    """HR starts interview for an employee"""
+    try:
+        employee = User.query.get_or_404(employee_id)
+        
+        message = Message(
+            subject='Your Interview is Ready',
+            content='HR has started your interview session. Click Join to begin.',
+            sender_id=session['user_id'],
+            recipient_id=employee_id,
+            message_type='interview_start',
+            priority='high',
+            status='unread'
+        )
+        
+        db.session.add(message)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Interview started for employee'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error starting interview: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to start interview'
+        }), 500
