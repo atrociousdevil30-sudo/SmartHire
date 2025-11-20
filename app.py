@@ -425,6 +425,11 @@ class Message(db.Model):
     replies = db.relationship('Message', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
 
 
+# Make timedelta available in templates
+@app.context_processor
+def inject_datetime():
+    return {'timedelta': timedelta}
+
 # Create database tables
 with app.app_context():
     db.create_all()
