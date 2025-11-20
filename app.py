@@ -2082,37 +2082,7 @@ def exit_interview():
     # Render the template with employee data, exit feedbacks, and HR contact
     return render_template('exit.html', employee=employee, exit_feedbacks=exit_feedbacks, hr_contact=hr_contact)
 
-@app.route('/analytics')
-def analytics():
-    try:
-        # Here you would typically fetch real data from your database
-        # For now, we'll let the frontend handle mock data
-        return render_template('analytics.html')
-    except Exception as e:
-        app.logger.error(f"Error in analytics route: {str(e)}")
-        return render_template('error.html', error="Failed to load analytics"), 500
 
-
-@app.route('/analytics_data')
-def analytics_data():
-    # Mock data for analytics
-    candidates = Candidate.query.count()
-    avg_score = db.session.query(db.func.avg(Candidate.score)).scalar() or 0
-    
-    feedbacks = ExitFeedback.query.all()
-    positive_feedback = sum(1 for f in feedbacks if f.sentiment == 'Positive')
-    positive_percentage = (positive_feedback / len(feedbacks)) * 100 if feedbacks else 0
-    
-    return jsonify({
-        'candidates_processed': candidates,
-        'avg_resume_score': round(float(avg_score), 1),
-        'positive_feedback_percentage': round(positive_percentage, 1),
-        'sentiment_distribution': {
-            'Positive': positive_feedback,
-            'Neutral': sum(1 for f in feedbacks if f.sentiment == 'Neutral'),
-            'Negative': sum(1 for f in feedbacks if f.sentiment == 'Negative')
-        }
-    })
 
 @app.route('/support')
 @login_required('employee')

@@ -211,11 +211,7 @@
                             <i class="bi bi-emoji-smile"></i> Mood Analytics
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('analytics') %}active{% endif %}" href="{{ url_for('analytics') }}">
-                            <i class="bi bi-graph-up"></i> Analytics
-                        </a>
-                    </li>
+
                     {% if user and user.role == 'hr' %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('tasks_management') %}active{% endif %}" href="{{ url_for('tasks_management') }}">
@@ -259,13 +255,7 @@
     <footer class="mt-auto">
         <div class="container">
             <div class="footer-content">
-                <div class="footer-links">
-                    <a href="{{ url_for('index') }}"><i class="bi bi-house"></i> Home</a>
-                    <a href="{{ url_for('onboarding') }}"><i class="bi bi-person-plus"></i> Onboarding</a>
-                    <a href="{{ url_for('interview') }}"><i class="bi bi-chat-left-text"></i> AI Interview</a>
-                    <a href="{{ url_for('exit_interview') }}"><i class="bi bi-door-open"></i> Exit Interviews</a>
-                    <a href="{{ url_for('analytics') }}"><i class="bi bi-graph-up"></i> Analytics</a>
-                </div>
+
                 <div class="copyright">
                     &copy; 2025 SmartHire AI. All rights reserved.
                 </div>

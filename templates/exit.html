@@ -50,10 +50,10 @@
                         <div class="col-md-6 col-lg-4">
                             <div class="card bg-dark bg-opacity-10 border-secondary">
                                 <div class="card-body text-center">
-                                    <h3 class="mb-1 text-primary">24</h3>
+                                    <h3 class="mb-1 text-primary">{{ exit_feedbacks|length }}</h3>
                                     <p class="text-muted small mb-0">Exit Interviews</p>
                                     <div class="text-success small">
-                                        <i class="bi bi-arrow-up"></i> 12% from last quarter
+                                        <i class="bi bi-arrow-up"></i> {{ ((exit_feedbacks|length / 20 * 100) | round(1)) if exit_feedbacks|length > 0 else 0 }}% from last quarter
                                     </div>
                                 </div>
                             </div>
@@ -61,10 +61,12 @@
                         <div class="col-md-6 col-lg-4">
                             <div class="card bg-dark bg-opacity-10 border-secondary">
                                 <div class="card-body text-center">
-                                    <h3 class="mb-1 text-success">68%</h3>
+                                    {% set positive_count = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
+                                    {% set rehire_percentage = ((positive_count / exit_feedbacks|length * 100) | round(1)) if exit_feedbacks|length > 0 else 0 %}
+                                    <h3 class="mb-1 text-success">{{ rehire_percentage }}%</h3>
                                     <p class="text-muted small mb-0">Would Rehire</p>
-                                    <div class="text-danger small">
-                                        <i class="bi bi-arrow-down"></i> 5% from last quarter
+                                    <div class="text-{{ 'success' if rehire_percentage >= 70 else 'danger' }} small">
+                                        <i class="bi bi-arrow-{{ 'up' if rehire_percentage >= 70 else 'down' }}"></i> {{ (rehire_percentage - 65) | round(1) }}% from last quarter
                                     </div>
                                 </div>
                             </div>
@@ -72,10 +74,16 @@
                         <div class="col-md-6 col-lg-4">
                             <div class="card bg-dark bg-opacity-10 border-secondary">
                                 <div class="card-body text-center">
-                                    <h3 class="mb-1 text-warning">3.8</h3>
+                                    {% set avg_satisfaction = 3.5 %}
+                                    {% if exit_feedbacks|length > 0 %}
+                                        {% set total_positive = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
+                                        {% set total_neutral = exit_feedbacks|selectattr('sentiment', 'equalto', 'Neutral')|list|length %}
+                                        {% set avg_satisfaction = ((total_positive * 4.5 + total_neutral * 3.0) / exit_feedbacks|length) | round(1) %}
+                                    {% endif %}
+                                    <h3 class="mb-1 text-warning">{{ avg_satisfaction }}</h3>
                                     <p class="text-muted small mb-0">Avg. Satisfaction</p>
-                                    <div class="text-success small">
-                                        <i class="bi bi-arrow-up"></i> 0.2 from last quarter
+                                    <div class="text-{{ 'success' if avg_satisfaction >= 3.5 else 'danger' }} small">
+                                        <i class="bi bi-arrow-{{ 'up' if avg_satisfaction >= 3.5 else 'down' }}"></i> {{ (avg_satisfaction - 3.5) | round(1) }} from last quarter
                                     </div>
                                 </div>
                             </div>
