@@ -735,7 +735,7 @@ def forgot_password():
                 return redirect(url_for('forgot_password'))
             
             # Validate role
-            valid_roles = ['hr', 'employee', 'candidate']
+            valid_roles = ['hr', 'employee']
             if role not in valid_roles:
                 flash('Invalid account type selected', 'danger')
                 return redirect(url_for('forgot_password'))
