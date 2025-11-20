@@ -17,6 +17,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_from_directory
+import ai_services
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -828,10 +829,9 @@ def reset_password(token):
 @app.route('/register/<role>', methods=['GET', 'POST'])
 def register(role):
     try:
-        # Map role to valid roles to prevent injection
-        valid_roles = ['hr', 'employee']
-        if role not in valid_roles:
-            flash('Invalid role selected', 'danger')
+        # Only allow HR registration
+        if role != 'hr':
+            flash('Self-registration is only available for HR personnel', 'danger')
             return redirect(url_for('select_role'))
         
         if request.method == 'POST':
@@ -933,6 +933,27 @@ def add_employee():
             position = request.form.get('position')
             manager_id = request.form.get('manager_id')
             password = request.form.get('password')
+            hire_date_str = request.form.get('hire_date')
+            
+            # Validate hire date
+            if not hire_date_str:
+                flash('Hire date is required for onboarding new employees.', 'danger')
+                managers = User.query.filter_by(role='manager', is_active=True).all()
+                return render_template('hr/add_employee.html', managers=managers, 
+                                   form_data=request.form)
+            
+            try:
+                hire_date = datetime.strptime(hire_date_str, '%Y-%m-%d').date()
+                if hire_date > datetime.utcnow().date():
+                    flash('Hire date cannot be in the future.', 'danger')
+                    managers = User.query.filter_by(role='manager', is_active=True).all()
+                    return render_template('hr/add_employee.html', managers=managers, 
+                                       form_data=request.form)
+            except ValueError:
+                flash('Invalid hire date format. Please use YYYY-MM-DD.', 'danger')
+                managers = User.query.filter_by(role='manager', is_active=True).all()
+                return render_template('hr/add_employee.html', managers=managers, 
+                                   form_data=request.form)
 
             # Create new user with 'Onboarding' status
             user = User(
@@ -945,7 +966,8 @@ def add_employee():
                 position=position,
                 manager_id=manager_id if manager_id != 'None' else None,
                 status='Onboarding',
-                is_active=True
+                is_active=True,
+                hire_date=hire_date
             )
             user.set_password(password)
             
@@ -991,7 +1013,6 @@ def add_employee():
     # For GET request or if there was an error
     managers = User.query.filter_by(role='manager', is_active=True).all()
     return render_template('hr/add_employee.html', managers=managers)
-
 @app.route('/hr/employees/<int:employee_id>')
 @login_required('hr')
 def view_employee(employee_id):
@@ -4499,35 +4520,72 @@ def check_pending_access_revocation():
 def get_hr_notifications():
     """Get HR notifications count and recent high-priority notifications"""
     try:
-        # Get unread notifications for current HR user
-        unread_notifications = Message.query.filter_by(
-            recipient_id=session['user_id'],
-            status='unread',
-            message_type='hr_notification'
+        # Get unread notifications for current HR user, including mood_feedback
+        unread_notifications = db.session.query(
+            Message.id,
+            Message.subject,
+            Message.content,
+            Message.message_type,
+            Message.priority,
+            Message.status,
+            Message.sent_at,
+            User.full_name.label('sender_name'),
+            User.email.label('sender_email'),
+            User.role.label('sender_role')
+        ).join(
+            User, Message.sender_id == User.id
+        ).filter(
+            Message.recipient_id == session['user_id'],
+            Message.status == 'unread',
+            (
+                (Message.message_type == 'hr_notification') | 
+                (Message.message_type == 'interview_ready') |
+                (Message.message_type == 'mood_feedback')
+            ),
+            (
+                (Message.notification_data.is_(None)) | 
+                (Message.notification_data['notification_type'].as_string() != 'daily_summary') |
+                (Message.message_type == 'interview_ready')
+            )
         ).order_by(Message.sent_at.desc()).limit(10).all()
-        
+
         # Format notifications
         notifications = []
         for notif in unread_notifications:
-            notification_data = notif.notification_data or {}
-            notifications.append({
+            # Format message based on type
+            message = notif.content
+            if notif.message_type == 'mood_feedback':
+                try:
+                    # Parse mood data if it's in JSON format
+                    mood_data = json.loads(notif.content)
+                    message = f"{notif.sender_name} submitted mood feedback (Mood: {mood_data.get('mood_rating', 'N/A')}, Confidence: {mood_data.get('confidence_rating', 'N/A')})"
+                except:
+                    pass  # Use original message if parsing fails
+
+            notification_data = {
                 'id': notif.id,
-                'title': notif.subject,
-                'message': notif.content,
-                'type': notification_data.get('notification_type', 'info'),
-                'priority': notif.priority,
-                'created_at': notif.sent_at.isoformat(),
-                'action_url': notification_data.get('action_url'),
+                'title': notif.subject or 'Notification',
+                'message': message,
+                'type': notif.message_type,
+                'priority': notif.priority or 'normal',
+                'status': notif.status,
+                'created_at': notif.sent_at.isoformat() if notif.sent_at else datetime.utcnow().isoformat(),
+                'sender': {
+                    'name': notif.sender_name or 'System',
+                    'email': notif.sender_email or '',
+                    'role': notif.sender_role or 'system'
+                },
                 'is_read': notif.status == 'read'
-            })
+            }
+            notifications.append(notification_data)
         
         return jsonify({
             'status': 'success',
-            'count': len(unread_notifications),
+            'count': len(notifications),
             'notifications': notifications
         })
     except Exception as e:
-        app.logger.error(f'Error getting HR notifications: {str(e)}')
+        app.logger.error(f'Error getting HR notifications: {str(e)}', exc_info=True)
         return jsonify({
             'status': 'error',
             'message': 'Failed to get notifications'
@@ -4572,16 +4630,48 @@ def get_all_hr_notifications():
 
 @app.route('/api/hr/daily-summary', methods=['POST'])
 @login_required('hr')
-def generate_daily_hr_summary():
-    """Generate daily summary of pending work"""
+def remove_daily_summary_notifications():
+    """Remove all daily summary notifications from the database"""
     try:
-        # Check for overdue tasks
-        overdue_onboarding = check_overdue_onboarding_tasks()
+        # Delete notifications where notification_data contains 'daily_summary'
+        daily_summaries = Message.query.filter(
+            Message.notification_data.isnot(None),
+            Message.notification_data['notification_type'].as_string() == 'daily_summary'
+        ).delete(synchronize_session=False)
         
-        # Check for pending access revocation
+        db.session.commit()
+        app.logger.info(f"Removed {daily_summaries} daily summary notifications")
+        return daily_summaries
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error removing daily summary notifications: {str(e)}")
+        return 0
+
+@app.route('/api/hr/cleanup-daily-summaries', methods=['POST'])
+@login_required('hr')
+def cleanup_daily_summaries():
+    """Remove all daily summary notifications"""
+    try:
+        count = remove_daily_summary_notifications()
+        return jsonify({
+            'status': 'success',
+            'message': f'Removed {count} daily summary notifications'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to clean up daily summaries: {str(e)}'
+        }), 500
+
+@app.route('/api/hr/daily-summary', methods=['POST'])
+@login_required('hr')
+def generate_daily_hr_summary():
+    """Generate daily summary of pending work without creating notifications"""
+    try:
+        # Get summary data but don't create a notification
+        overdue_onboarding = check_overdue_onboarding_tasks()
         pending_access_revocation = check_pending_access_revocation()
         
-        # Get other stats
         stats = {
             'pending_tasks': Task.query.filter_by(status='pending').count(),
             'pending_documents': EmployeeDocument.query.filter_by(status='pending').count(),
@@ -4598,16 +4688,6 @@ def generate_daily_hr_summary():
             'stats': stats,
             'generated_at': datetime.utcnow().isoformat()
         }
-        
-        # Create daily summary notification
-        title = "Daily HR Summary"
-        message = f"Daily summary generated with {len(overdue_onboarding)} overdue tasks and {len(pending_access_revocation)} pending revocations."
-        create_hr_notification(
-            title=title,
-            message=message,
-            notification_type='daily_summary',
-            priority='normal'
-        )
         
         return jsonify({
             'status': 'success',
@@ -5237,26 +5317,74 @@ scheduler.start()
 import atexit
 atexit.register(lambda: scheduler.shutdown())
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# AI Feature Endpoints
 
-
-@app.route('/api/employee/interview/status', methods=['GET'])
-@login_required('employee')
-def check_interview_status():
+@app.route('/api/ai/generate-onboarding-checklist', methods=['POST'])
+@login_required('hr')
+def ai_generate_onboarding_checklist():
     try:
-        user_id = session['user_id']
-        interview_session = db.session.query(db.func.count(Message.id)).filter(
-            Message.recipient_id == user_id,
-            Message.message_type == 'interview_ready',
-            Message.status == 'unread'
-        ).scalar()
-        if interview_session > 0:
-            return jsonify({'status': 'ready', 'interview_status': 'ready'})
-        return jsonify({'status': 'success', 'interview_status': 'waiting'})
+        data = request.json
+        employee_name = data.get('employee_name')
+        position = data.get('position')
+        department = data.get('department')
+        
+        if not all([employee_name, position, department]):
+            return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
+            
+        checklist = ai_services.generate_onboarding_checklist(employee_name, position, department)
+        return jsonify({'status': 'success', 'checklist': checklist})
     except Exception as e:
-        app.logger.error(f'Error checking interview status: {str(e)}')
-        return jsonify({'status': 'error', 'message': 'Failed to check interview status'}), 500
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/ai/analyze-feedback', methods=['POST'])
+@login_required('hr')
+def ai_analyze_feedback():
+    try:
+        feedback_text = request.json.get('feedback')
+        if not feedback_text:
+            return jsonify({'status': 'error', 'message': 'No feedback provided'}), 400
+            
+        analysis = ai_services.analyze_employee_sentiment(feedback_text)
+        return jsonify({'status': 'success', 'analysis': analysis})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/ai/generate-interview-feedback', methods=['POST'])
+@login_required('hr')
+def ai_generate_interview_feedback():
+    try:
+        responses = request.json.get('responses')
+        if not responses:
+            return jsonify({'status': 'error', 'message': 'No interview responses provided'}), 400
+            
+        feedback = ai_services.generate_interview_feedback(responses)
+        return jsonify({'status': 'success', 'feedback': feedback})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/ai/generate-employee-report/<int:employee_id>', methods=['GET'])
+@login_required('hr')
+def ai_generate_employee_report(employee_id):
+    try:
+        employee = User.query.get_or_404(employee_id)
+        feedbacks = EmployeeFeedback.query.filter_by(user_id=employee_id).all()
+        
+        employee_data = {
+            'name': employee.full_name,
+            'position': employee.position,
+            'department': employee.department,
+            'feedbacks': [{
+                'date': f.created_at.strftime('%Y-%m-%d'),
+                'mood': f.mood_rating,
+                'confidence': f.confidence_rating,
+                'feedback': f.feedback
+            } for f in feedbacks]
+        }
+        
+        report = ai_services.generate_employee_report(employee_data)
+        return jsonify({'status': 'success', 'report': report})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/hr/start-interview/<int:employee_id>', methods=['POST'])
 @login_required('hr')
@@ -5306,3 +5434,6 @@ def get_interview_questions():
     except Exception as e:
         app.logger.error(f'Error getting interview questions: {str(e)}')
         return jsonify({'status': 'error', 'message': 'Failed to get questions'}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)

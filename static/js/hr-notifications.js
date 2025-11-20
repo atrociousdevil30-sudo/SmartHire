@@ -37,16 +37,21 @@ function checkHRNotifications() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            updateHRNotificationBadge(data.count);
+            // Filter out daily summary notifications but keep interview_ready notifications
+            const filteredNotifications = (data.notifications || []).filter(notification => {
+                return notification.message_type === 'interview_ready' || 
+                       !(notification.notification_data && notification.notification_data.notification_type === 'daily_summary');
+            });
+            
+            // Update badge with count of non-daily summary notifications
+            updateHRNotificationBadge(filteredNotifications.length);
             
             // Show toast for new high-priority notifications
-            if (data.notifications && data.notifications.length > 0) {
-                data.notifications.forEach(notification => {
-                    if (notification.priority === 'urgent' || notification.priority === 'high') {
-                        showHRNotificationToast(notification);
-                    }
-                });
-            }
+            filteredNotifications.forEach(notification => {
+                if (notification.priority === 'urgent' || notification.priority === 'high') {
+                    showHRNotificationToast(notification);
+                }
+            });
         }
     })
     .catch(error => {
@@ -187,26 +192,45 @@ function displayHRNotificationsModal(notifications) {
     } else {
         let html = '';
         notifications.forEach(notification => {
-            const icon = getHRNotificationIcon(notification.type);
-            const badgeClass = getHRBadgeClass(notification.priority);
-            const createdAt = new Date(notification.created_at).toLocaleString();
+            const icon = getHRNotificationIcon(notification.message_type || notification.type);
+            const badgeClass = getHRBadgeClass(notification.priority || 'normal');
+            const createdAt = new Date(notification.sent_at || notification.created_at).toLocaleString();
+            const title = notification.subject || notification.title || 'Notification';
+            const message = notification.content || notification.message || '';
+            const isInterviewReady = (notification.message_type || '').toLowerCase() === 'interview_ready';
+            
+            // Create action button based on notification type
+            let actionButton = '';
+            if (isInterviewReady) {
+                // For interview ready notifications, add a button to start the interview
+                const employeeName = notification.subject.replace('Employee Ready for Interview - ', '');
+                actionButton = `
+                    <button class="btn btn-sm btn-success" 
+                            onclick="openInterviewModal('${employeeName}'); 
+                                     document.getElementById('hrNotificationsModal').querySelector('.btn-close').click();">
+                        <i class="fas fa-video me-1"></i> Start Interview
+                    </button>
+                `;
+            } else if (notification.action_url) {
+                actionButton = `<a href="${notification.action_url}" class="btn btn-sm btn-outline-primary">View Details</a>`;
+            }
             
             html += `
-                <div class="card mb-2 ${notification.is_read ? 'opacity-75' : ''}">
+                <div class="card mb-2 ${notification.status === 'read' ? 'opacity-75' : 'border-primary'}">
                     <div class="card-body">
                         <div class="d-flex align-items-start">
                             <div class="me-3">
-                                <i class="${icon} fs-4 text-${getHRToastColor(notification.priority)}"></i>
+                                <i class="${icon} fs-4 text-${getHRToastColor(notification.priority || 'normal')}"></i>
                             </div>
                             <div class="flex-grow-1">
                                 <div class="d-flex justify-content-between align-items-start">
-                                    <h6 class="card-title mb-1">${notification.title}</h6>
-                                    <span class="badge ${badgeClass}">${notification.priority}</span>
+                                    <h6 class="card-title mb-1">${title}</h6>
+                                    <span class="badge ${badgeClass}">${notification.priority || 'normal'}</span>
                                 </div>
-                                <p class="card-text">${notification.message}</p>
+                                <p class="card-text">${message}</p>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <small class="text-muted">${createdAt}</small>
-                                    ${notification.action_url ? `<a href="${notification.action_url}" class="btn btn-sm btn-outline-primary">View Details</a>` : ''}
+                                    ${actionButton}
                                 </div>
                             </div>
                         </div>

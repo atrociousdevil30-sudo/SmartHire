@@ -86,6 +86,12 @@
                                                 {% endfor %}
                                             </select>
                                         </div>
+                                        <div class="mb-3">
+                                            <label for="hire_date" class="form-label text-light">Hire Date <span class="text-danger">*</span></label>
+                                            <input type="date" class="form-control bg-dark text-light border-secondary" id="hire_date" name="hire_date" required 
+                                                   value="{{ now.strftime('%Y-%m-%d') }}">
+                                            <small class="text-muted">The date when the employee officially starts working</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -96,8 +102,26 @@
                             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                                 <div>
                                     <h5 class="text-light mb-0">
-                                        <i class="fas fa-clipboard-check me-2"></i> Customize Onboarding Checklist
+                                        <i class="fas fa-clipboard-check me-2"></i> Onboarding Checklist
                                     </h5>
+                                </div>
+                                <div>
+                                    <button type="button" id="generateChecklistBtn" class="btn btn-sm btn-outline-info me-2">
+                                        <i class="fas fa-robot me-1"></i> Generate with AI
+                                    </button>
+                                    <button type="button" id="addTaskBtn" class="btn btn-sm btn-outline-light">
+                                        <i class="fas fa-plus me-1"></i> Add Task
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info d-flex align-items-center mb-3" id="aiStatus" style="display: none;">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <span id="aiStatusText">Generating checklist with AI...</span>
+                                </div>
+                                <div id="checklistTasks">
                                     <p class="text-muted small mb-0">Add, remove, or modify onboarding tasks for this employee.</p>
                                 </div>
                                 <button type="button" class="btn btn-sm btn-primary" id="addTaskBtn">
@@ -184,6 +208,98 @@
 
 {% block scripts %}
 <script>
+    // AI Checklist Generation
+    document.getElementById('generateChecklistBtn').addEventListener('click', async function() {
+        const position = document.getElementById('position').value;
+        const department = document.getElementById('department').value;
+        const fullName = document.getElementById('full_name').value;
+        
+        if (!position || !department) {
+            alert('Please fill in the position and department fields first.');
+            return;
+        }
+        
+        const aiStatus = document.getElementById('aiStatus');
+        const aiStatusText = document.getElementById('aiStatusText');
+        const checklistTasks = document.getElementById('checklistTasks');
+        
+        aiStatus.style.display = 'flex';
+        aiStatusText.textContent = 'Generating personalized checklist with AI...';
+        
+        try {
+            const response = await fetch('/api/ai/generate-onboarding-checklist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    employee_name: fullName,
+                    position: position,
+                    department: department
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to generate checklist');
+            }
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                // Clear existing tasks
+                checklistTasks.innerHTML = '';
+                
+                // Parse the AI response (assuming it returns markdown or text with line breaks)
+                const tasks = data.checklist.split('\n').filter(task => task.trim() !== '');
+                
+                // Add each task to the checklist
+                tasks.forEach((task, index) => {
+                    if (task.trim() === '') return;
+                    
+                    const taskId = Date.now() + index;
+                    const taskHtml = `
+                        <div class="task-item mb-3 p-3 border border-secondary rounded">
+                            <div class="d-flex align-items-center">
+                                <input type="checkbox" class="form-check-input me-3" name="task_enabled[]" value="1" checked>
+                                <input type="hidden" name="task_name[]" value="${task.trim()}">
+                                <div class="form-control bg-dark text-light border-0">${task.trim()}</div>
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-task">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    checklistTasks.insertAdjacentHTML('beforeend', taskHtml);
+                });
+                
+                // Re-attach event listeners to new elements
+                attachTaskEventListeners();
+                
+                aiStatusText.textContent = 'Checklist generated successfully!';
+                setTimeout(() => {
+                    aiStatus.style.display = 'none';
+                }, 2000);
+                
+            } else {
+                throw new Error(data.message || 'Failed to generate checklist');
+            }
+            
+        } catch (error) {
+            console.error('Error generating checklist:', error);
+            aiStatusText.textContent = 'Error generating checklist. Please try again.';
+            aiStatus.className = 'alert alert-danger d-flex align-items-center mb-3';
+        }
+    });
+    
+    function attachTaskEventListeners() {
+        // Remove task button
+        document.querySelectorAll('.remove-task').forEach(button => {
+            button.addEventListener('click', function() {
+                this.closest('.task-item').remove();
+            });
+        });
+    }
     document.addEventListener('DOMContentLoaded', function() {
         // Generate username from email
         const emailInput = document.getElementById('email');
