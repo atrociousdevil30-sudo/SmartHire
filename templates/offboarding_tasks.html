@@ -95,7 +95,7 @@
                                     </td>
                                     <td>IT-2022-0456</td>
                                     <td>Good</td>
-                                    <td>{{ (now + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
+                                    <td>{{ (now() + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
                                     <td><span class="badge bg-warning text-dark">To be returned</span></td>
                                 </tr>
                                 <tr>
@@ -107,7 +107,7 @@
                                     </td>
                                     <td>MB-2022-0789</td>
                                     <td>Good</td>
-                                    <td>{{ (now + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
+                                    <td>{{ (now() + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
                                     <td><span class="badge bg-success">Returned</span></td>
                                 </tr>
                                 <tr>
@@ -119,7 +119,7 @@
                                     </td>
                                     <td>AC-2022-1234</td>
                                     <td>Good</td>
-                                    <td>{{ (now + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
+                                    <td>{{ (now() + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
                                     <td><span class="badge bg-warning text-dark">To be returned</span></td>
                                 </tr>
                             </tbody>
@@ -141,13 +141,13 @@
                         <h2 class="h5 mb-0">
                             <i class="bi bi-chat-square-text me-2"></i>Exit Interview
                         </h2>
-                        <span class="badge bg-info">Scheduled: {{ (now + timedelta(days=1)).strftime('%b %d, %Y, 2:00 PM') }}</span>
+                        <span class="badge bg-info">Scheduled: {{ (now() + timedelta(days=1)).strftime('%b %d, %Y, 2:00 PM') }}</span>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        Your exit interview is scheduled with <strong>Sarah Johnson (HR Manager)</strong>.
+                        Your exit interview is scheduled with <strong>{{ offboarding.hr_contact.full_name if offboarding.hr_contact else 'HR Manager' }} ({{ offboarding.hr_contact.position if offboarding.hr_contact and offboarding.hr_contact.position else 'HR Manager' }})</strong>.
                         Please complete the pre-interview form below before the meeting.
                     </div>
                     
@@ -203,44 +203,37 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
-                        <a href="#" class="list-group-item list-group-item-action bg-transparent text-light border-secondary">
+                        {% for document in offboarding.documents %}
+                        <div class="list-group-item list-group-item-action bg-transparent text-light border-secondary">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
-                                    Resignation Acceptance Letter
+                                    {% if document.file_name.endswith('.pdf') %}
+                                        <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                                    {% elif document.file_name.endswith(('.doc', '.docx')) %}
+                                        <i class="bi bi-file-earmark-word text-primary me-2"></i>
+                                    {% else %}
+                                        <i class="bi bi-file-earmark-text me-2"></i>
+                                    {% endif %}
+                                    {{ document.document_type or document.file_name }}
+                                    {% if document.status != 'approved' %}
+                                        <span class="badge bg-{{ 'warning' if document.status == 'pending' else 'info' }} text-dark ms-2">
+                                            {{ document.status|title }}
+                                        </span>
+                                    {% endif %}
                                 </div>
-                                <span class="badge bg-success">Download</span>
+                                {% if document.status == 'approved' %}
+                                    <a href="{{ url_for('download_document', doc_id=document.id) }}" class="badge bg-success text-decoration-none">Download</a>
+                                {% else %}
+                                    <i class="bi bi-lock text-muted"></i>
+                                {% endif %}
                             </div>
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action bg-transparent text-light border-secondary">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-file-earmark-word text-primary me-2"></i>
-                                    Exit Checklist
-                                </div>
-                                <span class="badge bg-success">Download</span>
-                            </div>
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action bg-transparent text-light border-secondary">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
-                                    Experience Letter
-                                    <span class="badge bg-warning text-dark ms-2">Pending</span>
-                                </div>
-                                <i class="bi bi-lock text-muted"></i>
-                            </div>
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action bg-transparent text-light border-secondary">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-file-earmark-text me-2"></i>
-                                    Tax Forms (Form 16)
-                                    <span class="badge bg-warning text-dark ms-2">Processing</span>
-                                </div>
-                                <i class="bi bi-lock text-muted"></i>
-                            </div>
-                        </a>
+                        </div>
+                        {% else %}
+                        <div class="list-group-item bg-transparent text-light border-secondary text-center py-4">
+                            <i class="bi bi-folder2-open text-muted mb-2 d-block" style="font-size: 2rem;"></i>
+                            <p class="text-muted mb-0">No documents available</p>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -308,7 +301,7 @@
                             <span>₹85,000.00</span>
                         </div>
                         <div class="d-flex justify-content-between mb-1">
-                            <span>Leave Balance (12 days)</span>
+                            <span>Leave Balance</span>
                             <span>+ ₹39,310.34</span>
                         </div>
                         <div class="d-flex justify-content-between mb-1">
@@ -347,7 +340,7 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label">Account Holder Name</label>
-                    <input type="text" class="form-control bg-dark text-light" value="Alex Johnson" readonly>
+                    <input type="text" class="form-control bg-dark text-light" value="{{ offboarding.user.full_name }}" readonly>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Bank Name</label>

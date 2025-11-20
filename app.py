@@ -1795,15 +1795,51 @@ def offboarding_tasks():
     user_id = session.get('user_id')
     user = User.query.get(user_id)
 
-    status = user.status or 'Active'
-    exit_date = user.exit_date
-
+    # Get user's documents
+    documents = EmployeeDocument.query.filter_by(user_id=user_id).all()
+    
+    # Get HR contact
+    hr_contact = User.query.filter_by(role='hr', is_active=True).first()
+    
     offboarding = {
-        'status': status,
-        'exit_date': exit_date,
+        'status': user.status or 'Active',
+        'exit_date': user.exit_date,
+        'documents': documents,
+        'hr_contact': hr_contact,
+        'user': user
     }
 
     return render_template('offboarding_tasks.html', offboarding=offboarding)
+
+@app.route('/download-document/<int:doc_id>')
+@login_required(['employee', 'hr'])
+def download_document(doc_id):
+    """Download employee document"""
+    try:
+        document = EmployeeDocument.query.get_or_404(doc_id)
+        
+        # Check permissions
+        if session.get('role') == 'employee' and document.user_id != session['user_id']:
+            flash('You can only download your own documents.', 'danger')
+            return redirect(url_for('employee_dashboard'))
+        
+        # Check if document is approved for download
+        if document.status != 'approved':
+            flash('Document is not yet available for download.', 'warning')
+            return redirect(request.referrer or url_for('employee_dashboard'))
+        
+        # For demo purposes, return a simple response
+        from flask import make_response
+        response = make_response(f"Document: {document.file_name}\nType: {document.document_type}\nStatus: {document.status}")
+        response.headers['Content-Type'] = 'text/plain'
+        response.headers['Content-Disposition'] = f'attachment; filename="{document.file_name}"'
+        
+        return response
+        
+    except Exception as e:
+        app.logger.error(f'Error downloading document: {str(e)}')
+        flash('Error downloading document.', 'danger')
+        return redirect(request.referrer or url_for('employee_dashboard'))
 
 @app.route('/pre-onboarding')
 @login_required('hr')
@@ -1883,6 +1919,29 @@ def onboarding():
         employee = User.query.get_or_404(employee_id)
         checklist = OnboardingChecklist.query.filter_by(employee_id=employee_id).first()
         
+        # Create department-specific onboarding tasks if checklist doesn't exist
+        if not checklist:
+            checklist = OnboardingChecklist(
+                employee_id=employee.id,
+                assigned_hr_id=session['user_id'],
+                status='Pending'
+            )
+            db.session.add(checklist)
+            db.session.flush()
+            
+            # Create department-specific tasks
+            dept_tasks = get_department_tasks(employee.department, employee.position)
+            for i, task_data in enumerate(dept_tasks):
+                task = OnboardingTask(
+                    checklist_id=checklist.id,
+                    task_name=task_data['name'],
+                    task_description=task_data['description'],
+                    order_index=i
+                )
+                db.session.add(task)
+            
+            db.session.commit()
+        
         # Render onboarding template with employee's specific data
         return render_template('onboarding.html', 
                              selected_employee=employee,
@@ -1927,6 +1986,51 @@ def onboarding():
     return render_template('onboarding.html', 
                          sample_candidates=candidates,
                          selected_candidate=selected_candidate)
+
+def get_department_tasks(department, position):
+    """Get department-specific onboarding tasks"""
+    base_tasks = [
+        {'name': 'Document Collection', 'description': 'Collect ID proof, address proof, and educational certificates'},
+        {'name': 'Welcome Email & Handbook', 'description': 'Send welcome email and employee handbook'},
+        {'name': 'ID Card Creation', 'description': 'Create employee ID card and access badge'},
+        {'name': 'Email Account Setup', 'description': 'Create company email account and configure access'},
+    ]
+    
+    if department == 'Engineering':
+        base_tasks.extend([
+            {'name': 'Development Environment Setup', 'description': 'Install development tools, IDEs, and configure development environment'},
+            {'name': 'Code Repository Access', 'description': 'Grant access to GitHub/GitLab repositories and development tools'},
+            {'name': 'Technical Orientation', 'description': 'Introduction to tech stack, coding standards, and development processes'},
+            {'name': 'Laptop & Equipment Assignment', 'description': 'Assign high-spec laptop, monitor, and development peripherals'}
+        ])
+    elif department == 'Marketing':
+        base_tasks.extend([
+            {'name': 'Marketing Tools Access', 'description': 'Setup access to marketing automation, CRM, and analytics tools'},
+            {'name': 'Brand Guidelines Training', 'description': 'Review brand guidelines, style guide, and marketing materials'},
+            {'name': 'Campaign Management Training', 'description': 'Introduction to current campaigns and marketing processes'},
+            {'name': 'Creative Assets Access', 'description': 'Grant access to design tools and brand asset libraries'}
+        ])
+    elif department == 'HR':
+        base_tasks.extend([
+            {'name': 'HRIS System Training', 'description': 'Training on HR information systems and employee databases'},
+            {'name': 'Compliance Training', 'description': 'Employment law, data privacy, and HR compliance training'},
+            {'name': 'Recruitment Tools Access', 'description': 'Setup access to ATS, job boards, and recruitment platforms'}
+        ])
+    else:
+        # General department tasks
+        base_tasks.extend([
+            {'name': 'Department Introduction', 'description': f'Meet with {department} team and understand department goals'},
+            {'name': 'Role-Specific Training', 'description': f'Training specific to {position} responsibilities'},
+            {'name': 'System Access Setup', 'description': 'Configure access to department-specific systems and tools'}
+        ])
+    
+    # Add common final tasks
+    base_tasks.extend([
+        {'name': 'Team Introduction Meeting', 'description': 'Schedule meet-and-greet with immediate team members'},
+        {'name': 'First Week Check-in', 'description': 'Schedule check-in meeting to address questions and concerns'}
+    ])
+    
+    return base_tasks
 
 @app.route('/interview', methods=['GET', 'POST'])
 @login_required(['hr', 'employee'])

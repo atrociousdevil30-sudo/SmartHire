@@ -597,8 +597,8 @@ function messageHR() {
     const subject = encodeURIComponent('Employee Dashboard Inquiry');
     const body = encodeURIComponent('Hi,\n\nI have a question regarding my onboarding/employment.\n\nThank you.');
     
-    // Open default email client
-    window.location.href = `mailto:${hrEmail}?subject=${subject}&body=${body}`;
+    // Open Gmail compose in new tab
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${hrEmail}&su=${subject}&body=${body}`, '_blank');
 }
 
 function sendWhatsAppMessage() {

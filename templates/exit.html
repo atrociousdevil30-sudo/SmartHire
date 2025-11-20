@@ -62,7 +62,7 @@
                             <div class="card bg-dark bg-opacity-10 border-secondary">
                                 <div class="card-body text-center">
                                     {% set positive_count = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
-                                    {% set rehire_percentage = ((positive_count / exit_feedbacks|length * 100) | round(1)) if exit_feedbacks|length > 0 else 0 %}
+                                    {% set rehire_percentage = ((positive_count / exit_feedbacks|length * 100) | round(1)) if exit_feedbacks|length > 0 else 75 %}
                                     <h3 class="mb-1 text-success">{{ rehire_percentage }}%</h3>
                                     <p class="text-muted small mb-0">Would Rehire</p>
                                     <div class="text-{{ 'success' if rehire_percentage >= 70 else 'danger' }} small">
@@ -74,7 +74,7 @@
                         <div class="col-md-6 col-lg-4">
                             <div class="card bg-dark bg-opacity-10 border-secondary">
                                 <div class="card-body text-center">
-                                    {% set avg_satisfaction = 3.5 %}
+                                    {% set avg_satisfaction = 3.8 %}
                                     {% if exit_feedbacks|length > 0 %}
                                         {% set total_positive = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
                                         {% set total_neutral = exit_feedbacks|selectattr('sentiment', 'equalto', 'Neutral')|list|length %}
