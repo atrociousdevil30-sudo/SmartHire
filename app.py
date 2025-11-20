@@ -4129,9 +4129,23 @@ def get_dashboard_feedback_summary():
 
 # ===== HR NOTIFICATION SYSTEM =====
 
-def create_hr_notification(title, message, notification_type='info', priority='normal', action_url=None, recipient_id=None):
+def create_hr_notification(title, message, notification_type='info', priority='normal', action_url=None, recipient_id=None, sender_id=None):
     """Create an HR notification"""
     try:
+        # If no sender specified, use system user or first HR user
+        if sender_id is None:
+            # Try to get from session if available, otherwise use first admin/system user
+            try:
+                sender_id = session.get('user_id')
+            except RuntimeError:
+                # No request context, use system or first HR user
+                sender_id = None
+            
+            if sender_id is None:
+                # Find system admin or first HR user
+                system_user = User.query.filter_by(role='hr').first()
+                sender_id = system_user.id if system_user else 1
+        
         # If no recipient specified, send to all HR users
         if recipient_id is None:
             hr_users = User.query.filter_by(role='hr').all()
@@ -4140,12 +4154,12 @@ def create_hr_notification(title, message, notification_type='info', priority='n
             recipients = [recipient_id]
         
         notifications = []
-        for recipient_id in recipients:
+        for recip_id in recipients:
             notification = Message(
                 subject=title,
                 content=message,
-                sender_id=session.get('user_id', 1),
-                recipient_id=recipient_id,
+                sender_id=sender_id,
+                recipient_id=recip_id,
                 message_type='hr_notification',
                 priority=priority,
                 status='unread'
@@ -4290,7 +4304,7 @@ def get_hr_notifications():
                 'message': notif.content,
                 'type': notification_data.get('notification_type', 'info'),
                 'priority': notif.priority,
-                'created_at': notif.created_at.isoformat(),
+                'created_at': notif.sent_at.isoformat(),
                 'action_url': notification_data.get('action_url'),
                 'is_read': notif.status == 'read'
             })
@@ -4328,7 +4342,7 @@ def get_all_hr_notifications():
                 'message': notif.content,
                 'type': notification_data.get('notification_type', 'info'),
                 'priority': notif.priority,
-                'created_at': notif.created_at.isoformat(),
+                'created_at': notif.sent_at.isoformat(),
                 'action_url': notification_data.get('action_url'),
                 'is_read': notif.status == 'read'
             })
@@ -4360,9 +4374,8 @@ def generate_daily_hr_summary():
             'pending_tasks': Task.query.filter_by(status='pending').count(),
             'pending_documents': EmployeeDocument.query.filter_by(status='pending').count(),
             'upcoming_interviews': Interview.query.filter(
-                Interview.scheduled_at >= datetime.utcnow(),
-                Interview.scheduled_at <= datetime.utcnow() + timedelta(days=7),
-                Interview.status == 'scheduled'
+                Interview.created_at >= datetime.utcnow(),
+                Interview.created_at <= datetime.utcnow() + timedelta(days=7)
             ).count(),
             'completed_onboarding': OnboardingChecklist.query.filter_by(status='Completed').count()
         }
