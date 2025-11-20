@@ -95,6 +95,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'employee_interview' %}active{% endif %}" 
+                       href="{{ url_for('employee_interview') }}">
+                        <i class="fas fa-microphone me-1"></i> AI Interview
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'onboarding_assistant' %}active{% endif %}" 
                        href="{{ url_for('onboarding_assistant') }}">
                         <i class="fas fa-robot me-1"></i> Onboarding Assistant

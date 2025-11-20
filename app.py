@@ -2077,6 +2077,59 @@ def interview():
     
     return render_template('interview.html')
 
+@app.route('/employee/interview')
+@login_required('employee')
+def employee_interview():
+    """Employee AI interview session"""
+    return render_template('employee_interview.html')
+
+@app.route('/api/employee/interview/submit', methods=['POST'])
+@login_required('employee')
+def submit_employee_interview():
+    """Submit employee interview responses"""
+    try:
+        data = request.get_json()
+        user_id = session['user_id']
+        
+        interview_record = Interview(
+            candidate_id=None,
+            responses=data.get('responses', []),
+            summary=data.get('summary', ''),
+            created_at=datetime.utcnow()
+        )
+        
+        db.session.add(interview_record)
+        db.session.commit()
+        
+        # Create notification for HR
+        user = User.query.get(user_id)
+        if user:
+            hr_users = User.query.filter_by(role='hr').all()
+            for hr_user in hr_users:
+                notification = Message(
+                    subject='New Interview Submission',
+                    content=f'{user.full_name} has completed an AI interview session.',
+                    sender_id=user_id,
+                    recipient_id=hr_user.id,
+                    message_type='interview',
+                    priority='normal'
+                )
+                db.session.add(notification)
+            db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Interview submitted successfully',
+            'interview_id': interview_record.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error submitting employee interview: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to submit interview'
+        }), 500
+
 @app.route('/api/interviews/<int:interview_id>', methods=['GET'])
 @login_required('hr')
 def get_interview_details(interview_id):

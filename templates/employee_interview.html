@@ -1,0 +1,484 @@
+{% extends "employee_base.html" %}
+
+{% block title %}AI Interview Session - SmartHire{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid py-4">
+    <!-- Interview Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-microphone me-2"></i>AI Interview Session
+                    </h1>
+                    <p class="text-muted mb-0" id="interviewStatus">Preparing interview...</p>
+                </div>
+                <div>
+                    <span class="badge bg-primary me-2" id="timerBadge">00:00</span>
+                    <button class="btn btn-outline-danger" id="exitBtn" onclick="confirmExit()">
+                        <i class="fas fa-times me-1"></i>Exit Interview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column - Interview Instructions & Info -->
+        <div class="col-lg-3 mb-4">
+            <!-- Interview Details Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Interview Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Position</small>
+                        <strong id="positionName">Loading...</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Interview Type</small>
+                        <strong id="interviewType">Loading...</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Difficulty Level</small>
+                        <strong id="difficultyLevel">Loading...</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Total Questions</small>
+                        <strong id="totalQuestions">5</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Duration</small>
+                        <strong id="duration">30 minutes</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-list-check me-2"></i>Instructions</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <span>Speak clearly and naturally</span>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <span>Take your time to think before answering</span>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <span>Provide detailed and relevant answers</span>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <span>Use examples from your experience</span>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <span>You can skip questions if needed</span>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <span>Maintain professional demeanor</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- HR Instructions Card -->
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="fas fa-clipboard me-2"></i>HR Guidelines</h6>
+                </div>
+                <div class="card-body">
+                    <div id="hrInstructions" class="small">
+                        <p class="text-muted">Loading HR instructions...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Interview Area -->
+        <div class="col-lg-9">
+            <!-- Interview Container -->
+            <div class="card shadow">
+                <div class="card-body">
+                    <!-- Progress Bar -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="small">Progress</span>
+                            <span class="small" id="progressText">Question 1 of 5</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" id="progressBar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+
+                    <!-- Question Display -->
+                    <div id="questionContainer" class="mb-4">
+                        <div class="alert alert-info">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            Loading question...
+                        </div>
+                    </div>
+
+                    <!-- Response Input Area -->
+                    <div id="responseContainer" class="d-none">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Your Response</label>
+                            <textarea class="form-control" id="responseText" rows="5" placeholder="Type your answer here. Take your time to provide a thoughtful response..." style="resize: vertical;"></textarea>
+                            <small class="text-muted d-block mt-2">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                Tip: Use specific examples and explain your reasoning clearly.
+                            </small>
+                        </div>
+
+                        <!-- Response Actions -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <button class="btn btn-outline-secondary me-2" id="skipBtn" onclick="skipQuestion()">
+                                    <i class="fas fa-forward me-1"></i>Skip Question
+                                </button>
+                            </div>
+                            <div>
+                                <button class="btn btn-primary" id="submitBtn" onclick="submitResponse()">
+                                    <i class="fas fa-paper-plane me-1"></i>
+                                    <span id="submitText">Submit Response</span>
+                                    <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feedback Display -->
+                    <div id="feedbackContainer" class="d-none">
+                        <div class="alert alert-success mb-3">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-check-circle me-2"></i>Response Received
+                            </h6>
+                            <p id="feedbackText" class="mb-0">Your response has been recorded. AI is analyzing...</p>
+                        </div>
+                        <div id="aiFeedback" class="card bg-light mb-3 d-none">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-brain me-2"></i>AI Feedback
+                                </h6>
+                                <p id="feedbackContent" class="mb-0"></p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary w-100" id="nextBtn" onclick="nextQuestion()">
+                            <i class="fas fa-arrow-right me-1"></i>Next Question
+                        </button>
+                    </div>
+
+                    <!-- Interview Complete -->
+                    <div id="completeContainer" class="d-none">
+                        <div class="alert alert-success mb-4">
+                            <h5 class="alert-heading">
+                                <i class="fas fa-check-circle me-2"></i>Interview Complete!
+                            </h5>
+                            <p>Thank you for completing the interview. Your responses have been recorded and will be reviewed by our HR team.</p>
+                        </div>
+
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title mb-3">Interview Summary</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <small class="text-muted d-block">Questions Answered</small>
+                                        <strong id="answeredCount">0</strong>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <small class="text-muted d-block">Questions Skipped</small>
+                                        <strong id="skippedCount">0</strong>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <small class="text-muted d-block">Total Duration</small>
+                                        <strong id="totalDuration">00:00</strong>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <small class="text-muted d-block">Performance Score</small>
+                                        <strong id="performanceScore">--</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-outline-primary" id="downloadReportBtn" onclick="downloadReport()">
+                                <i class="fas fa-download me-1"></i>Download Report
+                            </button>
+                            <button class="btn btn-primary" id="exitCompleteBtn" onclick="exitInterview()">
+                                <i class="fas fa-home me-1"></i>Return to Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips Card -->
+            <div class="card shadow mt-4">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Interview Tips</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong class="small d-block mb-1">✓ Do's</strong>
+                            <ul class="small mb-0 ps-3">
+                                <li>Be honest and authentic</li>
+                                <li>Provide specific examples</li>
+                                <li>Show enthusiasm</li>
+                                <li>Ask clarifying questions</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong class="small d-block mb-1">✗ Don'ts</strong>
+                            <ul class="small mb-0 ps-3">
+                                <li>Rush your answers</li>
+                                <li>Give vague responses</li>
+                                <li>Interrupt the AI</li>
+                                <li>Leave long pauses</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Exit Confirmation Modal -->
+<div class="modal fade" id="exitModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Exit Interview?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to exit the interview? Your responses so far will be saved.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Continue Interview</button>
+                <button type="button" class="btn btn-danger" onclick="exitInterview()">Exit Interview</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentQuestion = 0;
+let totalQuestions = 5;
+let responses = [];
+let skippedQuestions = [];
+let startTime = new Date();
+let interviewData = {};
+
+// Initialize interview
+document.addEventListener('DOMContentLoaded', function() {
+    loadInterviewData();
+    startTimer();
+    loadQuestion();
+});
+
+// Load interview data from session/URL
+function loadInterviewData() {
+    const urlParams = new URLSearchParams(window.location.search);
+    interviewData = {
+        position: urlParams.get('position') || 'Software Engineer',
+        type: urlParams.get('type') || 'Technical',
+        difficulty: urlParams.get('difficulty') || 'Mid-level',
+        duration: urlParams.get('duration') || '30',
+        instructions: urlParams.get('instructions') || 'Please answer all questions to the best of your ability.'
+    };
+
+    document.getElementById('positionName').textContent = interviewData.position;
+    document.getElementById('interviewType').textContent = interviewData.type;
+    document.getElementById('difficultyLevel').textContent = interviewData.difficulty;
+    document.getElementById('duration').textContent = interviewData.duration + ' minutes';
+    document.getElementById('hrInstructions').innerHTML = `<p>${interviewData.instructions}</p>`;
+    document.getElementById('interviewStatus').textContent = 'Interview in progress';
+}
+
+// Load question
+function loadQuestion() {
+    if (currentQuestion >= totalQuestions) {
+        completeInterview();
+        return;
+    }
+
+    document.getElementById('responseContainer').classList.add('d-none');
+    document.getElementById('feedbackContainer').classList.add('d-none');
+    document.getElementById('questionContainer').innerHTML = `
+        <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            Loading question ${currentQuestion + 1}...
+        </div>
+    `;
+
+    // Simulate API call to get question
+    setTimeout(() => {
+        const questions = [
+            "Tell me about your most challenging project and how you overcame the obstacles.",
+            "What are your strengths and how do they align with this role?",
+            "Describe a situation where you had to work with a difficult team member.",
+            "What are your career goals for the next 5 years?",
+            "Why are you interested in this position and our company?"
+        ];
+
+        const question = questions[currentQuestion];
+        document.getElementById('questionContainer').innerHTML = `
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-question-circle me-2"></i>Question ${currentQuestion + 1}
+                    </h5>
+                    <p class="card-text fs-5">${question}</p>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('responseContainer').classList.remove('d-none');
+        document.getElementById('responseText').value = '';
+        document.getElementById('responseText').focus();
+        updateProgress();
+    }, 800);
+}
+
+// Submit response
+function submitResponse() {
+    const response = document.getElementById('responseText').value.trim();
+    
+    if (!response) {
+        alert('Please provide a response before submitting.');
+        return;
+    }
+
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitText').classList.add('d-none');
+    document.getElementById('submitSpinner').classList.remove('d-none');
+
+    // Store response
+    responses.push({
+        question: currentQuestion + 1,
+        answer: response,
+        timestamp: new Date()
+    });
+
+    // Simulate AI feedback
+    setTimeout(() => {
+        document.getElementById('responseContainer').classList.add('d-none');
+        document.getElementById('feedbackContainer').classList.remove('d-none');
+        
+        const feedbackMessages = [
+            "Great answer! You provided specific examples and clear reasoning.",
+            "Good response. Consider adding more details about the outcome.",
+            "Excellent! Your answer demonstrates strong problem-solving skills.",
+            "Nice answer. Try to be more concise while maintaining clarity.",
+            "Very good! You showed good alignment with our company values."
+        ];
+
+        document.getElementById('feedbackContent').textContent = feedbackMessages[currentQuestion];
+        document.getElementById('aiFeedback').classList.remove('d-none');
+
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitText').classList.remove('d-none');
+        document.getElementById('submitSpinner').classList.add('d-none');
+    }, 1500);
+}
+
+// Skip question
+function skipQuestion() {
+    skippedQuestions.push(currentQuestion + 1);
+    currentQuestion++;
+    loadQuestion();
+}
+
+// Next question
+function nextQuestion() {
+    currentQuestion++;
+    loadQuestion();
+}
+
+// Complete interview
+function completeInterview() {
+    document.getElementById('responseContainer').classList.add('d-none');
+    document.getElementById('feedbackContainer').classList.add('d-none');
+    document.getElementById('questionContainer').classList.add('d-none');
+    document.getElementById('completeContainer').classList.remove('d-none');
+
+    const endTime = new Date();
+    const duration = Math.floor((endTime - startTime) / 1000 / 60);
+
+    document.getElementById('answeredCount').textContent = responses.length;
+    document.getElementById('skippedCount').textContent = skippedQuestions.length;
+    document.getElementById('totalDuration').textContent = String(duration).padStart(2, '0') + ':00';
+    document.getElementById('performanceScore').textContent = Math.round((responses.length / totalQuestions) * 100) + '%';
+}
+
+// Exit interview
+function confirmExit() {
+    const modal = new bootstrap.Modal(document.getElementById('exitModal'));
+    modal.show();
+}
+
+function exitInterview() {
+    window.location.href = '{{ url_for("employee_dashboard") }}';
+}
+
+// Download report
+function downloadReport() {
+    const report = `
+Interview Report
+================
+Position: ${interviewData.position}
+Type: ${interviewData.type}
+Difficulty: ${interviewData.difficulty}
+
+Summary:
+- Questions Answered: ${responses.length}
+- Questions Skipped: ${skippedQuestions.length}
+- Performance Score: ${Math.round((responses.length / totalQuestions) * 100)}%
+
+Responses:
+${responses.map((r, i) => `Q${r.question}: ${r.answer}`).join('\n\n')}
+    `;
+
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'interview_report.txt';
+    a.click();
+}
+
+// Update progress
+function updateProgress() {
+    const progress = ((currentQuestion + 1) / totalQuestions) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+    document.getElementById('progressText').textContent = `Question ${currentQuestion + 1} of ${totalQuestions}`;
+}
+
+// Timer
+function startTimer() {
+    setInterval(() => {
+        const now = new Date();
+        const elapsed = Math.floor((now - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        document.getElementById('timerBadge').textContent = 
+            String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+    }, 1000);
+}
+</script>
+{% endblock %}
