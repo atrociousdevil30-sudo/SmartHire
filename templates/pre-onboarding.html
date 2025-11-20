@@ -111,7 +111,7 @@
                             </div>
                         </div>
                         <small class="text-muted d-block mt-1">
-                            Score above 70% qualifies for onboarding
+                            Score above 60% qualifies for onboarding
                         </small>
                     </div>
 
@@ -149,7 +149,7 @@
 <script src="{{ url_for('static', filename='js/onboarding.js') }}"></script>
 <script>
     // Hiring threshold (adjust as needed)
-    const HIRING_THRESHOLD = 70;
+    const HIRING_THRESHOLD = 60;
 
     document.addEventListener('DOMContentLoaded', function() {
         const startOnboardingBtn = document.getElementById('startOnboardingBtn');
@@ -212,7 +212,7 @@
                     scoreValue.textContent = score + '%';
 
                     // Set color based on score
-                    if (score >= 70) {
+                    if (score >= HIRING_THRESHOLD) {
                         scoreProgress.className = 
                             'progress-bar bg-success';
                     } else if (score >= 50) {

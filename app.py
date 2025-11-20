@@ -2350,10 +2350,24 @@ def analyze_resume():
         ats_result = calculate_ats_score(resume_data, job_description)
 
         # Prepare AI summary using the AI response function
+        # Only include skills that are present in both the resume and
+        # the job description
+        job_skills = extract_skills(job_description)
+        resume_skills_set = set(s.lower() for s in resume_data.get('skills', []))
+        job_skills_set = set(s.lower() for s in job_skills)
+
+        matching_skills = [
+            s for s in resume_data.get('skills', [])
+            if s.lower() in job_skills_set
+        ]
+
+        # Fallback to top resume skills if no explicit matches found
+        display_skills = matching_skills if matching_skills else resume_data.get('skills', [])
+
         summary_prompt = (
             f"Provide a brief (2-3 sentences) summary of how well this "
-            f"candidate matches the job description. Skills found: "
-            f"{', '.join(resume_data['skills'][:5])}. "
+            f"candidate matches the job description. Matching skills: "
+            f"{', '.join(display_skills[:5])}. "
             f"Experience count: {len(resume_data['experience'])}. "
             f"Focus on strengths relevant to: {job_description[:200]}"
         )
@@ -2377,7 +2391,7 @@ def analyze_resume():
         except Exception as e:
             app.logger.warning(f"Could not generate AI summary: {str(e)}")
             ai_summary = (
-                f"Candidate has {len(resume_data['skills'])} relevant skills "
+                f"Candidate has {len(matching_skills) if matching_skills else len(resume_data['skills'])} relevant skills "
                 f"and {len(resume_data['experience'])} years of experience."
             )
 
@@ -2392,7 +2406,7 @@ def analyze_resume():
             'ats_feedback': ats_result['feedback'],
             'ats_recommendation': ats_result['recommendation'],
             'ai_summary': ai_summary,
-            'pass_screening': ats_result['score'] >= 70
+            'pass_screening': ats_result['score'] >= 60
         }
 
         return jsonify(result)
