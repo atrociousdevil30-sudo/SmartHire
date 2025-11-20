@@ -1,17 +1,17 @@
 /* ===== THEME TOGGLE STYLES ===== */
 
 :root {
-    /* Light mode colors (default) - Soft, not completely white */
-    --primary-bg: #f7f8fa;
-    --secondary-bg: #eff1f5;
-    --tertiary-bg: #e4e8f0;
-    --primary-text: #2c3e50;
-    --secondary-text: #7f8c8d;
-    --tertiary-text: #95a5a6;
-    --border-color: #d5dce0;
-    --card-bg: #fafbfc;
+    /* Light mode colors (Creme/Cream) */
+    --primary-bg: #f5f3f0;
+    --secondary-bg: #ede9e4;
+    --tertiary-bg: #e5dfd8;
+    --primary-text: #3d3330;
+    --secondary-text: #6b6259;
+    --tertiary-text: #8b8278;
+    --border-color: #d4ccc3;
+    --card-bg: #faf8f6;
     --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
-    --hover-bg: #eef0f4;
+    --hover-bg: #f0ebe6;
     --danger-bg: #fce4ec;
     --danger-text: #c62828;
     --warning-bg: #fff8e1;
@@ -20,29 +20,29 @@
     --success-text: #2e7d32;
     --info-bg: #e1f5fe;
     --info-text: #01579b;
-    --input-bg: #fafbfc;
-    --input-border: #cbd5e0;
-    --input-focus-border: #4299e1;
-    --input-focus-bg: #fafbfc;
-    --btn-bg: #0066cc;
-    --btn-hover-bg: #0052a3;
-    --navbar-bg: #fafbfc;
-    --navbar-border: #e2e8f0;
-    --sidebar-bg: #f5f6f8;
-    --sidebar-text: #2c3e50;
-    --link-color: #0066cc;
-    --link-hover-color: #0052a3;
-    --code-bg: #f1f3f5;
-    --code-text: #d63384;
-    --table-border: #e2e8f0;
-    --table-hover-bg: #f0f4f8;
-    --modal-bg: #fafbfc;
-    --modal-header-bg: #f5f6f8;
-    --toast-bg: #fafbfc;
-    --breadcrumb-bg: #f5f6f8;
+    --input-bg: #faf8f6;
+    --input-border: #d4ccc3;
+    --input-focus-border: #7b5944;
+    --input-focus-bg: #faf8f6;
+    --btn-bg: #8b6f47;
+    --btn-hover-bg: #6b5538;
+    --navbar-bg: #faf8f6;
+    --navbar-border: #e0d8cf;
+    --sidebar-bg: #f0ebe6;
+    --sidebar-text: #3d3330;
+    --link-color: #8b6f47;
+    --link-hover-color: #6b5538;
+    --code-bg: #ede9e4;
+    --code-text: #a85d4d;
+    --table-border: #e0d8cf;
+    --table-hover-bg: #f0ebe6;
+    --modal-bg: #faf8f6;
+    --modal-header-bg: #f0ebe6;
+    --toast-bg: #faf8f6;
+    --breadcrumb-bg: #f0ebe6;
 }
 
-/* Dark mode */
+/* Dark mode - Keep your original dark theme */
 [data-theme="dark"] {
     --primary-bg: #1a1a1a;
     --secondary-bg: #2d2d2d;
@@ -64,16 +64,16 @@
     --info-text: #d1ecf1;
     --input-bg: #3a3a3a;
     --input-border: #505050;
-    --input-focus-border: #80bdff;
+    --input-focus-border: #7b2cbf;
     --input-focus-bg: #4a4a4a;
-    --btn-bg: #0056b3;
-    --btn-hover-bg: #003d82;
-    --navbar-bg: #2d2d2d;
+    --btn-bg: #7b2cbf;
+    --btn-hover-bg: #6a1b9a;
+    --navbar-bg: #1a1a1a;
     --navbar-border: #404040;
-    --sidebar-bg: #2d2d2d;
+    --sidebar-bg: #1a1a1a;
     --sidebar-text: #e0e0e0;
-    --link-color: #66b3ff;
-    --link-hover-color: #99ccff;
+    --link-color: #bb86fc;
+    --link-hover-color: #e0b0ff;
     --code-bg: #3a3a3a;
     --code-text: #ff99dd;
     --table-border: #404040;
