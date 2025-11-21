@@ -1,0 +1,704 @@
+{% extends "base.html" %}
+
+{% block title %}Alumni Network Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h1 class="h3 mb-1 text-light">
+                                <i class="fas fa-users me-2"></i>Alumni Network Management
+                            </h1>
+                            <p class="text-muted mb-0">Maintain relationships and leverage alumni potential</p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column align-items-md-end mt-3 mt-md-0">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-light" id="exportAlumniData">
+                                        <i class="fas fa-download me-1"></i> Export Alumni Data
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" id="bulkOutreach">
+                                        <i class="fas fa-envelope me-1"></i> Bulk Outreach
+                                    </button>
+                                    <a href="{{ url_for('hr_dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alumni Network Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-chart-line me-2"></i>Network Overview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h3 class="mb-1 text-primary" id="totalAlumni">{{ alumni_stats.total_alumni if alumni_stats else 0 }}</h3>
+                                    <p class="text-muted small mb-0">Total Alumni</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h3 class="mb-1 text-success" id="activeAlumni">{{ alumni_stats.active_alumni if alumni_stats else 0 }}</h3>
+                                    <p class="text-muted small mb-0">Active Alumni</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h3 class="mb-1 text-warning" id="rehirePotential">{{ alumni_stats.rehire_potential if alumni_stats else 0 }}</h3>
+                                    <p class="text-muted small mb-0">Rehire Potential</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h3 class="mb-1 text-info" id="brandAmbassadors">{{ alumni_stats.brand_ambassadors if alumni_stats else 0 }}</h3>
+                                    <p class="text-muted small mb-0">Brand Ambassadors</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alumni Profiles and Management -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-address-book me-2"></i>Alumni Profiles
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <input type="text" class="form-control form-control-sm" id="searchAlumni" placeholder="Search alumni...">
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="statusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="lost_contact">Lost Contact</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="industryFilter">
+                                    <option value="">All Industries</option>
+                                    <option value="technology">Technology</option>
+                                    <option value="finance">Finance</option>
+                                    <option value="healthcare">Healthcare</option>
+                                    <option value="education">Education</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-sm btn-outline-primary w-100" id="addAlumni">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Current Position</th>
+                                    <th>Industry</th>
+                                    <th>Status</th>
+                                    <th>Last Contact</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alumniTable">
+                                {% for alumni in alumni_profiles %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                {{ alumni.current_company[0].upper() if alumni.current_company else 'A' }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ alumni.user.full_name if alumni.user else 'Unknown' }}</strong>
+                                                {% if alumni.linkedin_url %}
+                                                <a href="{{ alumni.linkedin_url }}" target="_blank" class="text-muted small ms-1">
+                                                    <i class="fab fa-linkedin"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="text-light">{{ alumni.current_position or 'N/A' }}</span>
+                                        <br><small class="text-muted">{{ alumni.current_company or 'N/A' }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ alumni.industry or 'Unknown' }}</span>
+                                    </td>
+                                    <td>
+                                        {% if alumni.alumni_status == 'active' %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% elif alumni.alumni_status == 'inactive' %}
+                                            <span class="badge bg-warning">Inactive</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Lost Contact</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set last_contact = alumni.last_contact_date() %}
+                                        {% if last_contact %}
+                                            <span class="text-light">{{ last_contact.strftime('%Y-%m-%d') }}</span>
+                                        {% else %}
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-info" onclick="viewAlumniDetails({{ alumni.id }})">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-primary" onclick="editAlumni({{ alumni.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-success" onclick="recordInteraction({{ alumni.id }})">
+                                                <i class="fas fa-phone"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No alumni profiles found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rehire Potential Tracking -->
+        <div class="col-lg-4">
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light">
+                        <i class="fas fa-redo me-2"></i>Top Rehire Candidates
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="rehireCandidates">
+                        {% for candidate in rehire_candidates[:5] %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <strong class="text-light">{{ candidate.alumni.user.full_name if candidate.alumni.user else 'Unknown' }}</strong>
+                                <br><small class="text-muted">{{ candidate.alumni.current_position }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary">{{ candidate.rehire_score }}/100</span>
+                                <br><small class="text-muted">{{ candidate.rehire_status }}</small>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-user-tie me-2"></i>
+                            No rehire candidates identified
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <button class="btn btn-sm btn-outline-primary w-100 mt-3" id="viewAllRehire">
+                        <i class="fas fa-list me-1"></i> View All Rehire Candidates
+                    </button>
+                </div>
+            </div>
+
+            <!-- Brand Ambassador Management -->
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light">
+                        <i class="fas fa-star me-2"></i>Brand Ambassadors
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="brandAmbassadorsList">
+                        {% for ambassador in brand_ambassadors[:5] %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <strong class="text-light">{{ ambassador.alumni.user.full_name if ambassador.alumni.user else 'Unknown' }}</strong>
+                                <br><small class="text-muted">{{ ambassador.ambassador_type }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success">{{ ambassador.engagement_level }}</span>
+                                <br><small class="text-muted">{{ ambassador.referral_count }} referrals</small>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-megaphone me-2"></i>
+                            No brand ambassadors active
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <button class="btn btn-sm btn-outline-success w-100 mt-3" id="manageAmbassadors">
+                        <i class="fas fa-crown me-1"></i> Manage Ambassadors
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stay-in-Touch Automation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-robot me-2"></i>Stay-in-Touch Automation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Automation Type</th>
+                                            <th>Frequency</th>
+                                            <th>Active Alumni</th>
+                                            <th>Engagement Rate</th>
+                                            <th>Last Sent</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="automationTable">
+                                        {% for automation in stay_in_touch_automations %}
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-info">{{ automation.automation_type }}</span>
+                                            </td>
+                                            <td>{{ automation.frequency }}</td>
+                                            <td>{{ automation.active_alumni_count }}</td>
+                                            <td>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 20px; width: 100px;">
+                                                    <div class="progress-bar bg-success" style="width: {{ automation.engagement_rate }}%">
+                                                        {{ "%.1f"|format(automation.engagement_rate) }}%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if automation.last_sent_date %}
+                                                    {{ automation.last_sent_date.strftime('%Y-%m-%d') }}
+                                                {% else %}
+                                                    <span class="text-muted">Never</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-primary" onclick="editAutomation({{ automation.id }})">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-success" onclick="testAutomation({{ automation.id }})">
+                                                        <i class="fas fa-play"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-warning" onclick="toggleAutomation({{ automation.id }})">
+                                                        <i class="fas fa-toggle-{{ 'on' if automation.is_active else 'off' }}"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">No automation campaigns set up</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-dark bg-opacity-10 border-secondary">
+                                <div class="card-body">
+                                    <h6 class="text-light mb-3">Quick Actions</h6>
+                                    
+                                    <button class="btn btn-sm btn-outline-primary w-100 mb-2" id="createAutomation">
+                                        <i class="fas fa-plus me-1"></i> Create Automation
+                                    </button>
+                                    
+                                    <button class="btn btn-sm btn-outline-info w-100 mb-2" id="scheduleBirthdayCampaign">
+                                        <i class="fas fa-birthday-cake me-1"></i> Schedule Birthday Campaign
+                                    </button>
+                                    
+                                    <button class="btn btn-sm btn-outline-success w-100 mb-2" id="scheduleNewsletter">
+                                        <i class="fas fa-newspaper me-1"></i> Schedule Newsletter
+                                    </button>
+                                    
+                                    <button class="btn btn-sm btn-outline-warning w-100" id="viewAutomationStats">
+                                        <i class="fas fa-chart-bar me-1"></i> View Statistics
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alumni Details Modal -->
+<div class="modal fade" id="alumniDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    <i class="fas fa-user me-2"></i>Alumni Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="alumniDetailsContent">
+                    <!-- Alumni details will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveAlumniChanges">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interaction Recording Modal -->
+<div class="modal fade" id="interactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    <i class="fas fa-phone me-2"></i>Record Interaction
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="interactionForm">
+                    <div class="mb-3">
+                        <label class="form-label">Interaction Type</label>
+                        <select class="form-select" id="interactionType" required>
+                            <option value="">Select type...</option>
+                            <option value="email">Email</option>
+                            <option value="phone">Phone Call</option>
+                            <option value="linkedin">LinkedIn Message</option>
+                            <option value="event">Event</option>
+                            <option value="referral">Referral</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Purpose</label>
+                        <select class="form-select" id="interactionPurpose">
+                            <option value="">Select purpose...</option>
+                            <option value="networking">Networking</option>
+                            <option value="rehire_inquiry">Rehire Inquiry</option>
+                            <option value="reference">Reference Check</option>
+                            <option value="brand_ambassador">Brand Ambassador</option>
+                            <option value="general">General Check-in</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" id="interactionDate" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="interactionNotes" rows="4" placeholder="Enter interaction details..."></textarea>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="responseReceived">
+                        <label class="form-check-label" for="responseReceived">
+                            Response Received
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="followUpRequired">
+                        <label class="form-check-label" for="followUpRequired">
+                            Follow-up Required
+                        </label>
+                    </div>
+                    
+                    <div class="mb-3" id="followUpDateDiv" style="display: none;">
+                        <label class="form-label">Follow-up Date</label>
+                        <input type="date" class="form-control" id="followUpDate">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveInteraction">Save Interaction</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.progress-bar-striped {
+    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+    background-size: 1rem 1rem;
+}
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search alumni
+    document.getElementById('searchAlumni').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#alumniTable tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+    
+    // Filter alumni
+    document.getElementById('statusFilter').addEventListener('change', filterAlumni);
+    document.getElementById('industryFilter').addEventListener('change', filterAlumni);
+    
+    function filterAlumni() {
+        const statusFilter = document.getElementById('statusFilter').value;
+        const industryFilter = document.getElementById('industryFilter').value;
+        const rows = document.querySelectorAll('#alumniTable tr');
+        
+        rows.forEach(row => {
+            let show = true;
+            
+            if (statusFilter && !row.textContent.includes(statusFilter)) {
+                show = false;
+            }
+            
+            if (industryFilter && !row.textContent.includes(industryFilter)) {
+                show = false;
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+    }
+    
+    // Follow-up checkbox toggle
+    document.getElementById('followUpRequired').addEventListener('change', function() {
+        const followUpDateDiv = document.getElementById('followUpDateDiv');
+        followUpDateDiv.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Set today's date as default for interaction date
+    document.getElementById('interactionDate').valueAsDate = new Date();
+});
+
+// View Alumni Details
+function viewAlumniDetails(alumniId) {
+    // Fetch alumni details from API
+    fetch(`/api/alumni/${alumniId}/details`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error loading alumni details: ' + data.error);
+                return;
+            }
+            
+            // Update modal content
+            document.getElementById('alumniDetailsContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-light mb-3">Personal Information</h6>
+                        <p><strong>Name:</strong> ${data.name}</p>
+                        <p><strong>Email:</strong> ${data.email || 'N/A'}</p>
+                        <p><strong>Phone:</strong> ${data.phone || 'N/A'}</p>
+                        <p><strong>LinkedIn:</strong> ${data.linkedin_url ? `<a href="${data.linkedin_url}" target="_blank">Profile</a>` : 'N/A'}</p>
+                        <p><strong>Location:</strong> ${data.location || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-light mb-3">Professional Information</h6>
+                        <p><strong>Current Company:</strong> ${data.current_company || 'N/A'}</p>
+                        <p><strong>Current Position:</strong> ${data.current_position || 'N/A'}</p>
+                        <p><strong>Industry:</strong> ${data.industry || 'N/A'}</p>
+                        <p><strong>Alumni Status:</strong> <span class="badge bg-${data.alumni_status === 'active' ? 'success' : data.alumni_status === 'inactive' ? 'warning' : 'danger'}">${data.alumni_status}</span></p>
+                        <p><strong>Exit Date:</strong> ${data.exit_date}</p>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-light mb-3">Exit Information</h6>
+                        <p><strong>Exit Reason:</strong> ${data.exit_reason || 'N/A'}</p>
+                        <p><strong>Exit Feedback:</strong> ${data.exit_feedback || 'N/A'}</p>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-light mb-3">Notes</h6>
+                        <p>${data.notes || 'No notes available'}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('alumniDetailsModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load alumni details');
+        });
+}
+
+// Edit Alumni
+function editAlumni(alumniId) {
+    viewAlumniDetails(alumniId);
+    // Enable editing mode
+    document.getElementById('saveAlumniChanges').style.display = 'block';
+}
+
+// Record Interaction
+function recordInteraction(alumniId) {
+    // Store alumni ID for later use
+    document.getElementById('interactionModal').dataset.alumniId = alumniId;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('interactionModal'));
+    modal.show();
+}
+
+// Save Interaction
+document.getElementById('saveInteraction').addEventListener('click', function() {
+    const alumniId = document.getElementById('interactionModal').dataset.alumniId;
+    const formData = {
+        alumni_id: alumniId,
+        interaction_type: document.getElementById('interactionType').value,
+        interaction_purpose: document.getElementById('interactionPurpose').value,
+        interaction_date: document.getElementById('interactionDate').value,
+        interaction_notes: document.getElementById('interactionNotes').value,
+        response_received: document.getElementById('responseReceived').checked,
+        follow_up_required: document.getElementById('followUpRequired').checked,
+        follow_up_date: document.getElementById('followUpRequired').checked ? document.getElementById('followUpDate').value : null
+    };
+    
+    // Submit interaction data
+    fetch('/api/alumni/interaction', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Interaction recorded successfully!');
+            bootstrap.Modal.getInstance(document.getElementById('interactionModal')).hide();
+            document.getElementById('interactionForm').reset();
+        } else {
+            alert('Error recording interaction: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to record interaction');
+    });
+});
+
+// Placeholder functions for other buttons
+document.getElementById('exportAlumniData').addEventListener('click', function() {
+    alert('Export functionality would be implemented here');
+});
+
+document.getElementById('bulkOutreach').addEventListener('click', function() {
+    alert('Bulk outreach functionality would be implemented here');
+});
+
+document.getElementById('addAlumni').addEventListener('click', function() {
+    alert('Add alumni functionality would be implemented here');
+});
+
+document.getElementById('viewAllRehire').addEventListener('click', function() {
+    alert('View all rehire candidates functionality would be implemented here');
+});
+
+document.getElementById('manageAmbassadors').addEventListener('click', function() {
+    alert('Manage brand ambassadors functionality would be implemented here');
+});
+
+document.getElementById('createAutomation').addEventListener('click', function() {
+    alert('Create automation functionality would be implemented here');
+});
+
+document.getElementById('scheduleBirthdayCampaign').addEventListener('click', function() {
+    alert('Schedule birthday campaign functionality would be implemented here');
+});
+
+document.getElementById('scheduleNewsletter').addEventListener('click', function() {
+    alert('Schedule newsletter functionality would be implemented here');
+});
+
+document.getElementById('viewAutomationStats').addEventListener('click', function() {
+    alert('View automation statistics functionality would be implemented here');
+});
+
+function editAutomation(id) {
+    alert('Edit automation functionality would be implemented here');
+}
+
+function testAutomation(id) {
+    alert('Test automation functionality would be implemented here');
+}
+
+function toggleAutomation(id) {
+    alert('Toggle automation functionality would be implemented here');
+}
+</script>
+{% endblock %}

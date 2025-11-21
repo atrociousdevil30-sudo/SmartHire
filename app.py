@@ -655,6 +655,127 @@ class KTProgress(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+# Alumni Network Management Models
+class AlumniProfile(db.Model):
+    """Alumni Profile Information"""
+    __tablename__ = 'alumni_profiles'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    alumni_status = db.Column(db.String(20), default='active')  # active, inactive, lost_contact
+    exit_date = db.Column(db.Date, nullable=False)
+    exit_reason = db.Column(db.Text, nullable=True)
+    exit_feedback = db.Column(db.Text, nullable=True)
+    current_company = db.Column(db.Text, nullable=True)
+    current_position = db.Column(db.Text, nullable=True)
+    industry = db.Column(db.Text, nullable=True)
+    location = db.Column(db.Text, nullable=True)
+    linkedin_url = db.Column(db.Text, nullable=True)
+    email = db.Column(db.Text, nullable=True)
+    phone = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship to User
+    user = db.relationship('User', backref='alumni_profile')
+    
+    def last_contact_date(self):
+        """Get the last contact date from interactions"""
+        latest_interaction = AlumniInteraction.query.filter_by(alumni_id=self.id).order_by(AlumniInteraction.interaction_date.desc()).first()
+        return latest_interaction.interaction_date if latest_interaction else None
+
+class AlumniRelationship(db.Model):
+    """Alumni Relationship Management"""
+    __tablename__ = 'alumni_relationships'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    alumni_id = db.Column(db.Integer, db.ForeignKey('alumni_profiles.id'), nullable=False)
+    relationship_type = db.Column(db.String(50), nullable=False)  # mentor, reference, collaborator, friend
+    relationship_strength = db.Column(db.String(10), default='medium')  # weak, medium, strong
+    last_contact_date = db.Column(db.Date, nullable=True)
+    contact_frequency = db.Column(db.String(20), default='quarterly')  # monthly, quarterly, biannually, annually
+    preferred_contact_method = db.Column(db.String(20), default='email')  # email, phone, linkedin
+    relationship_notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class RehirePotential(db.Model):
+    """Rehire Potential Tracking"""
+    id = db.Column(db.Integer, primary_key=True)
+    alumni_id = db.Column(db.Integer, db.ForeignKey('alumni_profiles.id'), nullable=False)
+    rehire_score = db.Column(db.Integer, default=0)  # 0-100 scale
+    rehire_status = db.Column(db.String(20), default='potential')  # potential, not_interested, high_priority, blacklisted
+    skills_match = db.Column(db.Text, nullable=True)  # JSON array of matching skills
+    experience_relevance = db.Column(db.Integer, default=0)  # 1-5 scale
+    performance_rating = db.Column(db.Integer, default=0)  # 1-5 scale from previous employment
+    availability_status = db.Column(db.String(20), default='unknown')  # available, not_available, unknown
+    salary_expectations = db.Column(db.Text, nullable=True)
+    preferred_roles = db.Column(db.Text, nullable=True)  # JSON array of preferred roles
+    last_inquiry_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship to AlumniProfile
+    alumni = db.relationship('AlumniProfile', backref='rehire_potential')
+
+class BrandAmbassador(db.Model):
+    """Brand Ambassador Management"""
+    id = db.Column(db.Integer, primary_key=True)
+    alumni_id = db.Column(db.Integer, db.ForeignKey('alumni_profiles.id'), nullable=False)
+    ambassador_status = db.Column(db.String(20), default='inactive')  # active, inactive, pending
+    ambassador_type = db.Column(db.String(50), nullable=True)  # social_media, referrals, testimonials, events
+    engagement_level = db.Column(db.String(10), default='low')  # low, medium, high
+    social_media_following = db.Column(db.Integer, default=0)
+    referral_count = db.Column(db.Integer, default=0)
+    testimonial_count = db.Column(db.Integer, default=0)
+    event_participation = db.Column(db.Integer, default=0)
+    brand_alignment_score = db.Column(db.Integer, default=0)  # 0-100 scale
+    compensation_type = db.Column(db.String(20), nullable=True)  # none, monetary, benefits, recognition
+    last_activity_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship to AlumniProfile
+    alumni = db.relationship('AlumniProfile', backref='brand_ambassador')
+
+class StayInTouchAutomation(db.Model):
+    """Stay-in-Touch Automation"""
+    id = db.Column(db.Integer, primary_key=True)
+    alumni_id = db.Column(db.Integer, db.ForeignKey('alumni_profiles.id'), nullable=False)
+    automation_type = db.Column(db.String(50), nullable=False)  # newsletter, birthday, anniversary, personalized
+    frequency = db.Column(db.String(20), default='monthly')  # weekly, monthly, quarterly
+    last_sent_date = db.Column(db.Date, nullable=True)
+    next_scheduled_date = db.Column(db.Date, nullable=True)
+    template_used = db.Column(db.Text, nullable=True)
+    engagement_rate = db.Column(db.Float, default=0.0)
+    open_count = db.Column(db.Integer, default=0)
+    click_count = db.Column(db.Integer, default=0)
+    response_count = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    custom_content = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship to AlumniProfile
+    alumni = db.relationship('AlumniProfile', backref='stay_in_touch_automations')
+
+class AlumniInteraction(db.Model):
+    """Alumni Interaction Tracking"""
+    id = db.Column(db.Integer, primary_key=True)
+    alumni_id = db.Column(db.Integer, db.ForeignKey('alumni_profiles.id'), nullable=False)
+    interaction_type = db.Column(db.String(50), nullable=False)  # email, phone, linkedin, event, referral
+    interaction_date = db.Column(db.Date, nullable=False)
+    interaction_purpose = db.Column(db.String(50), nullable=True)  # networking, rehire_inquiry, reference, brand_ambassador
+    interaction_notes = db.Column(db.Text, nullable=True)
+    response_received = db.Column(db.Boolean, default=False)
+    follow_up_required = db.Column(db.Boolean, default=False)
+    follow_up_date = db.Column(db.Date, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class RememberedCredential(db.Model):
     """Store remembered login credentials for users"""
     id = db.Column(db.Integer, primary_key=True)
@@ -4339,6 +4460,113 @@ def support():
         recent_issues = []
 
     return render_template('support.html', title='Support', recent_issues=recent_issues)
+
+@app.route('/alumni-network', methods=['GET'])
+@login_required(['hr', 'admin'])
+def alumni_network():
+    """Alumni Network Management page"""
+    # Get the current user's employee data
+    employee = User.query.get(session['user_id'])
+    
+    # Get HR contact information
+    if session.get('role') == 'hr':
+        hr_contact = User.query.get(session['user_id'])
+    else:
+        hr_contact = User.query.filter_by(role='hr', is_active=True).first()
+        if not hr_contact:
+            hr_contact = User.query.filter_by(role='hr').first()
+    
+    # Fetch Alumni Network data from database
+    alumni_profiles = AlumniProfile.query.order_by(AlumniProfile.updated_at.desc()).all()
+    
+    # Calculate alumni statistics
+    alumni_stats = {
+        'total_alumni': AlumniProfile.query.count(),
+        'active_alumni': AlumniProfile.query.filter_by(alumni_status='active').count(),
+        'rehire_potential': RehirePotential.query.filter(RehirePotential.rehire_score >= 70).count(),
+        'brand_ambassadors': BrandAmbassador.query.filter_by(ambassador_status='active').count()
+    }
+    
+    # Get rehire candidates (top scoring)
+    rehire_candidates = RehirePotential.query.filter(RehirePotential.rehire_score >= 50).order_by(RehirePotential.rehire_score.desc()).limit(10).all()
+    
+    # Get brand ambassadors
+    brand_ambassadors = BrandAmbassador.query.filter_by(ambassador_status='active').order_by(BrandAmbassador.brand_alignment_score.desc()).limit(10).all()
+    
+    # Get stay-in-touch automation campaigns
+    stay_in_touch_automations = StayInTouchAutomation.query.filter_by(is_active=True).all()
+    
+    # Add active alumni count to each automation
+    for automation in stay_in_touch_automations:
+        automation.active_alumni_count = StayInTouchAutomation.query.filter_by(
+            automation_type=automation.automation_type,
+            is_active=True
+        ).count()
+    
+    return render_template('alumni_network.html', 
+                         employee=employee, 
+                         hr_contact=hr_contact,
+                         alumni_profiles=alumni_profiles,
+                         alumni_stats=alumni_stats,
+                         rehire_candidates=rehire_candidates,
+                         brand_ambassadors=brand_ambassadors,
+                         stay_in_touch_automations=stay_in_touch_automations)
+
+@app.route('/api/alumni/<int:alumni_id>/details')
+@login_required(['hr', 'admin'])
+def get_alumni_details(alumni_id):
+    """Get alumni details for view modal"""
+    try:
+        alumni = AlumniProfile.query.get_or_404(alumni_id)
+        
+        return jsonify({
+            'id': alumni.id,
+            'name': alumni.user.full_name if alumni.user else 'Unknown',
+            'email': alumni.email,
+            'phone': alumni.phone,
+            'linkedin_url': alumni.linkedin_url,
+            'location': alumni.location,
+            'current_company': alumni.current_company,
+            'current_position': alumni.current_position,
+            'industry': alumni.industry,
+            'alumni_status': alumni.alumni_status,
+            'exit_date': alumni.exit_date.strftime('%Y-%m-%d') if alumni.exit_date else None,
+            'exit_reason': alumni.exit_reason,
+            'exit_feedback': alumni.exit_feedback,
+            'notes': alumni.notes
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error fetching alumni details: {str(e)}')
+        return jsonify({'error': 'Failed to fetch alumni details'}), 500
+
+@app.route('/api/alumni/interaction', methods=['POST'])
+@login_required(['hr', 'admin'])
+def record_alumni_interaction():
+    """Record alumni interaction"""
+    try:
+        data = request.get_json()
+        
+        interaction = AlumniInteraction(
+            alumni_id=data['alumni_id'],
+            interaction_type=data['interaction_type'],
+            interaction_purpose=data.get('interaction_purpose'),
+            interaction_date=datetime.strptime(data['interaction_date'], '%Y-%m-%d').date(),
+            interaction_notes=data.get('interaction_notes'),
+            response_received=data.get('response_received', False),
+            follow_up_required=data.get('follow_up_required', False),
+            follow_up_date=datetime.strptime(data['follow_up_date'], '%Y-%m-%d').date() if data.get('follow_up_date') else None,
+            created_by=session['user_id']
+        )
+        
+        db.session.add(interaction)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Interaction recorded successfully'})
+        
+    except Exception as e:
+        app.logger.error(f'Error recording interaction: {str(e)}')
+        return jsonify({'error': 'Failed to record interaction'}), 500
 
 @app.route('/onboarding-assistant')
 @login_required('employee')
