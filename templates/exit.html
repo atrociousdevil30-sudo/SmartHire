@@ -205,7 +205,7 @@
                                         <div class="progress bg-dark bg-opacity-50 mt-2" style="height: 8px;">
                                             {% set risk_percentage = ((high_risk_count / total_analyzed) * 100) if total_analyzed > 0 else 0 %}
                                             <div class="progress-bar bg-{{ 'danger' if high_risk_count > 0 else 'success' }}" 
-                                                 style="width: {{ risk_percentage }}%"></div>
+                                                 style="width: {{ risk_percentage }}%;"></div>
                                         </div>
                                     </div>
                                     
@@ -312,13 +312,29 @@
                     {% if session.get('role') == 'employee' and employee and employee.status == 'Offboarding' %}
                         {% set offboarding_employee = employee %}
                     {% elif session.get('role') == 'hr' %}
-                        {# HR can see any offboarding employee - for demo, we'll check if current employee is offboarding #}
-                        {% if employee and employee.status == 'Offboarding' %}
-                            {% set offboarding_employee = employee %}
+                        {# HR can see any offboarding employee - show first offboarding employee or allow selection #}
+                        {% if offboarding_employees and offboarding_employees|length > 0 %}
+                            {% set offboarding_employee = offboarding_employees[0] %}
                         {% endif %}
                     {% endif %}
                     
-                    {% if offboarding_employee %}
+                    {% if offboarding_employees and offboarding_employees|length > 0 %}
+                        {% if session.get('role') == 'hr' and offboarding_employees|length > 1 %}
+                        <!-- Employee Selection for HR -->
+                        <div class="mb-4">
+                            <label class="form-label text-light">Select Offboarding Employee:</label>
+                            <select class="form-select bg-dark text-light border-secondary" id="offboardingEmployeeSelect">
+                                {% for emp in offboarding_employees %}
+                                <option value="{{ emp.id }}" {% if emp.id == offboarding_employee.id %}selected{% endif %}>
+                                    {{ emp.full_name }} - {{ emp.position or emp.role }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Selected Employee Details -->
+                        <div id="selectedEmployeeDetails">
                     <div class="text-center mb-4">
                         <div class="avatar-xxl mb-3">
                             <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle display-4">
@@ -365,6 +381,7 @@
                             <span class="badge bg-{{ 'warning' if offboarding_employee.status == 'Offboarding' else 'success' if offboarding_employee.status == 'Active' else 'secondary' }}">{{ offboarding_employee.status or 'Active' }}</span>
                         </div>
                     </div>
+                        </div> <!-- Close selectedEmployeeDetails -->
                     {% else %}
                     <div class="text-center py-5">
                         <div class="mb-4">
@@ -442,6 +459,38 @@
                                 <i class="fab fa-whatsapp me-1"></i> WhatsApp
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offboarding Tasks Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-tasks me-2"></i>Offboarding Tasks
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Status</th>
+                                    <th>Risk Level</th>
+                                    <th>Due Date</th>
+                                    <th>Assigned To</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="offboardingTasks">
+                                <!-- Tasks will be dynamically added here -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -595,37 +644,41 @@
 const tasks = [
     { id: 1, title: 'Laptop/Asset Return', status: 'pending', risk: 'high', dueDate: '2023-11-19', completed: false, assignedTo: 'it' },
     { id: 2, title: 'ID Card Return', status: 'pending', risk: 'medium', dueDate: '2023-11-18', completed: false, assignedTo: 'hr' },
-    { id: 3, title: 'Email Revocation', status: 'pending', risk: 'high', dueDate: '2023-11-17', completed: false, assignedTo: 'it' },
+    { id: 3, title: 'Email Account Closure', status: 'pending', risk: 'high', dueDate: '2023-11-17', completed: false, assignedTo: 'it' },
     { id: 4, title: 'System Access Revocation', status: 'in-progress', risk: 'high', dueDate: '2023-11-18', completed: false, assignedTo: 'it' },
     { id: 5, title: 'Exit Interview', status: 'pending', risk: 'low', dueDate: '2023-11-19', completed: false, assignedTo: 'hr' },
-    { id: 6, title: 'Clearance Check', status: 'pending', risk: 'medium', dueDate: '2023-11-20', completed: false, assignedTo: 'finance' },
+    { id: 6, title: 'Final Clearance', status: 'pending', risk: 'medium', dueDate: '2023-11-20', completed: false, assignedTo: 'finance' },
     { id: 7, title: 'Experience Letter', status: 'completed', risk: 'low', dueDate: '2023-11-15', completed: true, assignedTo: 'hr' }
 ];
 
 // Render tasks
 const taskList = document.getElementById('offboardingTasks');
-tasks.forEach(task => {
-    const taskRow = document.createElement('tr');
-    taskRow.innerHTML = `
-        <td>${task.title}</td>
-        <td>
-            <span class="badge bg-${task.status === 'pending' ? 'warning' : task.status === 'in-progress' ? 'primary' : 'success'} bg-opacity-25 text-${task.status === 'pending' ? 'warning' : task.status === 'in-progress' ? 'primary' : 'success'}">
-                ${task.status === 'pending' ? '<i class="fas fa-clock me-1"></i> Pending' : task.status === 'in-progress' ? '<i class="fas fa-spinner me-1"></i> In Progress' : '<i class="fas fa-check-circle me-1"></i> Completed'}
-            </span>
-        </td>
-        <td>
-            <span class="badge bg-${task.risk === 'high' ? 'danger' : task.risk === 'medium' ? 'warning' : 'success'} bg-opacity-25 text-${task.risk === 'high' ? 'danger' : task.risk === 'medium' ? 'warning' : 'success'}">
-                ${task.risk === 'high' ? '<i class="fas fa-exclamation-triangle me-1"></i> High' : task.risk === 'medium' ? '<i class="fas fa-exclamation-circle me-1"></i> Medium' : '<i class="fas fa-check-circle me-1"></i> Low'}
-            </span>
-        </td>
-        <td>${task.dueDate}</td>
-        <td>${task.assignedTo}</td>
-        <td class="text-end">
-            <button class="btn btn-sm btn-outline-primary view-task-btn" data-task-id="${task.id}">View</button>
-        </td>
-    `;
-    taskList.appendChild(taskRow);
-});
+if (taskList) {
+    tasks.forEach(task => {
+        const taskRow = document.createElement('tr');
+        taskRow.innerHTML = `
+            <td>${task.title}</td>
+            <td>
+                <span class="badge bg-${task.status === 'pending' ? 'warning' : task.status === 'in-progress' ? 'primary' : 'success'} bg-opacity-25 text-${task.status === 'pending' ? 'warning' : task.status === 'in-progress' ? 'primary' : 'success'}">
+                    ${task.status === 'pending' ? '<i class="fas fa-clock me-1"></i> Pending' : task.status === 'in-progress' ? '<i class="fas fa-spinner me-1"></i> In Progress' : '<i class="fas fa-check-circle me-1"></i> Completed'}
+                </span>
+            </td>
+            <td>
+                <span class="badge bg-${task.risk === 'high' ? 'danger' : task.risk === 'medium' ? 'warning' : 'success'} bg-opacity-25 text-${task.risk === 'high' ? 'danger' : task.risk === 'medium' ? 'warning' : 'success'}">
+                    ${task.risk === 'high' ? '<i class="fas fa-exclamation-triangle me-1"></i> High' : task.risk === 'medium' ? '<i class="fas fa-exclamation-circle me-1"></i> Medium' : '<i class="fas fa-check-circle me-1"></i> Low'}
+                </span>
+            </td>
+            <td>${task.dueDate}</td>
+            <td>${task.assignedTo}</td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-outline-primary view-task-btn" data-task-id="${task.id}">View</button>
+            </td>
+        `;
+        taskList.appendChild(taskRow);
+    });
+} else {
+    console.warn('Offboarding tasks table not found');
+}
 
 // Checklist functionality
 function updateChecklistProgress() {
@@ -688,6 +741,20 @@ function messageHR() {
     // Open WhatsApp chat
     window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
 }
+
+// Handle employee selection dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    const employeeSelect = document.getElementById('offboardingEmployeeSelect');
+    if (employeeSelect) {
+        employeeSelect.addEventListener('change', function() {
+            const selectedEmployeeId = this.value;
+            if (selectedEmployeeId) {
+                // Reload page with selected employee (could be enhanced with AJAX)
+                window.location.href = `/exit?employee_id=${selectedEmployeeId}`;
+            }
+        });
+    }
+});
 
 // ... existing code ...
 </script>

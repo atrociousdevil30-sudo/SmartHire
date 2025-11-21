@@ -41,6 +41,13 @@
                             <i class="fas fa-sign-out-alt me-2"></i> Pre-Offboarding
                         </a>
                     </li>
+                    {% if employee.status == 'Offboarding' %}
+                    <li>
+                        <a class="dropdown-item text-info" href="{{ url_for('exit_interview', employee_id=employee.id) }}">
+                            <i class="fas fa-eye me-2"></i> View Offboarding
+                        </a>
+                    </li>
+                    {% endif %}
                     <li>
                         <a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deactivateModal">
                             <i class="fas fa-user-slash me-2"></i> Deactivate

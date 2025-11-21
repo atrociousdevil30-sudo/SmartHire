@@ -4225,10 +4225,23 @@ def complete_interview():
         }), 500
 
 @app.route('/exit', methods=['GET', 'POST'])
+@app.route('/exit/<int:employee_id>', methods=['GET', 'POST'])
 @login_required(['employee', 'hr'])  # Allow both employees and HR to access
-def exit_interview():
+def exit_interview(employee_id=None):
     # Get the current user's employee data
     employee = User.query.get(session['user_id'])
+    
+    # If employee_id is provided (HR viewing specific employee)
+    if employee_id and session.get('role') == 'hr':
+        target_employee = User.query.get(employee_id)
+        if target_employee and target_employee.status == 'Offboarding':
+            employee = target_employee
+        elif not target_employee:
+            flash('Employee not found', 'error')
+            return redirect(url_for('exit_interview'))
+        else:
+            flash('Employee is not in offboarding status', 'warning')
+            return redirect(url_for('exit_interview'))
     
     if request.method == 'POST':
         # Use the logged-in user's name instead of form data
@@ -4279,15 +4292,21 @@ def exit_interview():
                 'message': 'An error occurred while submitting your feedback. Please try again.'
             }), 500
     
-    # For GET request, get exit feedback data
+    # For GET request, get exit feedback data and offboarding employees
+    offboarding_employees = []
     if session.get('role') == 'hr':
-        # HR can see all exit feedback
+        # HR can see all exit feedback and offboarding employees
         exit_feedbacks = ExitFeedback.query.order_by(ExitFeedback.created_at.desc()).limit(10).all()
+        # Get all employees with offboarding status
+        offboarding_employees = User.query.filter_by(status='Offboarding').all()
     else:
         # Employees can only see their own feedback
         exit_feedbacks = ExitFeedback.query.filter(
             ExitFeedback.name.like(f"%{employee.full_name}%")
         ).order_by(ExitFeedback.created_at.desc()).limit(10).all()
+        # Employee can only see themselves if they are offboarding
+        if employee and employee.status == 'Offboarding':
+            offboarding_employees = [employee]
     
     # Get HR contact information - use current user if HR, otherwise find an HR user
     if session.get('role') == 'hr':
@@ -4297,8 +4316,9 @@ def exit_interview():
         if not hr_contact:
             hr_contact = User.query.filter_by(role='hr').first()
     
-    # Render the template with employee data, exit feedbacks, and HR contact
-    return render_template('exit.html', employee=employee, exit_feedbacks=exit_feedbacks, hr_contact=hr_contact)
+    # Render the template with employee data, exit feedbacks, offboarding employees, and HR contact
+    return render_template('exit.html', employee=employee, exit_feedbacks=exit_feedbacks, 
+                         offboarding_employees=offboarding_employees, hr_contact=hr_contact)
 
 
 @app.route('/knowledge-transfer', methods=['GET'])

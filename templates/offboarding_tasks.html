@@ -121,12 +121,12 @@
     <div class="row">
         <!-- Left Column -->
         <div class="col-lg-8">
-            <!-- Asset Return Section -->
+            <!-- Offboarding Tasks Section -->
             <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-0">
                     <h2 class="h5 mb-0">
-                        <i class="bi bi-pc-display me-2"></i>Asset Return
-                        <span class="badge bg-warning text-dark ms-2">Pending Items</span>
+                        <i class="bi bi-tasks me-2"></i>Offboarding Tasks
+                        <span class="badge bg-info ms-2">In Progress</span>
                     </h2>
                 </div>
                 <div class="card-body">
@@ -134,121 +134,181 @@
                         <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th width="40"></th>
-                                    <th>Asset</th>
-                                    <th>Asset ID</th>
-                                    <th>Condition</th>
-                                    <th>Due Date</th>
+                                    <th>Task</th>
                                     <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Due Date</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="checkbox" class="form-check-input" id="asset1"></td>
                                     <td>
-                                        <label class="form-check-label" for="asset1">
-                                            <i class="bi bi-laptop me-2"></i>Dell XPS 15
-                                        </label>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-laptop text-warning me-2"></i>
+                                            <div>
+                                                <strong>Laptop/Asset Return</strong>
+                                                <br><small class="text-muted">Return all company assets including laptop, phone, and access card</small>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td>IT-2022-0456</td>
-                                    <td>Good</td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-danger">High</span>
+                                    </td>
                                     <td>{{ (now() + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
-                                    <td><span class="badge bg-warning text-dark">To be returned</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assetReturnModal">
+                                            <i class="bi bi-box-arrow-right"></i> Return
+                                        </button>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <td><input type="checkbox" class="form-check-input" id="asset2" checked></td>
                                     <td>
-                                        <label class="form-check-label" for="asset2">
-                                            <i class="bi bi-phone me-2"></i>iPhone 13
-                                        </label>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-credit-card text-warning me-2"></i>
+                                            <div>
+                                                <strong>ID Card Return</strong>
+                                                <br><small class="text-muted">Return company ID card and access badges</small>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td>MB-2022-0789</td>
-                                    <td>Good</td>
-                                    <td>{{ (now() + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
-                                    <td><span class="badge bg-success">Returned</span></td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning">Medium</span>
+                                    </td>
+                                    <td>{{ (now() + timedelta(days=2)).strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" disabled>
+                                            <i class="bi bi-clock"></i> Pending
+                                        </button>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <td><input type="checkbox" class="form-check-input" id="asset3"></td>
                                     <td>
-                                        <label class="form-check-label" for="asset3">
-                                            <i class="bi bi-usb-drive me-2"></i>Access Card
-                                        </label>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-envelope-x text-success me-2"></i>
+                                            <div>
+                                                <strong>Email Account Closure</strong>
+                                                <br><small class="text-muted">Email will be closed on exit date - backup your data</small>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td>AC-2022-1234</td>
-                                    <td>Good</td>
-                                    <td>{{ (now() + timedelta(days=3)).strftime('%b %d, %Y') }}</td>
-                                    <td><span class="badge bg-warning text-dark">To be returned</span></td>
+                                    <td>
+                                        <span class="badge bg-success">Scheduled</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-danger">High</span>
+                                    </td>
+                                    <td>{{ (now() + timedelta(days=1)).strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#emailBackupModal">
+                                            <i class="bi bi-download"></i> Backup
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-shield-x text-primary me-2"></i>
+                                            <div>
+                                                <strong>System Access Revocation</strong>
+                                                <br><small class="text-muted">All system access will be revoked on exit date</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">In Progress</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-danger">High</span>
+                                    </td>
+                                    <td>{{ (now() + timedelta(days=1)).strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                                            <i class="bi bi-gear"></i> Processing
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-chat-square-text text-info me-2"></i>
+                                            <div>
+                                                <strong>Exit Interview</strong>
+                                                <br><small class="text-muted">Complete exit interview and feedback form</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">Low</span>
+                                    </td>
+                                    <td>{{ (now() + timedelta(days=1)).strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#exitInterviewModal">
+                                            <i class="bi bi-chat-dots"></i> Start
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-clipboard-check text-warning me-2"></i>
+                                            <div>
+                                                <strong>Final Clearance</strong>
+                                                <br><small class="text-muted">Clearance from all departments</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning">Medium</span>
+                                    </td>
+                                    <td>{{ (now() + timedelta(days=4)).strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                                            <i class="bi bi-clock"></i> Pending
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-award text-success me-2"></i>
+                                            <div>
+                                                <strong>Experience Letter</strong>
+                                                <br><small class="text-muted">Will be available after clearance</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">Not Available</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">Low</span>
+                                    </td>
+                                    <td>{{ (now() + timedelta(days=5)).strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                                            <i class="bi bi-download"></i> Pending
+                                        </button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <small class="text-muted">Mark items as returned when you've submitted them</small>
-                        <button class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-check-circle me-1"></i> Mark Selected as Returned
-                        </button>
-                    </div>
                 </div>
             </div>
 
-            <!-- Exit Interview Section -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-0">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h2 class="h5 mb-0">
-                            <i class="bi bi-chat-square-text me-2"></i>Exit Interview
-                        </h2>
-                        <span class="badge bg-info">Scheduled: {{ (now() + timedelta(days=1)).strftime('%b %d, %Y, 2:00 PM') }}</span>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        Your exit interview is scheduled with <strong>{{ offboarding.hr_contact.full_name if offboarding.hr_contact else 'HR Manager' }} ({{ offboarding.hr_contact.position if offboarding.hr_contact and offboarding.hr_contact.position else 'HR Manager' }})</strong>.
-                        Please complete the pre-interview form below before the meeting.
-                    </div>
-                    
-                    <form>
-                        <div class="mb-3">
-                            <label class="form-label">Reason for leaving</label>
-                            <select class="form-select bg-dark text-light">
-                                <option selected disabled>Select a reason</option>
-                                <option>Better career opportunity</option>
-                                <option>Relocation</option>
-                                <option>Career change</option>
-                                <option>Personal reasons</option>
-                                <option>Work-life balance</option>
-                                <option>Other</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">What did you enjoy most about working here?</label>
-                            <textarea class="form-control bg-dark text-light" rows="3"></textarea>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">What could we improve?</label>
-                            <textarea class="form-control bg-dark text-light" rows="3"></textarea>
-                        </div>
-                        
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="contactConsent">
-                            <label class="form-check-label" for="contactConsent">
-                                I consent to being contacted in the future for feedback or potential re-employment
-                            </label>
-                        </div>
-                        
-                        <div class="d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save me-1"></i> Save Responses
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-        
         <!-- Right Column -->
         <div class="col-lg-4">
             <!-- Additional Employee Details -->
