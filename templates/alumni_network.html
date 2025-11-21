@@ -81,6 +81,41 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Additional Statistics Row -->
+                    <div class="row g-4 mt-1">
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h5 class="mb-1 text-secondary">{{ alumni_stats.total_interactions if alumni_stats else 0 }}</h5>
+                                    <p class="text-muted small mb-0">Total Interactions</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h5 class="mb-1 text-info">{{ alumni_stats.recent_interactions if alumni_stats else 0 }}</h5>
+                                    <p class="text-muted small mb-0">Recent (30 days)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h5 class="mb-1 text-warning">{{ alumni_stats.high_priority_rehire if alumni_stats else 0 }}</h5>
+                                    <p class="text-muted small mb-0">High Priority</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h5 class="mb-1 text-danger">{{ alumni_stats.lost_contact_alumni if alumni_stats else 0 }}</h5>
+                                    <p class="text-muted small mb-0">Lost Contact</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -182,13 +217,13 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-info" onclick="viewAlumniDetails({{ alumni.id }})">
+                                            <button class="btn btn-outline-info" onclick="viewAlumniDetails('{{ alumni.id }}')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <button class="btn btn-outline-primary" onclick="editAlumni({{ alumni.id }})">
+                                            <button class="btn btn-outline-primary" onclick="editAlumni('{{ alumni.id }}')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-outline-success" onclick="recordInteraction({{ alumni.id }})">
+                                            <button class="btn btn-outline-success" onclick="recordInteraction('{{ alumni.id }}')">
                                                 <i class="fas fa-phone"></i>
                                             </button>
                                         </div>
@@ -216,15 +251,17 @@
                 </div>
                 <div class="card-body">
                     <div id="rehireCandidates">
-                        {% for candidate in rehire_candidates[:5] %}
+                        {% for rehire_potential, alumni_profile, user in rehire_candidates %}
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
-                                <strong class="text-light">{{ candidate.alumni.user.full_name if candidate.alumni.user else 'Unknown' }}</strong>
-                                <br><small class="text-muted">{{ candidate.alumni.current_position }}</small>
+                                <strong class="text-light">{{ user.full_name if user else 'Unknown' }}</strong>
+                                <br><small class="text-muted">{{ alumni_profile.current_position or 'N/A' }}</small>
+                                <br><small class="text-muted">{{ alumni_profile.current_company or 'N/A' }}</small>
                             </div>
                             <div class="text-end">
-                                <span class="badge bg-primary">{{ candidate.rehire_score }}/100</span>
-                                <br><small class="text-muted">{{ candidate.rehire_status }}</small>
+                                <span class="badge bg-primary">{{ rehire_potential.rehire_score }}/100</span>
+                                <br><small class="text-muted">{{ rehire_potential.rehire_status }}</small>
+                                <br><small class="text-muted">{{ alumni_profile.industry or 'Unknown' }}</small>
                             </div>
                         </div>
                         {% else %}
@@ -250,15 +287,17 @@
                 </div>
                 <div class="card-body">
                     <div id="brandAmbassadorsList">
-                        {% for ambassador in brand_ambassadors[:5] %}
+                        {% for ambassador, alumni_profile, user in brand_ambassadors %}
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
-                                <strong class="text-light">{{ ambassador.alumni.user.full_name if ambassador.alumni.user else 'Unknown' }}</strong>
-                                <br><small class="text-muted">{{ ambassador.ambassador_type }}</small>
+                                <strong class="text-light">{{ user.full_name if user else 'Unknown' }}</strong>
+                                <br><small class="text-muted">{{ ambassador.ambassador_type or 'General' }}</small>
+                                <br><small class="text-muted">{{ alumni_profile.current_company or 'N/A' }}</small>
                             </div>
                             <div class="text-end">
                                 <span class="badge bg-success">{{ ambassador.engagement_level }}</span>
                                 <br><small class="text-muted">{{ ambassador.referral_count }} referrals</small>
+                                <br><small class="text-muted">Score: {{ ambassador.brand_alignment_score }}/100</small>
                             </div>
                         </div>
                         {% else %}
@@ -277,7 +316,94 @@
         </div>
     </div>
 
-    <!-- Stay-in-Touch Automation -->
+    <!-- Recent Interactions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-comments me-2"></i>Recent Alumni Interactions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="recentInteractions">
+                        {% for interaction, alumni_profile, user in recent_interactions %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <strong class="text-light">{{ user.full_name if user else 'Unknown' }}</strong>
+                                <br><small class="text-muted">
+                                    <span class="badge bg-secondary">{{ interaction.interaction_type }}</span>
+                                    {% if interaction.interaction_purpose %}
+                                    <span class="badge bg-info ms-1">{{ interaction.interaction_purpose }}</span>
+                                    {% endif %}
+                                </small>
+                                <br><small class="text-muted">{{ interaction.interaction_notes[:100] }}{% if interaction.interaction_notes|length > 100 %}...{% endif %}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="text-light">{{ interaction.interaction_date.strftime('%Y-%m-%d') }}</span>
+                                <br><small class="text-muted">By: {{ interaction.created_by if interaction.created_by else 'HR' }}</small>
+                                {% if interaction.response_received %}
+                                <br><span class="badge bg-success">Response Received</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-comments me-2"></i>
+                            No recent interactions recorded
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Industry and Location Distribution -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light">
+                        <i class="fas fa-industry me-2"></i>Industry Distribution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for industry, count in industry_distribution %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-light">{{ industry or 'Unknown' }}</span>
+                        <span class="badge bg-primary">{{ count }}</span>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted">
+                        No industry data available
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light">
+                        <i class="fas fa-map-marker-alt me-2"></i>Top Locations
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for location, count in location_distribution %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-light">{{ location or 'Unknown' }}</span>
+                        <span class="badge bg-success">{{ count }}</span>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted">
+                        No location data available
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="row mb-4">
         <div class="col-12">
             <div class="card bg-dark bg-opacity-25 border-secondary">
@@ -325,14 +451,14 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
-                                                    <button class="btn btn-outline-primary" onclick="editAutomation({{ automation.id }})">
+                                                    <button class="btn btn-outline-primary" onclick="editAutomation('{{ automation.id }}')">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <button class="btn btn-outline-success" onclick="testAutomation({{ automation.id }})">
+                                                    <button class="btn btn-outline-success" onclick="testAutomation('{{ automation.id }}')">
                                                         <i class="fas fa-play"></i>
                                                     </button>
-                                                    <button class="btn btn-outline-warning" onclick="toggleAutomation({{ automation.id }})">
-                                                        <i class="fas fa-toggle-{{ 'on' if automation.is_active else 'off' }}"></i>
+                                                    <button class="btn btn-outline-warning" onclick="toggleAutomation('{{ automation.id }}')">
+                                                        <i class="fas fa-power-off"></i>
                                                     </button>
                                                 </div>
                                             </td>
@@ -496,40 +622,25 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Search alumni
+    // Load real-time statistics
+    loadAlumniStatistics();
+    
+    // Search alumni with debouncing
+    let searchTimeout;
     document.getElementById('searchAlumni').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
         const searchTerm = this.value.toLowerCase();
-        const rows = document.querySelectorAll('#alumniTable tr');
         
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
+        searchTimeout = setTimeout(() => {
+            if (searchTerm.length >= 2 || searchTerm.length === 0) {
+                searchAlumniFromDB(searchTerm);
+            }
+        }, 300);
     });
     
     // Filter alumni
-    document.getElementById('statusFilter').addEventListener('change', filterAlumni);
-    document.getElementById('industryFilter').addEventListener('change', filterAlumni);
-    
-    function filterAlumni() {
-        const statusFilter = document.getElementById('statusFilter').value;
-        const industryFilter = document.getElementById('industryFilter').value;
-        const rows = document.querySelectorAll('#alumniTable tr');
-        
-        rows.forEach(row => {
-            let show = true;
-            
-            if (statusFilter && !row.textContent.includes(statusFilter)) {
-                show = false;
-            }
-            
-            if (industryFilter && !row.textContent.includes(industryFilter)) {
-                show = false;
-            }
-            
-            row.style.display = show ? '' : 'none';
-        });
-    }
+    document.getElementById('statusFilter').addEventListener('change', filterAlumniFromDB);
+    document.getElementById('industryFilter').addEventListener('change', filterAlumniFromDB);
     
     // Follow-up checkbox toggle
     document.getElementById('followUpRequired').addEventListener('change', function() {
@@ -540,6 +651,163 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set today's date as default for interaction date
     document.getElementById('interactionDate').valueAsDate = new Date();
 });
+
+// Load alumni statistics from database
+function loadAlumniStatistics() {
+    fetch('/api/alumni/statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error loading statistics:', data.error);
+                return;
+            }
+            
+            // Update statistics cards with animation
+            updateStatCard('totalAlumni', data.total_alumni);
+            updateStatCard('activeAlumni', data.active_alumni);
+            updateStatCard('rehirePotential', data.rehire_potential);
+            updateStatCard('brandAmbassadors', data.brand_ambassadors);
+        })
+        .catch(error => {
+            console.error('Error fetching statistics:', error);
+        });
+}
+
+// Update statistics card with animation
+function updateStatCard(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        const currentValue = parseInt(element.textContent) || 0;
+        const targetValue = parseInt(value) || 0;
+        
+        // Animate number change
+        if (currentValue !== targetValue) {
+            animateValue(element, currentValue, targetValue, 500);
+        }
+    }
+}
+
+// Animate number changes
+function animateValue(element, start, end, duration) {
+    const range = end - start;
+    const increment = range / (duration / 16);
+    let current = start;
+    
+    const timer = setInterval(() => {
+        current += increment;
+        if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+            element.textContent = end;
+            clearInterval(timer);
+        } else {
+            element.textContent = Math.round(current);
+        }
+    }, 16);
+}
+
+// Search alumni from database
+function searchAlumniFromDB(query) {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const industryFilter = document.getElementById('industryFilter').value;
+    
+    const params = new URLSearchParams({
+        q: query,
+        status: statusFilter,
+        industry: industryFilter
+    });
+    
+    fetch(`/api/alumni/search?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error searching alumni:', data.error);
+                return;
+            }
+            
+            updateAlumniTable(data.alumni);
+        })
+        .catch(error => {
+            console.error('Error searching alumni:', error);
+        });
+}
+
+// Filter alumni from database
+function filterAlumniFromDB() {
+    const searchTerm = document.getElementById('searchAlumni').value;
+    searchAlumniFromDB(searchTerm);
+}
+
+// Update alumni table with search results
+function updateAlumniTable(alumni) {
+    const tbody = document.getElementById('alumniTable');
+    
+    if (alumni.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted">No alumni found matching your criteria</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = alumni.map(alumni_profile => `
+        <tr>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                        ${(alumni_profile.current_company || 'A')[0].toUpperCase()}
+                    </div>
+                    <div>
+                        <strong>${alumni_profile.name}</strong>
+                        ${alumni_profile.linkedin_url ? `
+                        <a href="${alumni_profile.linkedin_url}" target="_blank" class="text-muted small ms-1">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        ` : ''}
+                    </div>
+                </div>
+            </td>
+            <td>
+                <span class="text-light">${alumni_profile.current_position || 'N/A'}</span>
+                <br><small class="text-muted">${alumni_profile.current_company || 'N/A'}</small>
+            </td>
+            <td>
+                <span class="badge bg-secondary">${alumni_profile.industry || 'Unknown'}</span>
+            </td>
+            <td>
+                ${getStatusBadge(alumni_profile.alumni_status)}
+            </td>
+            <td>
+                <span class="text-light">${alumni_profile.location || 'N/A'}</span>
+                <br><small class="text-muted">Exited: ${alumni_profile.exit_date || 'N/A'}</small>
+            </td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-info" onclick="viewAlumniDetails(${alumni_profile.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="editAlumni(${alumni_profile.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-success" onclick="recordInteraction(${alumni_profile.id})">
+                        <i class="fas fa-phone"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Get status badge HTML
+function getStatusBadge(status) {
+    const statusConfig = {
+        'active': { class: 'bg-success', text: 'Active' },
+        'inactive': { class: 'bg-warning', text: 'Inactive' },
+        'lost_contact': { class: 'bg-danger', text: 'Lost Contact' }
+    };
+    
+    const config = statusConfig[status] || { class: 'bg-secondary', text: status };
+    return `<span class="badge ${config.class}">${config.text}</span>`;
+}
 
 // View Alumni Details
 function viewAlumniDetails(alumniId) {
@@ -568,7 +836,7 @@ function viewAlumniDetails(alumniId) {
                         <p><strong>Current Company:</strong> ${data.current_company || 'N/A'}</p>
                         <p><strong>Current Position:</strong> ${data.current_position || 'N/A'}</p>
                         <p><strong>Industry:</strong> ${data.industry || 'N/A'}</p>
-                        <p><strong>Alumni Status:</strong> <span class="badge bg-${data.alumni_status === 'active' ? 'success' : data.alumni_status === 'inactive' ? 'warning' : 'danger'}">${data.alumni_status}</span></p>
+                        <p><strong>Alumni Status:</strong> ${getStatusBadge(data.alumni_status)}</p>
                         <p><strong>Exit Date:</strong> ${data.exit_date}</p>
                     </div>
                 </div>
@@ -585,7 +853,20 @@ function viewAlumniDetails(alumniId) {
                         <p>${data.notes || 'No notes available'}</p>
                     </div>
                 </div>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-light mb-3">Recent Interactions</h6>
+                        <div id="alumniInteractions">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-spinner fa-spin"></i> Loading interactions...
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
+            
+            // Load interaction history
+            loadAlumniInteractions(alumniId);
             
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('alumniDetailsModal'));
@@ -594,6 +875,43 @@ function viewAlumniDetails(alumniId) {
         .catch(error => {
             console.error('Error:', error);
             alert('Failed to load alumni details');
+        });
+}
+
+// Load alumni interactions
+function loadAlumniInteractions(alumniId) {
+    fetch(`/api/alumni/${alumniId}/interactions`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('alumniInteractions').innerHTML = 
+                    '<div class="text-center text-muted">Error loading interactions</div>';
+                return;
+            }
+            
+            const interactionsHtml = data.interactions.length > 0 ? 
+                data.interactions.map(interaction => `
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-dark bg-opacity-25 rounded">
+                        <div>
+                            <strong class="text-light">${interaction.interaction_type}</strong>
+                            ${interaction.interaction_purpose ? `<span class="badge bg-info ms-2">${interaction.interaction_purpose}</span>` : ''}
+                            <br><small class="text-muted">${interaction.interaction_date} by ${interaction.created_by}</small>
+                            ${interaction.interaction_notes ? `<br><small class="text-muted">${interaction.interaction_notes.substring(0, 100)}${interaction.interaction_notes.length > 100 ? '...' : ''}</small>` : ''}
+                        </div>
+                        <div class="text-end">
+                            ${interaction.response_received ? '<span class="badge bg-success">Response</span>' : '<span class="badge bg-secondary">No Response</span>'}
+                            ${interaction.follow_up_required ? '<br><span class="badge bg-warning">Follow-up</span>' : ''}
+                        </div>
+                    </div>
+                `).join('') :
+                '<div class="text-center text-muted">No interactions recorded</div>';
+            
+            document.getElementById('alumniInteractions').innerHTML = interactionsHtml;
+        })
+        .catch(error => {
+            console.error('Error loading interactions:', error);
+            document.getElementById('alumniInteractions').innerHTML = 
+                '<div class="text-center text-muted">Failed to load interactions</div>';
         });
 }
 
@@ -642,6 +960,8 @@ document.getElementById('saveInteraction').addEventListener('click', function() 
             alert('Interaction recorded successfully!');
             bootstrap.Modal.getInstance(document.getElementById('interactionModal')).hide();
             document.getElementById('interactionForm').reset();
+            // Refresh statistics
+            loadAlumniStatistics();
         } else {
             alert('Error recording interaction: ' + data.error);
         }

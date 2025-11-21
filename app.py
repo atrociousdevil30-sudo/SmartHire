@@ -4476,32 +4476,79 @@ def alumni_network():
         if not hr_contact:
             hr_contact = User.query.filter_by(role='hr').first()
     
-    # Fetch Alumni Network data from database
+    # Fetch Alumni Network data from database with relationships
     alumni_profiles = AlumniProfile.query.order_by(AlumniProfile.updated_at.desc()).all()
     
     # Calculate alumni statistics
     alumni_stats = {
         'total_alumni': AlumniProfile.query.count(),
         'active_alumni': AlumniProfile.query.filter_by(alumni_status='active').count(),
+        'inactive_alumni': AlumniProfile.query.filter_by(alumni_status='inactive').count(),
+        'lost_contact_alumni': AlumniProfile.query.filter_by(alumni_status='lost_contact').count(),
         'rehire_potential': RehirePotential.query.filter(RehirePotential.rehire_score >= 70).count(),
-        'brand_ambassadors': BrandAmbassador.query.filter_by(ambassador_status='active').count()
+        'high_priority_rehire': RehirePotential.query.filter(RehirePotential.rehire_status == 'high_priority').count(),
+        'brand_ambassadors': BrandAmbassador.query.filter_by(ambassador_status='active').count(),
+        'total_interactions': AlumniInteraction.query.count(),
+        'recent_interactions': AlumniInteraction.query.filter(AlumniInteraction.interaction_date >= datetime.now() - timedelta(days=30)).count()
     }
     
-    # Get rehire candidates (top scoring)
-    rehire_candidates = RehirePotential.query.filter(RehirePotential.rehire_score >= 50).order_by(RehirePotential.rehire_score.desc()).limit(10).all()
+    # Get rehire candidates (top scoring) with full alumni data
+    rehire_candidates = db.session.query(
+        RehirePotential, AlumniProfile, User
+    ).join(AlumniProfile, RehirePotential.alumni_id == AlumniProfile.id)\
+     .join(User, AlumniProfile.user_id == User.id)\
+     .filter(RehirePotential.rehire_score >= 50)\
+     .order_by(RehirePotential.rehire_score.desc())\
+     .limit(10).all()
     
-    # Get brand ambassadors
-    brand_ambassadors = BrandAmbassador.query.filter_by(ambassador_status='active').order_by(BrandAmbassador.brand_alignment_score.desc()).limit(10).all()
+    # Get brand ambassadors with full alumni data
+    brand_ambassadors = db.session.query(
+        BrandAmbassador, AlumniProfile, User
+    ).join(AlumniProfile, BrandAmbassador.alumni_id == AlumniProfile.id)\
+     .join(User, AlumniProfile.user_id == User.id)\
+     .filter(BrandAmbassador.ambassador_status == 'active')\
+     .order_by(BrandAmbassador.brand_alignment_score.desc())\
+     .limit(10).all()
     
-    # Get stay-in-touch automation campaigns
-    stay_in_touch_automations = StayInTouchAutomation.query.filter_by(is_active=True).all()
+    # Get stay-in-touch automation campaigns with alumni counts
+    stay_in_touch_automations = []
+    automations = StayInTouchAutomation.query.filter_by(is_active=True).all()
     
-    # Add active alumni count to each automation
-    for automation in stay_in_touch_automations:
-        automation.active_alumni_count = StayInTouchAutomation.query.filter_by(
-            automation_type=automation.automation_type,
-            is_active=True
-        ).count()
+    for automation in automations:
+        # Get alumni count for this automation type
+        alumni_count = db.session.query(AlumniProfile)\
+            .join(StayInTouchAutomation, AlumniProfile.id == StayInTouchAutomation.alumni_id)\
+            .filter(StayInTouchAutomation.automation_type == automation.automation_type,
+                    StayInTouchAutomation.is_active == True,
+                    AlumniProfile.alumni_status == 'active')\
+            .count()
+        
+        automation.active_alumni_count = alumni_count
+        stay_in_touch_automations.append(automation)
+    
+    # Get recent alumni interactions
+    recent_interactions = db.session.query(
+        AlumniInteraction, AlumniProfile, User
+    ).join(AlumniProfile, AlumniInteraction.alumni_id == AlumniProfile.id)\
+     .join(User, AlumniProfile.user_id == User.id)\
+     .order_by(AlumniInteraction.interaction_date.desc())\
+     .limit(5).all()
+    
+    # Get alumni by industry distribution
+    industry_distribution = db.session.query(
+        AlumniProfile.industry,
+        db.func.count(AlumniProfile.id).label('count')
+    ).filter(AlumniProfile.industry.isnot(None))\
+     .group_by(AlumniProfile.industry)\
+     .order_by(db.desc('count')).all()
+    
+    # Get alumni by location distribution
+    location_distribution = db.session.query(
+        AlumniProfile.location,
+        db.func.count(AlumniProfile.id).label('count')
+    ).filter(AlumniProfile.location.isnot(None))\
+     .group_by(AlumniProfile.location)\
+     .order_by(db.desc('count')).limit(10).all()
     
     return render_template('alumni_network.html', 
                          employee=employee, 
@@ -4510,7 +4557,116 @@ def alumni_network():
                          alumni_stats=alumni_stats,
                          rehire_candidates=rehire_candidates,
                          brand_ambassadors=brand_ambassadors,
-                         stay_in_touch_automations=stay_in_touch_automations)
+                         stay_in_touch_automations=stay_in_touch_automations,
+                         recent_interactions=recent_interactions,
+                         industry_distribution=industry_distribution,
+                         location_distribution=location_distribution)
+
+@app.route('/api/alumni/statistics')
+@login_required(['hr', 'admin'])
+def get_alumni_statistics():
+    """Get alumni statistics for dashboard"""
+    try:
+        stats = {
+            'total_alumni': AlumniProfile.query.count(),
+            'active_alumni': AlumniProfile.query.filter_by(alumni_status='active').count(),
+            'rehire_potential': RehirePotential.query.filter(RehirePotential.rehire_score >= 70).count(),
+            'brand_ambassadors': BrandAmbassador.query.filter_by(ambassador_status='active').count(),
+            'recent_interactions': AlumniInteraction.query.filter(
+                AlumniInteraction.interaction_date >= datetime.now() - timedelta(days=30)
+            ).count(),
+            'automation_campaigns': StayInTouchAutomation.query.filter_by(is_active=True).count()
+        }
+        return jsonify(stats)
+    except Exception as e:
+        app.logger.error(f'Error fetching alumni statistics: {str(e)}')
+        return jsonify({'error': 'Failed to fetch statistics'}), 500
+
+@app.route('/api/alumni/search')
+@login_required(['hr', 'admin'])
+def search_alumni():
+    """Search alumni by name, company, or industry"""
+    try:
+        query = request.args.get('q', '').strip()
+        status_filter = request.args.get('status', '')
+        industry_filter = request.args.get('industry', '')
+        
+        # Build query
+        alumni_query = db.session.query(AlumniProfile, User)\
+            .join(User, AlumniProfile.user_id == User.id)
+        
+        # Add search conditions
+        if query:
+            search_pattern = f'%{query}%'
+            alumni_query = alumni_query.filter(
+                db.or_(
+                    User.full_name.ilike(search_pattern),
+                    AlumniProfile.current_company.ilike(search_pattern),
+                    AlumniProfile.current_position.ilike(search_pattern),
+                    AlumniProfile.industry.ilike(search_pattern)
+                )
+            )
+        
+        if status_filter:
+            alumni_query = alumni_query.filter(AlumniProfile.alumni_status == status_filter)
+        
+        if industry_filter:
+            alumni_query = alumni_query.filter(AlumniProfile.industry == industry_filter)
+        
+        alumni = alumni_query.order_by(AlumniProfile.updated_at.desc()).limit(20).all()
+        
+        results = []
+        for alumni_profile, user in alumni:
+            results.append({
+                'id': alumni_profile.id,
+                'name': user.full_name,
+                'current_company': alumni_profile.current_company,
+                'current_position': alumni_profile.current_position,
+                'industry': alumni_profile.industry,
+                'alumni_status': alumni_profile.alumni_status,
+                'location': alumni_profile.location,
+                'linkedin_url': alumni_profile.linkedin_url,
+                'exit_date': alumni_profile.exit_date.strftime('%Y-%m-%d') if alumni_profile.exit_date else None
+            })
+        
+        return jsonify({'alumni': results})
+        
+    except Exception as e:
+        app.logger.error(f'Error searching alumni: {str(e)}')
+        return jsonify({'error': 'Failed to search alumni'}), 500
+
+@app.route('/api/alumni/<int:alumni_id>/interactions')
+@login_required(['hr', 'admin'])
+def get_alumni_interactions(alumni_id):
+    """Get interaction history for an alumni"""
+    try:
+        interactions = db.session.query(
+            AlumniInteraction, User
+        ).join(User, AlumniInteraction.created_by == User.id)\
+         .filter(AlumniInteraction.alumni_id == alumni_id)\
+         .order_by(AlumniInteraction.interaction_date.desc())\
+         .limit(20).all()
+        
+        results = []
+        for interaction, creator in interactions:
+            results.append({
+                'id': interaction.id,
+                'interaction_type': interaction.interaction_type,
+                'interaction_purpose': interaction.interaction_purpose,
+                'interaction_date': interaction.interaction_date.strftime('%Y-%m-%d'),
+                'interaction_notes': interaction.interaction_notes,
+                'response_received': interaction.response_received,
+                'follow_up_required': interaction.follow_up_required,
+                'follow_up_date': interaction.follow_up_date.strftime('%Y-%m-%d') if interaction.follow_up_date else None,
+                'created_by': creator.full_name,
+                'created_at': interaction.created_at.strftime('%Y-%m-%d %H:%M')
+            })
+        
+        return jsonify({'interactions': results})
+        
+    except Exception as e:
+        app.logger.error(f'Error fetching alumni interactions: {str(e)}')
+        return jsonify({'error': 'Failed to fetch interactions'}), 500
 
 @app.route('/api/alumni/<int:alumni_id>/details')
 @login_required(['hr', 'admin'])
