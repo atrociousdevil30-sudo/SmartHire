@@ -1849,15 +1849,51 @@ def offboarding_tasks():
     # Get HR contact
     hr_contact = User.query.filter_by(role='hr', is_active=True).first()
     
+    # Get manager information if available
+    manager = None
+    if user.manager_id:
+        manager = User.query.get(user.manager_id)
+    
     offboarding = {
         'status': user.status or 'Active',
         'exit_date': user.exit_date,
         'documents': documents,
         'hr_contact': hr_contact,
-        'user': user
+        'user': user,
+        'manager': manager
     }
 
     return render_template('offboarding_tasks.html', offboarding=offboarding)
+
+
+@app.route('/employee/pre-offboarding')
+@login_required('employee')
+def employee_pre_offboarding():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+
+    if not user:
+        flash('Employee not found.', 'danger')
+        return redirect(url_for('employee_dashboard'))
+
+    status = user.status or 'Active'
+    phase = 'none'
+    if status in ['Pre-Offboarding', 'Pre Offboarding']:
+        phase = 'pre_offboarding'
+    elif status == 'Offboarding':
+        phase = 'offboarding'
+    elif status in ['Inactive', 'Exited']:
+        phase = 'completed'
+
+    today = datetime.utcnow().date()
+    notice_days = None
+    if user.exit_date:
+        try:
+            notice_days = (user.exit_date - today).days
+        except Exception:
+            notice_days = None
+
+    return render_template('pre-offboarding.html', user=user, phase=phase, notice_days=notice_days)
 
 @app.route('/download-document/<int:doc_id>')
 @login_required(['employee', 'hr'])
