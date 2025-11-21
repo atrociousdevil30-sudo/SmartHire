@@ -288,13 +288,36 @@
 
 {% block extra_js %}
 <script>
-let currentQuestion = 0;
+// Global variables for AI interview system
+let currentQuestion = '';
+let currentAnswer = '';
+let currentQuestionIndex = 0;
 let totalQuestions = 5;
 let responses = [];
 let skippedQuestions = [];
 let startTime = null;
-let interviewData = {};
+let interviewSummary = null;
 let interviewStatus = 'waiting'; // waiting, ready, in_progress, completed
+
+// DOM Elements
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const questionContainer = document.getElementById('questionContainer');
+const responseContainer = document.getElementById('responseContainer');
+const responseText = document.getElementById('responseText');
+const submitBtn = document.getElementById('submitBtn');
+const submitText = document.getElementById('submitText');
+const submitSpinner = document.getElementById('submitSpinner');
+const feedbackContainer = document.getElementById('feedbackContainer');
+const feedbackText = document.getElementById('feedbackText');
+const aiFeedback = document.getElementById('aiFeedback');
+const feedbackContent = document.getElementById('feedbackContent');
+const nextBtn = document.getElementById('nextBtn');
+const completeContainer = document.getElementById('completeContainer');
+const answeredCount = document.getElementById('answeredCount');
+const skippedCount = document.getElementById('skippedCount');
+const totalDuration = document.getElementById('totalDuration');
+const performanceScore = document.getElementById('performanceScore');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -306,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load interview data
 function loadInterviewData() {
     const urlParams = new URLSearchParams(window.location.search);
-    interviewData = {
+    const interviewData = {
         position: urlParams.get('position') || 'Software Engineer',
         type: urlParams.get('type') || 'Technical',
         difficulty: urlParams.get('difficulty') || 'Mid-level',
@@ -354,199 +377,394 @@ function checkInterviewStatus() {
     fetch('/api/employee/interview/status')
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'ready') {
+            if (data.interview_status === 'ready') {
                 interviewStatus = 'ready';
                 document.getElementById('waitingForHRContainer').classList.add('d-none');
                 document.getElementById('interviewReadyContainer').classList.remove('d-none');
-                document.getElementById('interviewStatus').textContent = 'Interview is ready - Click Join to start';
             }
         })
-        .catch(error => console.error('Error checking status:', error));
+        .catch(error => console.error('Error:', error));
 }
 
 // Join interview
-function joinInterview() {
+async function joinInterview() {
+    interviewStatus = 'in_progress';
+    startTime = new Date();
+    
+    // Hide ready container, show interview container
     document.getElementById('interviewReadyContainer').classList.add('d-none');
     document.getElementById('interviewContainer').classList.remove('d-none');
-    document.getElementById('timerBadge').style.display = 'inline-block';
     document.getElementById('exitBtn').style.display = 'inline-block';
+    document.getElementById('timerBadge').style.display = 'inline-block';
     
-    startTime = new Date();
-    interviewStatus = 'in_progress';
+    // Start timer
     startTimer();
-    loadQuestion();
+    
+    try {
+        // Start AI interview session
+        const response = await fetch('/api/interview/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                interview_type: getInterviewType(),
+                is_fresher: getIsFresher(),
+                job_role: getJobRole(),
+                enable_hr_training: true
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to start interview');
+        }
+        
+        const data = await response.json();
+        totalQuestions = data.total_questions || 5;
+        
+        // Get first question
+        await getNextQuestion();
+        
+    } catch (error) {
+        console.error('Error starting interview:', error);
+        showError('Failed to start interview. Please try again.');
+    }
 }
 
-// Load question
-function loadQuestion() {
-    if (currentQuestion >= totalQuestions) {
-        completeInterview();
-        return;
-    }
-
-    document.getElementById('responseContainer').classList.add('d-none');
-    document.getElementById('feedbackContainer').classList.add('d-none');
-    document.getElementById('questionContainer').innerHTML = `
-        <div class="alert alert-info">
-            <i class="fas fa-spinner fa-spin me-2"></i>
-            Loading question ${currentQuestion + 1}...
-        </div>
-    `;
-
-    setTimeout(() => {
-        const questions = [
-            "Tell me about your most challenging project and how you overcame the obstacles.",
-            "What are your strengths and how do they align with this role?",
-            "Describe a situation where you had to work with a difficult team member.",
-            "What are your career goals for the next 5 years?",
-            "Why are you interested in this position and our company?"
-        ];
-
-        const question = questions[currentQuestion];
-        document.getElementById('questionContainer').innerHTML = `
-            <div class="card bg-light">
-                <div class="card-body">
-                    <h5 class="card-title mb-3">
-                        <i class="fas fa-question-circle me-2"></i>Question ${currentQuestion + 1}
-                    </h5>
-                    <p class="card-text fs-5">${question}</p>
-                </div>
+// Get next question
+async function getNextQuestion() {
+    try {
+        updateProgress();
+        
+        // Show loading state
+        questionContainer.innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-spinner fa-spin me-2"></i>
+                Loading question...
             </div>
         `;
-
-        document.getElementById('responseContainer').classList.remove('d-none');
-        document.getElementById('responseText').value = '';
-        document.getElementById('responseText').focus();
-        updateProgress();
-    }, 800);
+        responseContainer.classList.add('d-none');
+        feedbackContainer.classList.add('d-none');
+        
+        // Get question from backend
+        const response = await fetch('/api/interview/next-question', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question_index: currentQuestionIndex,
+                previous_question: currentQuestion,
+                previous_answer: currentAnswer
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to get question');
+        }
+        
+        const data = await response.json();
+        currentQuestion = data.question;
+        currentQuestionIndex = data.question_index;
+        
+        // Display question
+        questionContainer.innerHTML = `
+            <div class="alert alert-primary">
+                <h6 class="alert-heading mb-3">
+                    <i class="fas fa-question-circle me-2"></i>Question ${currentQuestionIndex}
+                </h6>
+                <p class="mb-0 fs-5">${currentQuestion}</p>
+            </div>
+        `;
+        
+        responseContainer.classList.remove('d-none');
+        responseText.value = '';
+        responseText.focus();
+        
+    } catch (error) {
+        console.error('Error getting question:', error);
+        showError('Failed to get question. Please try again.');
+    }
 }
 
 // Submit response
-function submitResponse() {
-    const response = document.getElementById('responseText').value.trim();
-    
-    if (!response) {
-        alert('Please provide a response before submitting.');
+async function submitResponse() {
+    currentAnswer = responseText.value.trim();
+    if (!currentAnswer) {
+        responseText.classList.add('is-invalid');
         return;
     }
-
-    document.getElementById('submitBtn').disabled = true;
-    document.getElementById('submitText').classList.add('d-none');
-    document.getElementById('submitSpinner').classList.remove('d-none');
-
-    responses.push({
-        question: currentQuestion + 1,
-        answer: response,
-        timestamp: new Date()
-    });
-
-    setTimeout(() => {
-        document.getElementById('responseContainer').classList.add('d-none');
-        document.getElementById('feedbackContainer').classList.remove('d-none');
+    
+    responseText.classList.remove('is-invalid');
+    
+    // Disable submit button and show loading
+    submitBtn.disabled = true;
+    submitText.textContent = 'Submitting...';
+    submitSpinner.classList.remove('d-none');
+    
+    try {
+        // Send response to backend for analysis
+        const response = await fetch('/api/interview/analyze-response', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question: currentQuestion,
+                answer: currentAnswer,
+                question_index: currentQuestionIndex - 1
+            })
+        });
         
-        const feedbackMessages = [
-            "Great answer! You provided specific examples and clear reasoning.",
-            "Good response. Consider adding more details about the outcome.",
-            "Excellent! Your answer demonstrates strong problem-solving skills.",
-            "Nice answer. Try to be more concise while maintaining clarity.",
-            "Very good! You showed good alignment with our company values."
-        ];
-
-        document.getElementById('feedbackContent').textContent = feedbackMessages[currentQuestion];
-        document.getElementById('aiFeedback').classList.remove('d-none');
-
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('submitText').classList.remove('d-none');
-        document.getElementById('submitSpinner').classList.add('d-none');
-    }, 1500);
+        if (!response.ok) {
+            throw new Error('Failed to analyze response');
+        }
+        
+        const data = await response.json();
+        
+        // Store response
+        responses.push({
+            question: currentQuestion,
+            answer: currentAnswer,
+            feedback: data.feedback,
+            question_index: currentQuestionIndex - 1
+        });
+        
+        // Show feedback
+        showFeedback(data.feedback);
+        
+    } catch (error) {
+        console.error('Error submitting response:', error);
+        showError('Failed to submit response. Please try again.');
+    } finally {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitText.textContent = 'Submit Response';
+        submitSpinner.classList.add('d-none');
+    }
 }
 
-// Skip question
-function skipQuestion() {
-    skippedQuestions.push(currentQuestion + 1);
-    currentQuestion++;
-    loadQuestion();
+// Show feedback
+function showFeedback(feedback) {
+    feedbackText.textContent = 'Your response has been recorded and analyzed.';
+    
+    // Show AI feedback
+    aiFeedback.classList.remove('d-none');
+    feedbackContent.innerHTML = `
+        <div class="mb-3">
+            <strong>Analysis:</strong>
+            <p class="mb-2">${feedback.analysis}</p>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Score:</strong>
+                <div class="progress mt-1" style="height: 20px;">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: ${feedback.score * 10}%" 
+                         aria-valuenow="${feedback.score}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="10">
+                        ${feedback.score}/10
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <strong>Keywords:</strong>
+                <div class="mt-1">
+                    ${feedback.keywords.map(kw => `<span class="badge bg-info me-1">${kw}</span>`).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Show feedback container, hide response container
+    responseContainer.classList.add('d-none');
+    feedbackContainer.classList.remove('d-none');
 }
 
 // Next question
-function nextQuestion() {
-    currentQuestion++;
-    loadQuestion();
+async function nextQuestion() {
+    if (currentQuestionIndex >= totalQuestions) {
+        await completeInterview();
+        return;
+    }
+    
+    await getNextQuestion();
+}
+
+// Skip question
+async function skipQuestion() {
+    if (confirm('Are you sure you want to skip this question?')) {
+        skippedQuestions.push({
+            question: currentQuestion,
+            question_index: currentQuestionIndex - 1
+        });
+        
+        currentAnswer = '(Question skipped)';
+        await nextQuestion();
+    }
 }
 
 // Complete interview
-function completeInterview() {
-    document.getElementById('responseContainer').classList.add('d-none');
-    document.getElementById('feedbackContainer').classList.add('d-none');
-    document.getElementById('questionContainer').classList.add('d-none');
-    document.getElementById('completeContainer').classList.remove('d-none');
+async function completeInterview() {
+    try {
+        // Get interview summary
+        const response = await fetch('/api/interview/summary', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to get interview summary');
+        }
+        
+        interviewSummary = await response.json();
+        
+        // Update completion UI
+        updateCompletionUI();
+        
+        // Hide interview container, show complete container
+        document.getElementById('interviewContainer').classList.add('d-none');
+        completeContainer.classList.remove('d-none');
+        
+        // Stop timer
+        stopTimer();
+        
+        interviewStatus = 'completed';
+        
+    } catch (error) {
+        console.error('Error completing interview:', error);
+        showError('Failed to complete interview. Please try again.');
+    }
+}
 
-    const endTime = new Date();
-    const duration = Math.floor((endTime - startTime) / 1000 / 60);
-
-    document.getElementById('answeredCount').textContent = responses.length;
-    document.getElementById('skippedCount').textContent = skippedQuestions.length;
-    document.getElementById('totalDuration').textContent = String(duration).padStart(2, '0') + ':00';
-    document.getElementById('performanceScore').textContent = Math.round((responses.length / totalQuestions) * 100) + '%';
+// Update completion UI
+function updateCompletionUI() {
+    answeredCount.textContent = responses.length;
+    skippedCount.textContent = skippedQuestions.length;
+    performanceScore.textContent = interviewSummary.overall_score.toFixed(1) + '/10';
     
-    interviewStatus = 'completed';
-}
-
-// Exit interview
-function confirmExit() {
-    const modal = new bootstrap.Modal(document.getElementById('exitModal'));
-    modal.show();
-}
-
-function exitInterview() {
-    window.location.href = '{{ url_for("employee_dashboard") }}';
-}
-
-// Download report
-function downloadReport() {
-    const report = `
-Interview Report
-================
-Position: ${interviewData.position}
-Type: ${interviewData.type}
-Difficulty: ${interviewData.difficulty}
-
-Summary:
-- Questions Answered: ${responses.length}
-- Questions Skipped: ${skippedQuestions.length}
-- Performance Score: ${Math.round((responses.length / totalQuestions) * 100)}%
-
-Responses:
-${responses.map((r, i) => `Q${r.question}: ${r.answer}`).join('\n\n')}
-    `;
-
-    const blob = new Blob([report], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'interview_report.txt';
-    a.click();
+    // Add performance color coding
+    const score = interviewSummary.overall_score;
+    if (score >= 8) {
+        performanceScore.className = 'text-success';
+    } else if (score >= 6) {
+        performanceScore.className = 'text-warning';
+    } else {
+        performanceScore.className = 'text-danger';
+    }
 }
 
 // Update progress
 function updateProgress() {
-    const progress = ((currentQuestion + 1) / totalQuestions) * 100;
-    document.getElementById('progressBar').style.width = progress + '%';
-    document.getElementById('progressText').textContent = `Question ${currentQuestion + 1} of ${totalQuestions}`;
+    const progress = (currentQuestionIndex / totalQuestions) * 100;
+    progressBar.style.width = `${progress}%`;
+    progressBar.setAttribute('aria-valuenow', progress);
+    progressText.textContent = `Question ${currentQuestionIndex} of ${totalQuestions}`;
 }
 
-// Timer
+// Timer functions
+let timerInterval;
 function startTimer() {
-    setInterval(() => {
-        if (startTime && interviewStatus === 'in_progress') {
-            const now = new Date();
-            const elapsed = Math.floor((now - startTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            document.getElementById('timerBadge').textContent = 
-                String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-        }
-    }, 1000);
+    timerInterval = setInterval(updateTimer, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+}
+
+function updateTimer() {
+    if (!startTime) return;
+    
+    const now = new Date();
+    const elapsed = Math.floor((now - startTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    
+    const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    document.getElementById('timerBadge').textContent = timeString;
+    
+    if (interviewStatus === 'completed') {
+        totalDuration.textContent = timeString;
+    }
+}
+
+// Helper functions
+function getInterviewType() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('type') || 'technical';
+}
+
+function getIsFresher() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('level') === 'fresher';
+}
+
+function getJobRole() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('position') || 'Software Engineer';
+}
+
+// Error handling
+function showError(message) {
+    questionContainer.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
+}
+
+// Exit interview
+function confirmExit() {
+    if (confirm('Are you sure you want to exit the interview? Your progress will be saved.')) {
+        exitInterview();
+    }
+}
+
+function exitInterview() {
+    stopTimer();
+    window.location.href = '/employee/dashboard';
+}
+
+// Download report
+function downloadReport() {
+    if (!interviewSummary) {
+        alert('No interview data available to download.');
+        return;
+    }
+    
+    // Create a downloadable report
+    const report = {
+        position: getJobRole(),
+        interview_type: getInterviewType(),
+        date: new Date().toISOString(),
+        duration: document.getElementById('totalDuration').textContent,
+        questions_answered: responses.length,
+        questions_skipped: skippedQuestions.length,
+        performance_score: interviewSummary.overall_score,
+        recommendation: interviewSummary.recommendation,
+        strengths: interviewSummary.strengths,
+        areas_for_improvement: interviewSummary.areas_for_improvement,
+        responses: responses.map(r => ({
+            question: r.question,
+            answer: r.answer,
+            score: r.feedback.score
+        }))
+    };
+    
+    // Create a blob and download link
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `interview-report-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 </script>
 {% endblock %}

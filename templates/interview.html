@@ -10,56 +10,58 @@
         <div class="col-lg-4">
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Ready Employees</h5>
-                </div>
-                <div class="card-body" id="readyEmployeesList">
-                    <p class="text-muted small">Loading...</p>
-                </div>
-            </div>
-            
-            <!-- AI Training Panel -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>AI Training Settings</h5>
+                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Interview Settings</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label for="difficultyLevel" class="form-label">Difficulty Level</label>
-                        <select class="form-select" id="difficultyLevel">
-                            <option value="beginner">Beginner</option>
-                            <option value="intermediate" selected>Intermediate</option>
-                            <option value="advanced">Advanced</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="trainingType" class="form-label">Training Type</label>
-                        <select class="form-select" id="trainingType">
-                            <option value="behavioral" selected>Behavioral</option>
+                        <label for="interviewType" class="form-label">Interview Type</label>
+                        <select class="form-select" id="interviewType">
                             <option value="technical">Technical</option>
-                            <option value="situational">Situational</option>
-                            <option value="leadership">Leadership</option>
+                            <option value="hr" selected>HR</option>
+                            <option value="behavioral">Behavioral</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="jobRole" class="form-label">Target Role (Optional)</label>
+                        <label for="candidateType" class="form-label">Candidate Type</label>
+                        <select class="form-select" id="candidateType">
+                            <option value="fresher">Fresher</option>
+                            <option value="experienced" selected>Experienced</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="jobRole" class="form-label">Job Role</label>
                         <input type="text" class="form-control" id="jobRole" placeholder="e.g., Software Engineer">
                     </div>
-                    <button type="button" class="btn btn-primary w-100" id="generateQuestions">
-                        <i class="bi bi-magic me-2"></i>Generate AI Questions
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="enableHRTraining" checked>
+                        <label class="form-check-label" for="enableHRTraining">Enable HR Training</label>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" id="startInterview">
+                        <i class="bi bi-play-circle me-2"></i>Start Interview
                     </button>
                 </div>
             </div>
             
-            <!-- Generated Questions Panel -->
-            <div class="card mb-4 d-none" id="questionsPanel">
+            <!-- Interview Progress -->
+            <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-list-ol me-2"></i>Generated Questions</h5>
+                    <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Interview Progress</h5>
                 </div>
                 <div class="card-body">
-                    <div id="questionsList"></div>
-                    <button type="button" class="btn btn-success w-100 mt-2" id="startAIInterview">
-                        <i class="bi bi-play-circle me-2"></i>Start AI Interview
-                    </button>
+                    <div class="progress mb-3" style="height: 10px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%;" aria-valuenow="0" 
+                             aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mb-2">
+                        <span>Progress</span>
+                        <span id="progressText">0%</span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-danger" id="endInterview" disabled>
+                            <i class="bi bi-stop-circle me-2"></i>End Interview
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -67,47 +69,123 @@
         
         <!-- Interview Area -->
         <div class="{% if session.role == 'hr' %}col-lg-8{% else %}col-12{% endif %}">
-            <div class="card">
+            <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0"><i class="bi bi-robot me-2"></i>AI Interview</h2>
-                    <span class="badge bg-primary" id="sessionStatus">Ready</span>
+                    <h2 class="h5 mb-0"><i class="bi bi-robot me-2"></i><span id="interviewTitle">AI Interview</span></h2>
+                    <div>
+                        <span class="badge bg-primary me-2" id="interviewTypeBadge">HR</span>
+                        <span class="badge bg-secondary" id="candidateTypeBadge">Experienced</span>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div id="chatContainer" class="chat-container mb-4 bg-dark bg-opacity-25" style="height: 400px; overflow-y: auto; border-radius: 0.375rem; padding: 1rem;">
-                        <div class="text-center text-muted py-5">
-                            <i class="bi bi-chat-dots fs-1 mb-3"></i>
-                            <p>Waiting to start interview...</p>
+                <div class="card-body d-flex flex-column">
+                    <!-- Chat Container -->
+                    <div id="chatContainer" class="chat-container mb-4 bg-dark bg-opacity-10 p-3 rounded" style="flex: 1; overflow-y: auto; min-height: 400px;">
+                        <div class="text-center text-muted py-5" id="welcomeMessage">
+                            <i class="bi bi-chat-square-quote fs-1 mb-3"></i>
+                            <h5>Welcome to the AI Interview</h5>
+                            <p class="mb-0">Click 'Start Interview' to begin the session</p>
                         </div>
+                        <div id="chatMessages"></div>
                     </div>
                     
+                    <!-- Response Form -->
                     <form id="responseForm" class="d-none">
-                        <div class="mb-3">
-                            <textarea class="form-control bg-dark text-light" id="userResponse" rows="3" placeholder="Type your answer here..." required></textarea>
+                        <div class="input-group mb-3">
+                            <textarea class="form-control" id="userResponse" rows="3" 
+                                    placeholder="Type your response here..." style="resize: none;"></textarea>
                         </div>
                         <div class="d-flex justify-content-between">
                             <div>
-                                <button type="button" class="btn btn-outline-secondary me-2" id="skipQuestion">Skip</button>
-                                <button type="button" class="btn btn-outline-info d-none" id="getFollowUp">Get Follow-up</button>
+                                <button type="button" class="btn btn-outline-secondary me-2" id="skipQuestion">
+                                    <i class="bi bi-skip-forward me-1"></i> Skip
+                                </button>
+                                <button type="button" class="btn btn-outline-info d-none" id="requestHint">
+                                    <i class="bi bi-lightbulb me-1"></i> Get Hint
+                                </button>
                             </div>
-                            <button type="submit" class="btn btn-primary" id="submitResponse">
-                                <span id="submitText">Submit</span>
-                                <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
-                            </button>
+                            <div>
+                                <button type="submit" class="btn btn-primary" id="submitResponse">
+                                    <span id="submitText">Submit</span>
+                                    <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+                                </button>
+                            </div>
                         </div>
                     </form>
                     
-                    <!-- AI Feedback Section -->
-                    <div id="feedbackSection" class="d-none">
-                        <div class="card bg-success bg-opacity-10 border-success mb-3">
-                            <div class="card-header">
-                                <h6 class="text-success mb-0"><i class="bi bi-check-circle me-2"></i>AI Feedback</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="feedbackContent"></div>
+                    <!-- Feedback Section -->
+                    <div id="feedbackSection" class="card mt-3 d-none">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>AI Feedback</h6>
+                            <span class="badge bg-primary" id="feedbackScore">0/10</span>
+                        </div>
+                        <div class="card-body p-3" id="feedbackContent">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Analyzing response...</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="d-flex justify-content-between">
-                            <button type="button" class="btn btn-outline-primary" id="nextQuestion">Next Question</button>
+                        <div class="card-footer bg-light">
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-secondary" id="requestClarification">
+                                    <i class="bi bi-question-circle me-1"></i> Request Clarification
+                                </button>
+                                <button type="button" class="btn btn-primary" id="nextQuestion">
+                                    <i class="bi bi-arrow-right-circle me-1"></i> Next Question
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Interview Summary -->
+                    <div id="summarySection" class="card mt-3 d-none">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-award me-2"></i>Interview Summary</h6>
+                        </div>
+                        <div class="card-body" id="summaryContent">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Strengths</h6>
+                                    <ul id="strengthsList" class="list-unstyled"></ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Areas for Improvement</h6>
+                                    <ul id="improvementsList" class="list-unstyled"></ul>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <h6>Overall Assessment</h6>
+                                <p id="overallAssessment"></p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="fw-bold">Recommendation:</span>
+                                        <span id="recommendation" class="badge bg-primary ms-2">Pending</span>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold">Confidence:</span>
+                                        <div class="progress ms-2" style="width: 200px; height: 20px;">
+                                            <div id="confidenceBar" class="progress-bar" role="progressbar" style="width: 0%" 
+                                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-secondary" id="downloadReport">
+                                    <i class="bi bi-download me-1"></i> Download Report
+                                </button>
+                                <div>
+                                    <button type="button" class="btn btn-outline-primary me-2" id="restartInterview">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Restart Interview
+                                    </button>
+                                    <button type="button" class="btn btn-primary" id="completeInterview">
+                                        <i class="bi bi-check-circle me-1"></i> Complete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                             <button type="button" class="btn btn-success d-none" id="generateSummary">Generate Summary</button>
                         </div>
                     </div>
@@ -152,11 +230,11 @@
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">Employee</label>
+                    <label for="modalEmployeeName" class="form-label">Employee</label>
                     <input type="text" class="form-control" id="modalEmployeeName" readonly>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Interview Type</label>
+                    <label for="modalInterviewType" class="form-label">Interview Type</label>
                     <select class="form-select" id="modalInterviewType">
                         <option value="technical">Technical</option>
                         <option value="behavioral">Behavioral</option>
@@ -164,7 +242,7 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Instructions</label>
+                    <label for="modalInstructions" class="form-label">Instructions</label>
                     <textarea class="form-control" id="modalInstructions" rows="3" placeholder="Enter interview instructions..."></textarea>
                 </div>
             </div>
@@ -178,13 +256,8 @@
 
 <script>
 let selectedEmployee = null;
-let currentQuestionIndex = 0;
 let responses = [];
-let interviewQuestions = [];
 let aiQuestions = [];
-let currentQuestion = '';
-let currentAnswer = '';
-let interviewData = [];
 let isAIInterview = false;
 
 function loadReadyEmployees() {
@@ -192,6 +265,12 @@ function loadReadyEmployees() {
         .then(r => r.json())
         .then(data => {
             const readyList = document.getElementById('readyEmployeesList');
+            
+            // Check if the element exists before trying to modify it
+            if (!readyList) {
+                return;
+            }
+            
             const msgs = (data.notifications || []).filter(n => n.type === 'interview_ready');
             
             if (msgs.length === 0) {
@@ -250,293 +329,95 @@ function addMessage(text, sender) {
 }
 
 function askQuestion() {
-    if (currentQuestionIndex < interviewQuestions.length) {
-        addMessage(interviewQuestions[currentQuestionIndex], 'ai');
-        document.getElementById('responseForm').classList.remove('d-none');
-    }
+    // This function is deprecated - use showNextQuestion() instead
+    console.warn('askQuestion() is deprecated. Use showNextQuestion() instead.');
 }
 
-// AI Interview Functions
+// Legacy AI Interview Functions - Deprecated
+// These functions are replaced by the new AI interview system
+
 function generateAIQuestions() {
-    const difficulty = document.getElementById('difficultyLevel').value;
-    const trainingType = document.getElementById('trainingType').value;
-    const jobRole = document.getElementById('jobRole').value;
-    
-    fetch('/api/ai/generate-interview-questions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            difficulty_level: difficulty,
-            training_type: trainingType,
-            job_role: jobRole
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            aiQuestions = data.questions.split('\n').filter(q => q.trim());
-            displayAIQuestions();
-            document.getElementById('questionsPanel').classList.remove('d-none');
-        } else {
-            alert('Failed to generate questions: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error generating questions');
-    });
+    console.warn('generateAIQuestions() is deprecated. Use startInterview() instead.');
 }
 
 function displayAIQuestions() {
-    const questionsList = document.getElementById('questionsList');
-    questionsList.innerHTML = aiQuestions.map((q, index) => 
-        `<div class="mb-2">
-            <small class="text-muted">Question ${index + 1}:</small>
-            <p class="mb-0 small">${q.replace(/^\d+\.\s*/, '')}</p>
-        </div>`
-    ).join('');
+    console.warn('displayAIQuestions() is deprecated.');
 }
 
 function startAIInterview() {
-    isAIInterview = true;
-    currentQuestionIndex = 0;
-    interviewData = [];
-    interviewQuestions = [...aiQuestions];
-    document.getElementById('chatContainer').innerHTML = '';
-    addMessage('AI Interview Started! Answer the following questions:', 'ai');
-    showNextAIQuestion();
+    console.warn('startAIInterview() is deprecated. Use startInterview() instead.');
 }
 
 function showNextAIQuestion() {
-    if (currentQuestionIndex < interviewQuestions.length) {
-        currentQuestion = interviewQuestions[currentQuestionIndex].replace(/^\d+\.\s*/, '');
-        addMessage(currentQuestion, 'ai');
-        document.getElementById('responseForm').classList.remove('d-none');
-        document.getElementById('getFollowUp').classList.remove('d-none');
-        document.getElementById('sessionStatus').textContent = `Question ${currentQuestionIndex + 1}/${interviewQuestions.length}`;
-        document.getElementById('userResponse').value = '';
-        document.getElementById('userResponse').focus();
-    } else {
-        showAISummaryOption();
-    }
+    console.warn('showNextAIQuestion() is deprecated. Use showNextQuestion() instead.');
 }
 
 function analyzeResponse() {
-    const difficulty = document.getElementById('difficultyLevel').value;
-    const trainingType = document.getElementById('trainingType').value;
-    
-    return fetch('/api/ai/analyze-interview-response', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            question: currentQuestion,
-            answer: currentAnswer,
-            difficulty_level: difficulty,
-            training_type: trainingType
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            interviewData.push({
-                question: currentQuestion,
-                answer: currentAnswer,
-                feedback: data.analysis
-            });
-            
-            document.getElementById('feedbackContent').innerHTML = 
-                '<pre class="text-light">' + data.analysis + '</pre>';
-            document.getElementById('feedbackSection').classList.remove('d-none');
-            document.getElementById('responseForm').classList.add('d-none');
-            
-            if (currentQuestionIndex >= interviewQuestions.length - 1) {
-                document.getElementById('generateSummary').classList.remove('d-none');
-            }
-        } else {
-            alert('Failed to analyze response: ' + data.message);
-        }
-    });
+    console.warn('analyzeResponse() is deprecated. Use submitResponse() instead.');
 }
 
 function getFollowUpQuestion() {
-    const difficulty = document.getElementById('difficultyLevel').value;
-    const trainingType = document.getElementById('trainingType').value;
-    
-    fetch('/api/ai/generate-follow-up-question', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            original_question: currentQuestion,
-            candidate_answer: currentAnswer,
-            difficulty_level: difficulty,
-            training_type: trainingType
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            currentQuestion = data.follow_up_question;
-            addMessage('Follow-up: ' + currentQuestion, 'ai');
-            document.getElementById('userResponse').value = '';
-            document.getElementById('userResponse').focus();
-        } else {
-            alert('Failed to generate follow-up: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error generating follow-up question');
-    });
+    console.warn('getFollowUpQuestion() is deprecated. Use requestClarification() instead.');
 }
 
 function generateAISummary() {
-    const interviewText = interviewData.map(item => 
-        `Q: ${item.question}\nA: ${item.answer}\nFeedback: ${item.feedback}`
-    ).join('\n\n');
-    
-    fetch('/api/ai/generate-interview-summary', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            interview_data: interviewText
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            document.getElementById('aiSummaryContent').innerHTML = 
-                '<pre class="text-light">' + data.summary + '</pre>';
-            document.getElementById('aiSummarySection').classList.remove('d-none');
-            document.getElementById('feedbackSection').classList.add('d-none');
-            document.getElementById('sessionStatus').textContent = 'Completed';
-        } else {
-            alert('Failed to generate summary: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error generating summary');
-    });
+    console.warn('generateAISummary() is deprecated. Use completeInterview() instead.');
 }
 
 function showAISummaryOption() {
-    document.getElementById('responseForm').classList.add('d-none');
-    document.getElementById('feedbackSection').classList.remove('d-none');
-    document.getElementById('feedbackContent').innerHTML = 
-        '<p class="text-light">All questions completed! Generate your AI interview summary.</p>';
-    document.getElementById('nextQuestion').style.display = 'none';
-    document.getElementById('generateSummary').classList.remove('d-none');
+    console.warn('showAISummaryOption() is deprecated.');
 }
 
 function restartAIInterview() {
-    isAIInterview = false;
-    aiQuestions = [];
-    currentQuestionIndex = 0;
-    interviewData = [];
-    document.getElementById('questionsPanel').classList.add('d-none');
-    document.getElementById('responseForm').classList.add('d-none');
-    document.getElementById('feedbackSection').classList.add('d-none');
-    document.getElementById('aiSummarySection').classList.add('d-none');
-    document.getElementById('chatContainer').innerHTML = `
-        <div class="text-center text-muted py-5">
-            <i class="bi bi-chat-dots fs-1 mb-3"></i>
-            <p>Configure settings and generate questions to start...</p>
-        </div>
-    `;
-    document.getElementById('sessionStatus').textContent = 'Ready';
+    console.warn('restartAIInterview() is deprecated. Use restartInterview() instead.');
 }
 
-// Event Listeners
-document.getElementById('generateQuestions')?.addEventListener('click', generateAIQuestions);
-document.getElementById('startAIInterview')?.addEventListener('click', startAIInterview);
-document.getElementById('getFollowUp')?.addEventListener('click', getFollowUpQuestion);
-document.getElementById('nextQuestion')?.addEventListener('click', function() {
-    currentQuestionIndex++;
-    showNextAIQuestion();
-});
-document.getElementById('generateSummary')?.addEventListener('click', generateAISummary);
-document.getElementById('restartAIInterview')?.addEventListener('click', restartAIInterview);
+// Legacy Event Listeners - Deprecated
+// These are replaced by the new AI event listeners
 
+document.getElementById('generateQuestions')?.addEventListener('click', function() {
+    console.warn('generateQuestions button is deprecated.');
+});
+
+document.getElementById('startAIInterview')?.addEventListener('click', function() {
+    console.warn('startAIInterview button is deprecated. Use startInterview instead.');
+});
+
+document.getElementById('getFollowUp')?.addEventListener('click', function() {
+    console.warn('getFollowUp button is deprecated. Use requestClarification instead.');
+});
+
+document.getElementById('nextQuestion')?.addEventListener('click', function() {
+    console.warn('nextQuestion button listener is deprecated.');
+});
+
+document.getElementById('generateSummary')?.addEventListener('click', function() {
+    console.warn('generateSummary button is deprecated.');
+});
+
+document.getElementById('restartAIInterview')?.addEventListener('click', function() {
+    console.warn('restartAIInterview button is deprecated. Use restartInterview instead.');
+});
+
+// Legacy Response Form Handler - Deprecated
 document.getElementById('responseForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
-    const response = document.getElementById('userResponse').value;
-    currentAnswer = response;
-    
-    if (isAIInterview) {
-        addMessage(response, 'user');
-        document.getElementById('submitText').classList.add('d-none');
-        document.getElementById('submitSpinner').classList.remove('d-none');
-        
-        analyzeResponse().finally(() => {
-            document.getElementById('submitText').classList.remove('d-none');
-            document.getElementById('submitSpinner').classList.add('d-none');
-        });
-    } else {
-        addMessage(response, 'user');
-        responses.push(response);
-        document.getElementById('userResponse').value = '';
-        currentQuestionIndex++;
-        
-        if (currentQuestionIndex < interviewQuestions.length) {
-            setTimeout(askQuestion, 1000);
-        } else {
-            completeInterview();
-        }
-    }
+    console.warn('Legacy response form handler is deprecated. Use the new AI handler.');
 });
 
+// Legacy Skip Question Handler - Deprecated  
 document.getElementById('skipQuestion')?.addEventListener('click', function() {
-    currentQuestionIndex++;
-    document.getElementById('userResponse').value = '';
-    
-    if (isAIInterview) {
-        showNextAIQuestion();
-    } else {
-        if (currentQuestionIndex < interviewQuestions.length) {
-            askQuestion();
-        } else {
-            completeInterview();
-        }
-    }
+    console.warn('Legacy skipQuestion handler is deprecated. Use the new AI handler.');
 });
 
 function completeInterview() {
-    document.getElementById('responseForm').classList.add('d-none');
-    document.getElementById('trainingSummary').classList.remove('d-none');
-    document.getElementById('summaryContent').innerHTML = `
-        <p>Questions Answered: ${responses.length}</p>
-        <p>Performance Score: ${Math.round((responses.length / interviewQuestions.length) * 100)}%</p>
-    `;
-    
-    fetch('/api/employee/interview/submit', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({responses, summary: 'Interview completed'})
-    });
+    // This is the legacy completeInterview function - deprecated
+    // Use the new AI-based completeInterview() function instead
+    console.warn('Legacy completeInterview is deprecated. Use the new AI version.');
 }
 
 document.getElementById('restartInterview')?.addEventListener('click', function() {
-    isAIInterview = false;
-    currentQuestionIndex = 0;
-    responses = [];
-    interviewQuestions = [];
-    document.getElementById('trainingSummary').classList.add('d-none');
-    document.getElementById('responseForm').classList.add('d-none');
-    document.getElementById('chatContainer').innerHTML = `
-        <div class="text-center text-muted py-5">
-            <i class="bi bi-chat-dots fs-1 mb-3"></i>
-            <p>Waiting to start interview...</p>
-        </div>
-    `;
-    document.getElementById('sessionStatus').textContent = 'Ready';
+    console.warn('Legacy restartInterview handler is deprecated. Use the new AI handler.');
 });
 
 if ('{{ session.role }}' === 'hr') {
@@ -545,22 +426,744 @@ if ('{{ session.role }}' === 'hr') {
 }
 
 if ('{{ session.role }}' === 'employee') {
-    setInterval(() => {
-        fetch('/api/employee/interview/status')
-            .then(r => r.json())
-            .then(data => {
-                if (data.interview_status === 'ready') {
-                    fetch('/api/employee/interview/questions')
-                        .then(r => r.json())
-                        .then(d => {
-                            interviewQuestions = d.questions;
-                            document.getElementById('chatContainer').innerHTML = '';
-                            addMessage('Interview started! Answer the following questions:', 'ai');
-                            setTimeout(askQuestion, 1000);
-                        });
-                }
-            });
-    }, 2000);
+    // Employee interview status checking - deprecated
+    // This will be replaced by the new AI system
+    console.warn('Legacy employee interview status checking is deprecated.');
 }
+
+// Global variables for AI interview system
+let isInterviewActive = false;
+let currentQuestion = '';
+let currentAnswer = '';
+let interviewQuestions = [];
+let currentQuestionIndex = 0;
+let interviewData = [];
+let totalQuestions = 5; // Default number of questions
+let interviewSummary = null;
+let isHRTrainingEnabled = true;
+
+// DOM Elements - declared early to avoid null reference errors
+const chatContainer = document.getElementById('chatContainer');
+const chatMessages = document.getElementById('chatMessages');
+const responseForm = document.getElementById('responseForm');
+const userResponse = document.getElementById('userResponse');
+const submitButton = document.getElementById('submitResponse');
+const submitSpinner = document.getElementById('submitSpinner');
+const submitText = document.getElementById('submitText');
+const feedbackSection = document.getElementById('feedbackSection');
+const feedbackContent = document.getElementById('feedbackContent');
+const nextQuestionBtn = document.getElementById('nextQuestion');
+const skipQuestionBtn = document.getElementById('skipQuestion');
+const requestHintBtn = document.getElementById('requestHint');
+const requestClarificationBtn = document.getElementById('requestClarification');
+const endInterviewBtn = document.getElementById('endInterview');
+const restartInterviewBtn = document.getElementById('restartInterview');
+const completeInterviewBtn = document.getElementById('completeInterview');
+const downloadReportBtn = document.getElementById('downloadReport');
+const summarySection = document.getElementById('summarySection');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const interviewTypeBadge = document.getElementById('interviewTypeBadge');
+const candidateTypeBadge = document.getElementById('candidateTypeBadge');
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize form submission
+    responseForm?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitResponse();
+    });
+    
+    // Initialize buttons
+    document.getElementById('startInterview')?.addEventListener('click', startInterview);
+    nextQuestionBtn?.addEventListener('click', showNextQuestion);
+    skipQuestionBtn?.addEventListener('click', skipQuestion);
+    requestHintBtn?.addEventListener('click', requestHint);
+    requestClarificationBtn?.addEventListener('click', requestClarification);
+    endInterviewBtn?.addEventListener('click', endInterview);
+    restartInterviewBtn?.addEventListener('click', restartInterview);
+    completeInterviewBtn?.addEventListener('click', completeInterview);
+    downloadReportBtn?.addEventListener('click', downloadReport);
+    
+    // Update UI based on interview type
+    document.getElementById('interviewType')?.addEventListener('change', updateInterviewType);
+    document.getElementById('candidateType')?.addEventListener('change', updateCandidateType);
+    document.getElementById('enableHRTraining')?.addEventListener('change', function(e) {
+        isHRTrainingEnabled = e.target.checked;
+    });
+    
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Initialize UI state
+    updateUIState('ready');
+});
+
+// Update UI based on interview state
+function updateUIState(state) {
+    const states = {
+        ready: {
+            startInterviewBtn: false,
+            responseForm: true,
+            feedbackSection: true,
+            summarySection: true,
+            endInterviewBtn: true,
+            progressBar: 0
+        },
+        active: {
+            startInterviewBtn: true,
+            responseForm: false,
+            feedbackSection: true,
+            summarySection: true,
+            endInterviewBtn: false,
+            progressBar: 0
+        },
+        waiting: {
+            startInterviewBtn: true,
+            responseForm: true,
+            feedbackSection: true,
+            summarySection: true,
+            endInterviewBtn: false,
+            progressBar: 0
+        },
+        feedback: {
+            startInterviewBtn: true,
+            responseForm: true,
+            feedbackSection: false,
+            summarySection: true,
+            endInterviewBtn: false,
+            progressBar: (currentQuestionIndex / totalQuestions) * 100
+        },
+        complete: {
+            startInterviewBtn: true,
+            responseForm: true,
+            feedbackSection: true,
+            summarySection: false,
+            endInterviewBtn: true,
+            progressBar: 100
+        }
+    };
+    
+    const uiState = states[state] || states.ready;
+    
+    // Update UI elements
+    const startBtn = document.getElementById('startInterview');
+    if (startBtn) startBtn.disabled = uiState.startInterviewBtn;
+    
+    const responseFormEl = document.getElementById('responseForm');
+    if (responseFormEl) responseFormEl.classList.toggle('d-none', uiState.responseForm);
+    
+    const feedbackSectionEl = document.getElementById('feedbackSection');
+    if (feedbackSectionEl) feedbackSectionEl.classList.toggle('d-none', uiState.feedbackSection);
+    
+    const summarySectionEl = document.getElementById('summarySection');
+    if (summarySectionEl) summarySectionEl.classList.toggle('d-none', uiState.summarySection);
+    
+    const endInterviewBtnEl = document.getElementById('endInterview');
+    if (endInterviewBtnEl) endInterviewBtnEl.disabled = uiState.endInterviewBtn;
+    
+    // Update progress
+    if (progressBar) {
+        progressBar.style.width = `${uiState.progressBar}%`;
+        progressBar.setAttribute('aria-valuenow', uiState.progressBar);
+    }
+    
+    if (progressText) {
+        progressText.textContent = `${Math.round(uiState.progressBar)}%`;
+    }
+}
+
+// Start a new interview
+async function startInterview() {
+    const interviewType = document.getElementById('interviewType').value;
+    const isFresher = document.getElementById('candidateType').value === 'fresher';
+    const jobRole = document.getElementById('jobRole').value || 'General';
+    isHRTrainingEnabled = document.getElementById('enableHRTraining').checked;
+    
+    // Update UI
+    updateUIState('active');
+    if (chatMessages) chatMessages.innerHTML = '';
+    
+    // Update badges
+    if (interviewTypeBadge) interviewTypeBadge.textContent = interviewType.charAt(0).toUpperCase() + interviewType.slice(1);
+    if (candidateTypeBadge) candidateTypeBadge.textContent = isFresher ? 'Fresher' : 'Experienced';
+    
+    try {
+        // Initialize interview with backend
+        const response = await fetch('/api/interview/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                interview_type: interviewType,
+                is_fresher: isFresher,
+                job_role: jobRole,
+                enable_hr_training: isHRTrainingEnabled
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to start interview');
+        }
+        
+        const data = await response.json();
+        totalQuestions = data.total_questions || 5;
+        
+        // Show welcome message
+        addMessage(`Welcome to your ${interviewType} interview${jobRole ? ' for ' + jobRole : ''}. ` + 
+                  `I'll be your interviewer today. Let's begin!`, 'ai');
+        
+        // Show first question
+        await showNextQuestion();
+        
+    } catch (error) {
+        console.error('Error starting interview:', error);
+        addMessage('Sorry, there was an error starting the interview. Please try again.', 'ai', 'error');
+        updateUIState('ready');
+    }
+}
+
+// Show the next question
+async function showNextQuestion() {
+    if (currentQuestionIndex >= totalQuestions) {
+        await completeInterview();
+        return;
+    }
+    
+    updateUIState('waiting');
+    
+    try {
+        // Get next question from backend
+        const response = await fetch('/api/interview/next-question', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question_index: currentQuestionIndex,
+                previous_question: currentQuestion,
+                previous_answer: currentAnswer
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to get next question');
+        }
+        
+        const data = await response.json();
+        currentQuestion = data.question;
+        currentQuestionIndex++;
+        
+        // Update UI
+        addMessage(currentQuestion, 'ai');
+        updateUIState('active');
+        userResponse.value = '';
+        userResponse.focus();
+        
+    } catch (error) {
+        console.error('Error getting next question:', error);
+        addMessage('Sorry, there was an error getting the next question. Please try again.', 'ai', 'error');
+        updateUIState('active');
+    }
+}
+
+// Submit user response
+async function submitResponse() {
+    currentAnswer = userResponse.value.trim();
+    if (!currentAnswer) return;
+    
+    // Add user's response to chat
+    addMessage(currentAnswer, 'user');
+    
+    // Disable form and show loading
+    submitButton.disabled = true;
+    submitSpinner.classList.remove('d-none');
+    submitText.textContent = 'Analyzing...';
+    
+    try {
+        // Send response to backend for analysis
+        const response = await fetch('/api/interview/analyze-response', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question: currentQuestion,
+                answer: currentAnswer,
+                question_index: currentQuestionIndex - 1
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to analyze response');
+        }
+        
+        const data = await response.json();
+        
+        // Show feedback
+        showFeedback(data.feedback);
+        
+    } catch (error) {
+        console.error('Error analyzing response:', error);
+        addMessage('Sorry, there was an error analyzing your response. Please try again.', 'ai', 'error');
+        updateUIState('active');
+    } finally {
+        // Re-enable form
+        submitButton.disabled = false;
+        submitSpinner.classList.add('d-none');
+        submitText.textContent = 'Submit';
+    }
+}
+
+// Show feedback to the user
+function showFeedback(feedback) {
+    // Check if there's a mismatch between analysis and score
+    let displayScore = feedback.score;
+    let displayAnalysis = feedback.analysis;
+    
+    // If analysis says "good" but score is very low, adjust the display
+    if (feedback.score <= 2 && (
+        feedback.analysis.toLowerCase().includes('good') || 
+        feedback.analysis.toLowerCase().includes('excellent') ||
+        feedback.analysis.toLowerCase().includes('great')
+    )) {
+        displayScore = 7; // Give a more reasonable score
+        displayAnalysis = feedback.analysis + " (Score adjusted for consistency)";
+    }
+    
+    // Update feedback section
+    feedbackContent.innerHTML = `
+        <div class="mb-3">
+            <h6>Analysis</h6>
+            <p id="feedbackAnalysis">${displayAnalysis}</p>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Score</h6>
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: ${displayScore * 10}%" 
+                         aria-valuenow="${displayScore}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="10">
+                        ${displayScore}/10
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6>Keywords Matched</h6>
+                <div class="d-flex flex-wrap gap-1">
+                    ${(feedback.keywords || []).map(kw => 
+                        `<span class="badge bg-info text-dark">${kw}</span>`).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Update feedback score
+    document.getElementById('feedbackScore').textContent = `${displayScore}/10`;
+    
+    // Show feedback section
+    updateUIState('feedback');
+}
+
+// Skip the current question
+async function skipQuestion() {
+    if (confirm('Are you sure you want to skip this question?')) {
+        addMessage('(Question skipped)', 'system');
+        await showNextQuestion();
+    }
+}
+
+// Request a hint for the current question
+async function requestHint() {
+    try {
+        const response = await fetch('/api/interview/request-hint', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question: currentQuestion
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to get hint');
+        
+        const data = await response.json();
+        addMessage(`💡 Hint: ${data.hint}`, 'ai', 'hint');
+        
+    } catch (error) {
+        console.error('Error getting hint:', error);
+        addMessage('Sorry, I could not generate a hint for this question.', 'ai', 'error');
+    }
+}
+
+// Request clarification for the current question
+async function requestClarification() {
+    console.log('Request clarification clicked');
+    console.log('Current question:', currentQuestion);
+    
+    // Add a test message first
+    addMessage('Requesting clarification...', 'ai', 'info');
+    
+    try {
+        const response = await fetch('/api/interview/request-clarification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question: currentQuestion
+            })
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) throw new Error('Failed to get clarification');
+        
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        // Enhanced formatting for better readability with dark theme
+        const formattedClarification = data.clarification
+            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-info">$1</strong>')  // Bold text
+            .replace(/📝/g, '<span class="text-primary me-2">📝</span>')
+            .replace(/🎯/g, '<span class="text-warning me-2">🎯</span>')
+            .replace(/🌟/g, '<span class="text-success me-2">🌟</span>')
+            .replace(/💬/g, '<span class="text-info me-2">💬</span>')
+            .replace(/📈/g, '<span class="text-primary me-2">📈</span>')
+            .replace(/🚀/g, '<span class="text-danger me-2">🚀</span>')
+            .replace(/💪/g, '<span class="text-success me-2">💪</span>')
+            .replace(/🧠/g, '<span class="text-info me-2">🧠</span>')
+            .replace(/✅/g, '<span class="text-success me-2">✅</span>')
+            .replace(/🎤/g, '<span class="text-primary me-2">🎤</span>')
+            .replace(/🔗/g, '<span class="text-info me-2">🔗</span>')
+            .replace(/📊/g, '<span class="text-warning me-2">📊</span>')
+            .replace(/💡/g, '<span class="text-warning me-2">💡</span>')
+            .replace(/🔍/g, '<span class="text-primary me-2">🔍</span>')
+            .replace(/\n\n/g, '</div><div class="mb-4">')  // Section breaks
+            .replace(/\n•/g, '<br><span class="ms-3">•</span>')  // Indented bullet points
+            .replace(/\n/g, '<br>');  // Line breaks
+        
+        // Wrap in a styled container with dark theme support
+        const clarificationHtml = `
+            <div class="clarification-container bg-dark bg-opacity-90 p-4 rounded border-start border-4 border-info shadow-lg">
+                <h6 class="text-info mb-4 fw-bold">
+                    <i class="bi bi-info-circle-fill me-2"></i>Detailed Clarification & Feedback
+                </h6>
+                <div class="clarification-content">
+                    <div class="text-light">
+                        <div class="mb-4">${formattedClarification}</div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-top border-secondary">
+                    <small class="text-muted">
+                        <i class="bi bi-lightbulb me-1"></i>
+                        Use this feedback to improve your interview performance
+                    </small>
+                </div>
+            </div>
+        `;
+        
+        console.log('Adding clarification message to chat');
+        addMessage(clarificationHtml, 'ai', 'info');
+        
+    } catch (error) {
+        console.error('Error getting clarification:', error);
+        addMessage('Sorry, I could not provide clarification for this question.', 'ai', 'error');
+    }
+}
+
+// Complete the interview
+async function completeInterview() {
+    updateUIState('waiting');
+    
+    try {
+        // Get interview summary from backend
+        const response = await fetch('/api/interview/summary', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to get interview summary');
+        
+        interviewSummary = await response.json();
+        
+        // Update summary section
+        updateSummaryUI(interviewSummary);
+        
+        // Show completion message
+        addMessage('Interview completed! Review your summary below.', 'ai', 'success');
+        
+        // Show summary section
+        updateUIState('complete');
+        
+    } catch (error) {
+        console.error('Error completing interview:', error);
+        addMessage('Sorry, there was an error completing the interview.', 'ai', 'error');
+        updateUIState('active');
+    }
+}
+
+// Update the summary UI with interview results
+function updateSummaryUI(summary) {
+    // Update strengths
+    const strengthsList = document.getElementById('strengthsList');
+    if (strengthsList) {
+        strengthsList.innerHTML = summary.strengths && summary.strengths.length > 0 
+            ? summary.strengths.map(s => `<li class="mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i>${s}</li>`).join('')
+            : '<li class="text-muted">No specific strengths identified.</li>';
+    }
+    
+    // Update areas for improvement
+    const improvementsList = document.getElementById('improvementsList');
+    if (improvementsList) {
+        improvementsList.innerHTML = summary.areas_for_improvement && summary.areas_for_improvement.length > 0 
+            ? summary.areas_for_improvement.map(i => `<li class="mb-1"><i class="bi bi-exclamation-circle-fill text-warning me-2"></i>${i}</li>`).join('')
+            : '<li class="text-muted">No specific areas for improvement identified.</li>';
+    }
+    
+    // Update overall assessment
+    const overallAssessment = document.getElementById('overallAssessment');
+    if (overallAssessment) {
+        overallAssessment.textContent = summary.summary || 'No summary available.';
+    }
+    
+    // Update recommendation
+    const recommendationEl = document.getElementById('recommendation');
+    if (recommendationEl) {
+        recommendationEl.textContent = summary.recommendation || 'Needs Further Evaluation';
+        
+        // Style recommendation badge
+        const recClass = {
+            'Strong Hire': 'bg-success',
+            'Hire': 'bg-primary',
+            'No Hire': 'bg-danger',
+            'Needs Further Evaluation': 'bg-warning text-dark'
+        }[summary.recommendation] || 'bg-secondary';
+        
+        recommendationEl.className = `badge ${recClass} ms-2`;
+    }
+    
+    // Update confidence score
+    const confidence = summary.confidence_score || 0;
+    const confidenceBar = document.getElementById('confidenceBar');
+    if (confidenceBar) {
+        confidenceBar.style.width = `${confidence}%`;
+        confidenceBar.setAttribute('aria-valuenow', confidence);
+        confidenceBar.textContent = `${confidence}%`;
+        confidenceBar.className = `progress-bar ${getConfidenceClass(confidence)}`;
+    }
+}
+
+// Get CSS class for confidence score
+function getConfidenceClass(score) {
+    if (score >= 80) return 'bg-success';
+    if (score >= 50) return 'bg-primary';
+    if (score >= 30) return 'bg-warning';
+    return 'bg-danger';
+}
+
+// Download interview report
+function downloadReport() {
+    if (!interviewSummary) {
+        alert('No interview data available to download.');
+        return;
+    }
+    
+    // Create a downloadable report
+    const report = {
+        interviewType: document.getElementById('interviewType').value,
+        candidateType: document.getElementById('candidateType').value,
+        jobRole: document.getElementById('jobRole').value || 'Not specified',
+        date: new Date().toISOString(),
+        ...interviewSummary
+    };
+    
+    // Create a blob and download link
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `interview-report-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Restart the interview
+function restartInterview() {
+    if (confirm('Are you sure you want to restart the interview? All progress will be lost.')) {
+        // Reset state
+        currentQuestionIndex = 0;
+        currentQuestion = '';
+        currentAnswer = '';
+        interviewSummary = null;
+        if (chatMessages) chatMessages.innerHTML = '';
+        
+        // Reset UI
+        updateUIState('ready');
+        
+        // Show welcome message
+        addMessage('Welcome! Click the Start Interview button to begin.', 'ai');
+    }
+}
+
+// End the current interview
+function endInterview() {
+    if (confirm('Are you sure you want to end the interview? Any unsaved progress will be lost.')) {
+        // Reset state
+        currentQuestionIndex = 0;
+        currentQuestion = '';
+        currentAnswer = '';
+        interviewSummary = null;
+        if (chatMessages) chatMessages.innerHTML = '';
+        
+        // Reset UI
+        updateUIState('ready');
+        
+        // Show welcome message
+        addMessage('Interview ended. Click Start Interview to begin a new session.', 'ai');
+    }
+}
+
+// Add a message to the chat
+function addMessage(text, sender, type = 'default') {
+    if (!chatMessages) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender} ${type}`;
+    
+    let messageContent = '';
+    let icon = '';
+    
+    if (type === 'error') {
+        icon = '<i class="bi bi-exclamation-triangle-fill me-2"></i>';
+        messageContent = `<div class="alert alert-danger">${icon}${text}</div>`;
+    } else if (type === 'hint') {
+        icon = '<i class="bi bi-lightbulb-fill me-2"></i>';
+        messageContent = `<div class="alert alert-info">${icon}${text}</div>`;
+    } else if (type === 'info') {
+        icon = '<i class="bi bi-info-circle-fill me-2"></i>';
+        messageContent = `<div class="alert alert-primary">${icon}${text}</div>`;
+    } else if (type === 'success') {
+        icon = '<i class="bi bi-check-circle-fill me-2"></i>';
+        messageContent = `<div class="alert alert-success">${icon}${text}</div>`;
+    } else if (type === 'system') {
+        messageContent = `<div class="alert alert-secondary"><em>${text}</em></div>`;
+    } else {
+        if (sender === 'ai') {
+            messageContent = `<div class="ai-message">${text}</div>`;
+        } else {
+            messageContent = `<div class="user-message">${text}</div>`;
+        }
+    }
+    
+    messageDiv.innerHTML = messageContent;
+    chatMessages.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Update interview type badge
+function updateInterviewType() {
+    const type = document.getElementById('interviewType').value;
+    interviewTypeBadge.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+// Update candidate type badge
+function updateCandidateType() {
+    const type = document.getElementById('candidateType').value;
+    candidateTypeBadge.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+// Add some basic styling
+const style = document.createElement('style');
+style.textContent = `
+    .message {
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .message.user {
+        align-items: flex-end;
+    }
+    
+    .message.ai {
+        align-items: flex-start;
+    }
+    
+    .message-content {
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+    
+    .message.user .message-content {
+        background-color: #0d6efd;
+        color: white;
+    }
+    
+    .message.ai .message-content {
+        background-color: #f8f9fa;
+        color: #212529;
+    }
+    
+    .message.system {
+        align-items: center;
+        margin: 0.5rem 0;
+    }
+    
+    .message.system .message-content {
+        background-color: transparent;
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+        padding: 0.5rem 0;
+    }
+    
+    .chat-container {
+        scroll-behavior: smooth;
+    }
+    
+    #userResponse:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        border-color: #86b7fe;
+    }
+    
+    .progress-bar-striped {
+        background-image: linear-gradient(
+            45deg,
+            rgba(255, 255, 255, 0.15) 25%,
+            transparent 25%,
+            transparent 50%,
+            rgba(255, 255, 255, 0.15) 50%,
+            rgba(255, 255, 255, 0.15) 75%,
+            transparent 75%,
+            transparent
+        );
+        background-size: 1rem 1rem;
+    }
+    
+    .progress-bar-animated {
+        animation: progress-bar-stripes 1s linear infinite;
+    }
+    
+    @keyframes progress-bar-stripes {
+        0% { background-position-x: 1rem; }
+    }
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %}

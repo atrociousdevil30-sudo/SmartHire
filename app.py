@@ -2241,6 +2241,458 @@ def get_interview_details(interview_id):
             'message': 'Failed to fetch interview details'
         }), 500
 
+# New AI Interview System API Endpoints
+@app.route('/api/interview/start', methods=['POST'])
+@login_required(['hr', 'employee'])
+def start_ai_interview():
+    """Start a new AI interview session"""
+    try:
+        from ai_interviewer import AIInterviewer
+        
+        data = request.get_json()
+        interview_type = data.get('interview_type', 'technical')
+        is_fresher = data.get('is_fresher', False)
+        job_role = data.get('job_role', 'General')
+        enable_hr_training = data.get('enable_hr_training', True)
+        
+        # Initialize AI interviewer
+        interviewer = AIInterviewer()
+        interviewer.set_interview_type(interview_type)
+        interviewer.set_job_description(f"Job Role: {job_role}")
+        
+        # Store interviewer in session
+        session['ai_interviewer'] = {
+            'interview_type': interview_type,
+            'is_fresher': is_fresher,
+            'job_role': job_role,
+            'enable_hr_training': enable_hr_training,
+            'questions_asked': [],
+            'responses': [],
+            'current_question_index': 0
+        }
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Interview started successfully',
+            'total_questions': 5,  # Default number of questions
+            'interview_type': interview_type
+        })
+    except Exception as e:
+        app.logger.error(f'Error starting interview: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to start interview'
+        }), 500
+
+@app.route('/api/interview/next-question', methods=['POST'])
+@login_required(['hr', 'employee'])
+def get_next_question():
+    """Get the next interview question"""
+    try:
+        from ai_interviewer import AIInterviewer
+        
+        data = request.get_json()
+        question_index = data.get('question_index', 0)
+        previous_question = data.get('previous_question', '')
+        previous_answer = data.get('previous_answer', '')
+        
+        # Get interviewer data from session
+        interviewer_data = session.get('ai_interviewer', {})
+        
+        # Initialize AI interviewer
+        interviewer = AIInterviewer()
+        interviewer.set_interview_type(interviewer_data.get('interview_type', 'technical'))
+        interviewer.set_job_description(f"Job Role: {interviewer_data.get('job_role', 'General')}")
+        
+        # Generate question
+        if question_index == 0:
+            # First question - always generate a proper question, not a greeting
+            question = interviewer.generate_question()
+        else:
+            # Add previous answer to conversation history
+            if previous_question and previous_answer:
+                interviewer.conversation_history.append({
+                    'role': 'user',
+                    'content': previous_answer
+                })
+                interviewer.conversation_history.append({
+                    'role': 'model', 
+                    'content': previous_question
+                })
+            question = interviewer.generate_question()
+        
+        # Update session
+        interviewer_data['current_question_index'] = question_index + 1
+        interviewer_data['questions_asked'].append(question)
+        session['ai_interviewer'] = interviewer_data
+        
+        return jsonify({
+            'status': 'success',
+            'question': question,
+            'question_index': question_index + 1
+        })
+    except Exception as e:
+        app.logger.error(f'Error getting next question: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get next question'
+        }), 500
+
+@app.route('/api/interview/analyze-response', methods=['POST'])
+@login_required(['hr', 'employee'])
+def analyze_response():
+    """Analyze candidate's response"""
+    try:
+        from ai_interviewer import AIInterviewer
+        
+        data = request.get_json()
+        question = data.get('question', '')
+        answer = data.get('answer', '')
+        question_index = data.get('question_index', 0)
+        
+        # Get interviewer data from session
+        interviewer_data = session.get('ai_interviewer', {})
+        
+        # Initialize AI interviewer
+        interviewer = AIInterviewer()
+        interviewer.set_interview_type(interviewer_data.get('interview_type', 'technical'))
+        interviewer.set_job_description(f"Job Role: {interviewer_data.get('job_role', 'General')}")
+        
+        # Analyze response
+        analysis_result = interviewer.analyze_response(question, answer)
+        
+        # Store response
+        interviewer_data['responses'].append({
+            'question': question,
+            'answer': answer,
+            'analysis': analysis_result,
+            'question_index': question_index
+        })
+        
+        # Store last answer and feedback for clarification
+        interviewer_data['last_answer'] = answer
+        interviewer_data['last_feedback'] = {
+            'score': min(10, max(1, int(analysis_result.get('score', 5)))),
+            'text': analysis_result.get('analysis', 'Good response'),
+            'keywords': analysis_result.get('keywords', [])
+        }
+        
+        session['ai_interviewer'] = interviewer_data
+        
+        # Extract score and keywords from analysis
+        score = min(10, max(1, int(analysis_result.get('score', 5))))  # Ensure score is between 1-10
+        keywords = analysis_result.get('keywords', [])
+        analysis_text = analysis_result.get('analysis', 'Good response')
+        
+        return jsonify({
+            'status': 'success',
+            'feedback': {
+                'analysis': analysis_text,
+                'score': score,
+                'keywords': keywords[:5]  # Limit to 5 keywords
+            }
+        })
+    except Exception as e:
+        app.logger.error(f'Error analyzing response: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to analyze response'
+        }), 500
+
+@app.route('/api/interview/request-hint', methods=['POST'])
+@login_required(['hr', 'employee'])
+def request_hint():
+    """Get a hint for the current question"""
+    try:
+        data = request.get_json()
+        question = data.get('question', '')
+        
+        # Generate a simple hint based on the question
+        hint = "Think about your personal experience and provide specific examples. Focus on the key aspects mentioned in the question."
+        
+        if "technical" in question.lower():
+            hint = "Consider explaining the technical concept, its practical applications, and any challenges you've faced with it."
+        elif "hr" in question.lower() or "behavioral" in question.lower():
+            hint = "Use the STAR method (Situation, Task, Action, Result) to structure your answer with specific examples."
+        
+        return jsonify({
+            'status': 'success',
+            'hint': hint
+        })
+    except Exception as e:
+        app.logger.error(f'Error getting hint: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get hint'
+        }), 500
+
+@app.route('/api/interview/request-clarification', methods=['POST'])
+@login_required(['hr', 'employee'])
+def request_clarification():
+    """Request clarification for the current question with comprehensive performance feedback"""
+    try:
+        data = request.get_json()
+        question = data.get('question', '')
+        
+        # Get interviewer data from session for performance context
+        interviewer_data = session.get('ai_interviewer', {})
+        last_answer = interviewer_data.get('last_answer', '')
+        last_feedback = interviewer_data.get('last_feedback', {})
+        
+        # Generate comprehensive clarification with performance feedback
+        clarification_parts = []
+        
+        # 1. Enhanced question clarification
+        if "tell me about yourself" in question.lower():
+            clarification_parts.append(
+                "📝 **Question Deep Dive**: This is often the first impression question. I'm looking for:\n"
+                "• Your educational journey and key achievements\n"
+                "• Professional experience and notable projects\n"
+                "• Technical skills and personal strengths\n"
+                "• Career aspirations and why you're interested in this role\n"
+                "• What makes you unique compared to other candidates"
+            )
+        elif "strengths" in question.lower():
+            clarification_parts.append(
+                "📝 **Question Deep Dive**: For strengths, I want to see:\n"
+                "• 2-3 specific strengths relevant to this position\n"
+                "• Real examples of when you demonstrated these strengths\n"
+                "• The impact or results of your actions\n"
+                "• How these strengths will benefit the company"
+            )
+        elif "weakness" in question.lower():
+            clarification_parts.append(
+                "📝 **Question Deep Dive**: For weaknesses, show maturity by:\n"
+                "• Being honest about a real area for improvement\n"
+                "• Explaining what you're doing to address it\n"
+                "• Demonstrating self-awareness and growth mindset\n"
+                "• Avoiding clichés like 'I'm a perfectionist' or 'I work too hard'"
+            )
+        else:
+            clarification_parts.append(
+                f"📝 **Question Deep Dive**: For '{question.split('?')[0]}', I'm seeking:\n"
+                "• Your direct experience with this topic\n"
+                "• Specific examples and measurable results\n"
+                "• Your thought process and problem-solving approach\n"
+                "• How this relates to the position you're applying for"
+            )
+        
+        # 2. Detailed score breakdown
+        if last_feedback and 'score' in last_feedback:
+            score = last_feedback.get('score', 0)
+            analysis = last_feedback.get('text', '')
+            
+            # Score interpretation
+            score_interpretation = {
+                9: "Exceptional - Exceeded expectations with outstanding examples",
+                8: "Excellent - Strong response with good examples and clarity",
+                7: "Very Good - Solid answer with relevant details",
+                6: "Good - Adequate response with some good points",
+                5: "Average - Basic response that meets minimum requirements",
+                4: "Below Average - Lacked depth or specific examples",
+                3: "Weak - Minimal relevant content",
+                2: "Poor - Lacked relevance or clarity",
+                1: "Very Poor - Did not address the question effectively"
+            }.get(score, "Needs improvement")
+            
+            clarification_parts.append(
+                f"\n🎯 **Score Analysis**: {score}/10 - {score_interpretation}\n\n"
+                f"**AI's Assessment**: {analysis}\n\n"
+                f"**Scoring Criteria Applied**:\n"
+                f"• 🎯 **Relevance** (25%): How well you addressed the question\n"
+                f"• 📊 **Content Quality** (25%): Depth, examples, and specifics\n"
+                f"• 💡 **Communication** (25%): Clarity, structure, and confidence\n"
+                f"• 🔍 **Impact** (25%): Results, achievements, and value shown"
+            )
+            
+            # 3. Detailed performance analysis
+            if last_answer:
+                answer_lower = last_answer.lower()
+                word_count = len(last_answer.split())
+                
+                # Content analysis
+                content_analysis = []
+                if any(word in answer_lower for word in ['project', 'developed', 'created', 'built', 'designed']):
+                    content_analysis.append("✅ **Project Experience**: You demonstrated hands-on experience")
+                if any(word in answer_lower for word in ['team', 'collaborate', 'worked with', 'together', 'group']):
+                    content_analysis.append("✅ **Collaboration**: Showed teamwork abilities")
+                if any(word in answer_lower for word in ['learn', 'study', 'course', 'degree', 'education', 'university']):
+                    content_analysis.append("✅ **Learning Mindset**: Highlighted educational background")
+                if any(word in answer_lower for word in ['problem', 'solve', 'solution', 'challenge', 'overcome']):
+                    content_analysis.append("✅ **Problem Solving**: Addressed challenges and solutions")
+                if any(word in answer_lower for word in ['improve', 'better', 'increase', 'reduce', 'optimize']):
+                    content_analysis.append("✅ **Results Oriented**: Focused on improvements and outcomes")
+                
+                # Communication analysis
+                comm_analysis = []
+                if word_count > 50:
+                    comm_analysis.append("📝 **Comprehensive**: Provided detailed response")
+                elif word_count > 30:
+                    comm_analysis.append("📝 **Balanced**: Good amount of detail")
+                else:
+                    comm_analysis.append("📝 **Concise**: Could use more detail")
+                
+                if 'i' in answer_lower and ('am' in answer_lower or 'have' in answer_lower):
+                    comm_analysis.append("🎤 **Confidence**: Spoke with self-assurance")
+                if any(word in answer_lower for word in ['because', 'therefore', 'result', 'led to']):
+                    comm_analysis.append("🔗 **Logical Flow**: Connected ideas well")
+                
+                if content_analysis or comm_analysis:
+                    clarification_parts.append(
+                        f"\n🌟 **Performance Breakdown**:\n\n"
+                        f"**Content Strengths**:\n" + "\n".join(f"  {item}" for item in content_analysis) + "\n\n"
+                        f"**Communication Style**:\n" + "\n".join(f"  {item}" for item in comm_analysis)
+                    )
+            
+            # 4. Body Language & Confidence Indicators (inferred from text)
+            clarification_parts.append(
+                f"\n🧠 **Inferred Communication Traits**:\n\n"
+                f"• **Professionalism**: {'High' if any(word in last_answer.lower() for word in ['experience', 'project', 'developed']) else 'Moderate'}\n"
+                f"• **Enthusiasm**: {'Evident' if any(word in last_answer.lower() for word in ['passionate', 'love', 'enjoy', 'excited']) else 'Could be stronger'}\n"
+                f"• **Detail Orientation**: {'Strong' if len(last_answer.split()) > 40 else 'Developing'}\n"
+                f"• **Self-Awareness**: {'Good' if any(word in last_answer.lower() for word in ['learn', 'improve', 'grow']) else 'Room for growth'}"
+            )
+            
+            # 5. Strengths & Weaknesses Analysis
+            clarification_parts.append(
+                f"\n💪 **Strengths Demonstrated**:\n"
+                f"• **Technical Knowledge**: {'Evident' if any(word in last_answer.lower() for word in ['technology', 'software', 'programming', 'code']) else 'Not clearly shown'}\n"
+                f"• **Project Experience**: {'Strong' if 'project' in last_answer.lower() else 'Could emphasize more'}\n"
+                f"• **Communication Skills**: {'Clear' if len(last_answer.split()) > 25 else 'Developing'}\n"
+                f"• **Goal Orientation**: {'Present' if any(word in last_answer.lower() for word in ['achieve', 'goal', 'target', 'objective']) else 'Could highlight'}\n\n"
+                f"🎯 **Areas to Enhance**:\n"
+                f"• **Quantifiable Results**: Add specific metrics and numbers\n"
+                f"• **Industry Alignment**: Connect experience to job requirements\n"
+                f"• **Unique Value**: What makes you different from others\n"
+                f"• **Future Vision**: How you'll contribute to the company"
+            )
+            
+            # 6. Actionable Improvement Plan
+            clarification_parts.append(
+                f"\n🚀 **Next Steps to Improve**:\n\n"
+                f"**Immediate (Next Interview)**:\n"
+                f"• Start with a strong opening statement\n"
+                f"• Include 2-3 specific achievements with metrics\n"
+                f"• Practice the STAR method for behavioral questions\n"
+                f"• Research the company and align your experience\n\n"
+                f"**Long-term Development**:\n"
+                f"• Build a portfolio of your best projects\n"
+                f"• Practice explaining technical concepts simply\n"
+                f"• Develop your personal elevator pitch\n"
+                f"• Seek mock interview opportunities"
+            )
+        
+        clarification = "\n".join(clarification_parts)
+        
+        return jsonify({
+            'status': 'success',
+            'clarification': clarification
+        })
+    except Exception as e:
+        app.logger.error(f'Error getting clarification: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get clarification'
+        }), 500
+
+@app.route('/api/interview/summary', methods=['GET'])
+@login_required(['hr', 'employee'])
+def get_interview_summary():
+    """Get interview summary and evaluation"""
+    try:
+        from ai_interviewer import AIInterviewer
+        
+        # Get interviewer data from session
+        interviewer_data = session.get('ai_interviewer', {})
+        responses = interviewer_data.get('responses', [])
+        
+        if not responses:
+            return jsonify({
+                'status': 'error',
+                'message': 'No interview data found'
+            }), 404
+        
+        # Initialize AI interviewer
+        interviewer = AIInterviewer()
+        interviewer.set_interview_type(interviewer_data.get('interview_type', 'technical'))
+        interviewer.set_job_description(f"Job Role: {interviewer_data.get('job_role', 'General')}")
+        
+        # Build conversation history
+        for response in responses:
+            interviewer.conversation_history.append({
+                'role': 'user',
+                'content': response['answer']
+            })
+            interviewer.conversation_history.append({
+                'role': 'model',
+                'content': response['question']
+            })
+        
+        # Generate summary
+        summary_result = interviewer.generate_summary()
+        
+        # Extract structured data
+        summary_text = summary_result.get('summary', 'Interview completed successfully')
+        overall_score = summary_result.get('overall_score', 7.0)
+        recommendation = summary_result.get('recommendation', 'Needs Further Evaluation')
+        strengths = summary_result.get('strengths', [])
+        areas_for_improvement = summary_result.get('areas_for_improvement', [])
+        confidence_score = summary_result.get('confidence_score', 75)
+        
+        return jsonify({
+            'status': 'success',
+            'summary': summary_text,
+            'overall_score': overall_score,
+            'recommendation': recommendation,
+            'strengths': strengths,
+            'areas_for_improvement': areas_for_improvement,
+            'confidence_score': confidence_score,
+            'total_questions': len(responses)
+        })
+    except Exception as e:
+        app.logger.error(f'Error generating summary: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to generate summary'
+        }), 500
+
+@app.route('/api/interview/complete', methods=['POST'])
+@login_required(['hr', 'employee'])
+def complete_interview():
+    """Complete the interview and save results"""
+    try:
+        data = request.get_json()
+        
+        # Get interviewer data from session
+        interviewer_data = session.get('ai_interviewer', {})
+        
+        # Save interview to database
+        interview_record = Interview(
+            candidate_id=session.get('user_id'),
+            responses=interviewer_data.get('responses', []),
+            summary=data.get('summary', 'Interview completed'),
+            created_at=datetime.utcnow()
+        )
+        
+        db.session.add(interview_record)
+        db.session.commit()
+        
+        # Clear session data
+        session.pop('ai_interviewer', None)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Interview completed successfully',
+            'interview_id': interview_record.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error completing interview: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to complete interview'
+        }), 500
+
 @app.route('/exit', methods=['GET', 'POST'])
 @login_required(['employee', 'hr'])  # Allow both employees and HR to access
 def exit_interview():
