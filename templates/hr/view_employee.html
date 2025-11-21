@@ -37,6 +37,11 @@
                         </a>
                     </li>
                     <li>
+                        <a class="dropdown-item" href="{{ url_for('hr_pre_offboarding', employee_id=employee.id) }}">
+                            <i class="fas fa-sign-out-alt me-2"></i> Pre-Offboarding
+                        </a>
+                    </li>
+                    <li>
                         <a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deactivateModal">
                             <i class="fas fa-user-slash me-2"></i> Deactivate
                         </a>
