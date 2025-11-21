@@ -115,15 +115,7 @@
                         </small>
                     </div>
 
-                    <!-- AI Summary Section -->
-                    <div class="mb-4">
-                        <h5 class="h6 text-muted mb-2">Summary</h5>
-                        <div class="alert alert-light border">
-                            <p id="aiSummary" class="mb-0 small">
-                                Analyzing resume...
-                            </p>
-                        </div>
-                    </div>
+                    <div id="atsFeedbackContainer" class="mb-4"></div>
 
                     <!-- Action Buttons -->
                     <div class="d-grid gap-2">
@@ -157,7 +149,7 @@
         const resultCard = document.getElementById('resultCard');
         const scoreProgress = document.getElementById('scoreProgress');
         const scoreValue = document.getElementById('scoreValue');
-        const aiSummary = document.getElementById('aiSummary');
+        const atsFeedbackContainer = document.getElementById('atsFeedbackContainer');
         const candidateName = document.getElementById('candidateName');
         const jobDescription = document.getElementById('jobDescription');
         const resumeFile = document.getElementById('resumeFile');
@@ -223,10 +215,6 @@
                             'progress-bar bg-danger';
                     }
 
-                    // Display AI summary
-                    aiSummary.textContent = data.ai_summary || 
-                        'Resume analysis completed.';
-
                     // Show feedback
                     let feedbackHtml = '<div class="mt-3">';
                     feedbackHtml += '<h5 class="h6">Screening Feedback:</h5>';
@@ -243,16 +231,8 @@
                     
                     feedbackHtml += '</ul></div>';
 
-                    // Insert feedback after summary
-                    const summaryDiv = aiSummary.parentElement;
-                    if (summaryDiv) {
-                        const existingFeedback = summaryDiv.querySelector(
-                            '[class*="mt-3"]');
-                        if (existingFeedback) {
-                            existingFeedback.remove();
-                        }
-                        summaryDiv.insertAdjacentHTML(
-                            'afterend', feedbackHtml);
+                    if (atsFeedbackContainer) {
+                        atsFeedbackContainer.innerHTML = feedbackHtml;
                     }
 
                     // Show result card
