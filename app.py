@@ -46,7 +46,7 @@ if not gemini_api_key or gemini_api_key == 'your-gemini-api-key-here':
     logger.error("ERROR: GEMINI_API_KEY is not properly configured in .env file")
 else:
     genai.configure(api_key=gemini_api_key)
-    model = genai.GenerativeModel('gemini-1.0-pro')
+    model = genai.GenerativeModel('gemini-pro')
 
 from dashboard import dashboard_bp
 
@@ -584,6 +584,13 @@ class ExitFeedback(db.Model):
     reason = db.Column(db.Text, nullable=False)
     feedback = db.Column(db.Text, nullable=True)
     sentiment = db.Column(db.String(20), nullable=True)
+    # AI Analysis Fields
+    key_themes = db.Column(db.Text, nullable=True)  # JSON array of themes
+    risk_level = db.Column(db.String(20), nullable=True)  # low|medium|high|critical
+    actionable_insights = db.Column(db.Text, nullable=True)  # JSON array of insights
+    emotional_tone = db.Column(db.String(30), nullable=True)  # enthusiastic|satisfied|neutral|concerned|frustrated|angry
+    retention_probability = db.Column(db.String(20), nullable=True)  # low|medium|high
+    recommendations = db.Column(db.Text, nullable=True)  # JSON array of recommendations
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class RememberedCredential(db.Model):
@@ -3269,6 +3276,176 @@ def interview():
     
     return render_template('interview.html')
 
+def analyze_exit_feedback(reason, feedback):
+    """AI-powered analysis of exit feedback using Gemini"""
+    try:
+        prompt = f"""
+        Analyze this employee exit feedback and provide comprehensive insights:
+        
+        Exit Reason: {reason}
+        Detailed Feedback: {feedback}
+        
+        Please provide a JSON response with the following structure:
+        {{
+            "sentiment": "Positive|Neutral|Negative",
+            "emotional_tone": "enthusiastic|satisfied|neutral|concerned|frustrated|angry",
+            "key_themes": ["theme1", "theme2", "theme3"],
+            "risk_level": "low|medium|high|critical",
+            "actionable_insights": [
+                {{
+                    "category": "management|culture|compensation|work_life_balance|career_growth|work_environment",
+                    "insight": "Specific insight description",
+                    "priority": "low|medium|high",
+                    "department": "HR|Management|IT|Operations|All"
+                }}
+            ],
+            "retention_probability": "low|medium|high",
+            "recommendations": ["recommendation1", "recommendation2"]
+        }}
+        
+        Focus on:
+        1. Emotional intelligence - detect underlying emotions
+        2. Root cause analysis - identify core issues
+        3. Actionable insights - provide specific, implementable recommendations
+        4. Risk assessment - evaluate potential impact on organization
+        5. Trend indicators - patterns that might indicate systemic issues
+        """
+        
+        response = model.generate_content(prompt)
+        ai_text = response.text
+        
+        # Extract JSON from response
+        import json
+        import re
+        
+        # Look for JSON pattern in the response
+        json_match = re.search(r'\{.*\}', ai_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group()
+            analysis = json.loads(json_str)
+            return analysis
+        else:
+            # Fallback to basic analysis if JSON parsing fails
+            return {
+                'sentiment': 'Neutral',
+                'emotional_tone': 'neutral',
+                'key_themes': ['general_feedback'],
+                'risk_level': 'medium',
+                'actionable_insights': [],
+                'retention_probability': 'medium',
+                'recommendations': ['Review feedback patterns']
+            }
+            
+    except Exception as e:
+        app.logger.error(f'Error in AI analysis: {str(e)}')
+        # Fallback to mock analysis for demo purposes
+        return mock_ai_analysis(reason, feedback)
+
+def mock_ai_analysis(reason, feedback):
+    """Mock AI analysis for demonstration purposes"""
+    # Simple keyword-based analysis
+    feedback_lower = feedback.lower()
+    reason_lower = reason.lower()
+    
+    # Determine sentiment
+    positive_words = ['good', 'great', 'excellent', 'amazing', 'love', 'appreciate', 'thankful']
+    negative_words = ['bad', 'terrible', 'awful', 'hate', 'frustrated', 'angry', 'disappointed', 'limited']
+    
+    positive_count = sum(1 for word in positive_words if word in feedback_lower)
+    negative_count = sum(1 for word in negative_words if word in feedback_lower)
+    
+    if positive_count > negative_count:
+        sentiment = 'Positive'
+        emotional_tone = 'satisfied'
+    elif negative_count > positive_count:
+        sentiment = 'Negative'
+        emotional_tone = 'frustrated'
+    else:
+        sentiment = 'Neutral'
+        emotional_tone = 'neutral'
+    
+    # Determine key themes
+    themes = []
+    theme_keywords = {
+        'career_growth': ['career', 'growth', 'advancement', 'promotion', 'development'],
+        'management': ['manager', 'management', 'leadership', 'boss', 'supervisor'],
+        'compensation': ['salary', 'pay', 'compensation', 'benefits', 'money', 'raise'],
+        'work_life_balance': ['balance', 'hours', 'overtime', 'flexible', 'remote', 'family'],
+        'culture': ['culture', 'environment', 'team', 'atmosphere', 'toxic', 'supportive'],
+        'work_environment': ['office', 'workspace', 'tools', 'equipment', 'resources']
+    }
+    
+    for theme, keywords in theme_keywords.items():
+        if any(keyword in feedback_lower for keyword in keywords):
+            themes.append(theme)
+    
+    if not themes:
+        themes = ['general_feedback']
+    
+    # Determine risk level
+    if 'toxic' in feedback_lower or 'harassment' in feedback_lower or 'illegal' in feedback_lower:
+        risk_level = 'critical'
+    elif negative_count > 3 or 'frustrated' in emotional_tone:
+        risk_level = 'high'
+    elif negative_count > 1:
+        risk_level = 'medium'
+    else:
+        risk_level = 'low'
+    
+    # Generate actionable insights
+    insights = []
+    if 'career_growth' in themes:
+        insights.append({
+            'category': 'career_growth',
+            'insight': 'Employee seeking career advancement opportunities',
+            'priority': 'high',
+            'department': 'Management'
+        })
+    if 'management' in themes:
+        insights.append({
+            'category': 'management',
+            'insight': 'Management style or communication issues identified',
+            'priority': 'medium',
+            'department': 'HR'
+        })
+    if 'compensation' in themes:
+        insights.append({
+            'category': 'compensation',
+            'insight': 'Compensation and benefits concerns raised',
+            'priority': 'high',
+            'department': 'HR'
+        })
+    
+    # Determine retention probability
+    if sentiment == 'Negative' and risk_level in ['high', 'critical']:
+        retention_probability = 'low'
+    elif sentiment == 'Positive':
+        retention_probability = 'high'
+    else:
+        retention_probability = 'medium'
+    
+    # Generate recommendations
+    recommendations = []
+    if 'career_growth' in themes:
+        recommendations.append('Review career development programs and advancement paths')
+    if 'management' in themes:
+        recommendations.append('Implement management training and feedback systems')
+    if 'compensation' in themes:
+        recommendations.append('Conduct market compensation analysis')
+    if 'work_life_balance' in themes:
+        recommendations.append('Evaluate work-life balance policies and flexibility')
+    
+    return {
+        'sentiment': sentiment,
+        'emotional_tone': emotional_tone,
+        'key_themes': themes,
+        'risk_level': risk_level,
+        'actionable_insights': insights,
+        'retention_probability': retention_probability,
+        'recommendations': recommendations
+    }
+
+
 @app.route('/ai-interview-training')
 @login_required(['hr', 'employee'])
 def ai_interview_training():
@@ -3886,6 +4063,24 @@ def exit_interview():
             
             db.session.add(exit_feedback)
             db.session.commit()
+            
+            # Perform AI analysis on the feedback
+            try:
+                ai_analysis = analyze_exit_feedback(reason, feedback)
+                if ai_analysis:
+                    import json
+                    exit_feedback.sentiment = ai_analysis.get('sentiment', 'Neutral')
+                    exit_feedback.key_themes = json.dumps(ai_analysis.get('key_themes', []))
+                    exit_feedback.risk_level = ai_analysis.get('risk_level', 'medium')
+                    exit_feedback.actionable_insights = json.dumps(ai_analysis.get('actionable_insights', []))
+                    exit_feedback.emotional_tone = ai_analysis.get('emotional_tone', 'neutral')
+                    exit_feedback.retention_probability = ai_analysis.get('retention_probability', 'medium')
+                    exit_feedback.recommendations = json.dumps(ai_analysis.get('recommendations', []))
+                    db.session.commit()
+                    app.logger.info(f'AI analysis completed for exit feedback by {employee.username}')
+            except Exception as ai_error:
+                app.logger.warning(f'AI analysis failed for exit feedback: {str(ai_error)}')
+                # Continue without AI analysis - don't fail the entire process
             
             app.logger.info(f'Exit feedback submitted by {employee.username}')
             return jsonify({

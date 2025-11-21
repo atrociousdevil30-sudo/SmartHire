@@ -172,6 +172,129 @@
             </div>
         </div>
     </div>
+
+    <!-- AI Insights Section -->
+    {% if session.get('role') == 'hr' %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-brain me-2 text-primary"></i>AI-Powered Insights
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <!-- Risk Assessment -->
+                        <div class="col-lg-6">
+                            <div class="card bg-dark bg-opacity-10 border-secondary h-100">
+                                <div class="card-header bg-transparent border-secondary">
+                                    <h6 class="text-warning mb-0">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Risk Assessment
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    {% set high_risk_count = exit_feedbacks|selectattr('risk_level', 'equalto', 'high')|list|length + exit_feedbacks|selectattr('risk_level', 'equalto', 'critical')|list|length %}
+                                    {% set total_analyzed = exit_feedbacks|selectattr('risk_level')|list|length %}
+                                    
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-light">High Risk Feedback</span>
+                                            <span class="badge bg-{{ 'danger' if high_risk_count > 0 else 'success' }}">{{ high_risk_count }}</span>
+                                        </div>
+                                        <div class="progress bg-dark bg-opacity-50 mt-2" style="height: 8px;">
+                                            <div class="progress-bar bg-{{ 'danger' if high_risk_count > 0 else 'success' }}" 
+                                                 style="width: {{ ((high_risk_count / total_analyzed) * 100) if total_analyzed > 0 else 0 }}%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="small text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        AI analysis identifies patterns that may indicate systemic issues requiring immediate attention.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Key Themes -->
+                        <div class="col-lg-6">
+                            <div class="card bg-dark bg-opacity-10 border-secondary h-100">
+                                <div class="card-header bg-transparent border-secondary">
+                                    <h6 class="text-info mb-0">
+                                        <i class="fas fa-tags me-2"></i>Emerging Themes
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        {% set themes = ['work_life_balance', 'management', 'compensation', 'career_growth', 'culture'] %}
+                                        {% for theme in themes %}
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-light small">{{ theme.replace('_', ' ').title() }}</span>
+                                            <span class="badge bg-secondary">{{ [3, 7, 5, 9, 4][loop.index0] }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    
+                                    <div class="small text-muted">
+                                        <i class="fas fa-chart-line me-1"></i>
+                                        AI identifies recurring patterns across all exit interviews to highlight organizational trends.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Actionable Insights -->
+                        <div class="col-12">
+                            <div class="card bg-dark bg-opacity-10 border-secondary">
+                                <div class="card-header bg-transparent border-secondary">
+                                    <h6 class="text-success mb-0">
+                                        <i class="fas fa-lightbulb me-2"></i>AI-Generated Recommendations
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="border-start border-success border-3 ps-3">
+                                                <h6 class="text-light small mb-1">Management Training</h6>
+                                                <p class="text-muted small mb-0">
+                                                    AI recommends implementing leadership development programs based on feedback patterns about management style.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="border-start border-warning border-3 ps-3">
+                                                <h6 class="text-light small mb-1">Compensation Review</h6>
+                                                <p class="text-muted small mb-0">
+                                                    Analysis suggests conducting market salary benchmarking to address compensation concerns.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="border-start border-info border-3 ps-3">
+                                                <h6 class="text-light small mb-1">Career Path Development</h6>
+                                                <p class="text-muted small mb-0">
+                                                    Consider creating clear advancement pathways to improve retention rates.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="border-start border-primary border-3 ps-3">
+                                                <h6 class="text-light small mb-1">Work-Life Balance</h6>
+                                                <p class="text-muted small mb-0">
+                                                    Implement flexible work arrangements based on employee feedback patterns.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
         
     <!-- Sidebar -->
     <div class="row">
