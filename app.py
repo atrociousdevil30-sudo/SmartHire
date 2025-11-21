@@ -593,6 +593,68 @@ class ExitFeedback(db.Model):
     recommendations = db.Column(db.Text, nullable=True)  # JSON array of recommendations
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+# Knowledge Transfer Models
+class KTSession(db.Model):
+    """Knowledge Transfer Sessions"""
+    id = db.Column(db.Integer, primary_key=True)
+    session_topic = db.Column(db.Text, nullable=False)
+    attendees = db.Column(db.Text, nullable=False)
+    scheduled_date = db.Column(db.Date, nullable=False)
+    duration_hours = db.Column(db.Float, nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='Scheduled')  # Scheduled, In Progress, Completed, Cancelled
+    documentation_path = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class KTDocument(db.Model):
+    """Knowledge Transfer Documents"""
+    id = db.Column(db.Integer, primary_key=True)
+    document_name = db.Column(db.Text, nullable=False)
+    file_path = db.Column(db.Text, nullable=False)
+    file_type = db.Column(db.String(50), nullable=False)
+    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    category = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+class SuccessorTraining(db.Model):
+    """Successor Training Tracking"""
+    id = db.Column(db.Integer, primary_key=True)
+    successor_name = db.Column(db.Text, nullable=False)
+    training_module = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='Pending')  # Pending, In Progress, Completed
+    completion_date = db.Column(db.Date, nullable=True)
+    trainer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ProjectHandover(db.Model):
+    """Project Handover Tracking"""
+    id = db.Column(db.Integer, primary_key=True)
+    project_name = db.Column(db.Text, nullable=False)
+    project_description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='Pending')  # Pending, In Progress, Completed
+    handover_date = db.Column(db.Date, nullable=True)
+    recipient_name = db.Column(db.Text, nullable=False)
+    documentation_path = db.Column(db.Text, nullable=True)
+    verified = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class KTProgress(db.Model):
+    """Knowledge Transfer Progress Tracking"""
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    sessions_completed = db.Column(db.Integer, default=0)
+    docs_uploaded = db.Column(db.Integer, default=0)
+    successor_trained_percent = db.Column(db.Integer, default=0)
+    projects_handover = db.Column(db.Integer, default=0)
+    overall_progress = db.Column(db.Integer, default=0)
+    completion_date = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class RememberedCredential(db.Model):
     """Store remembered login credentials for users"""
     id = db.Column(db.Integer, primary_key=True)
@@ -4116,6 +4178,93 @@ def exit_interview():
     
     # Render the template with employee data, exit feedbacks, and HR contact
     return render_template('exit.html', employee=employee, exit_feedbacks=exit_feedbacks, hr_contact=hr_contact)
+
+
+@app.route('/knowledge-transfer', methods=['GET'])
+@login_required(['hr', 'admin', 'manager'])
+def knowledge_transfer():
+    """Knowledge Transfer System page"""
+    # Get the current user's employee data
+    employee = User.query.get(session['user_id'])
+    
+    # Get HR contact information
+    if session.get('role') == 'hr':
+        hr_contact = User.query.get(session['user_id'])
+    else:
+        hr_contact = User.query.filter_by(role='hr', is_active=True).first()
+        if not hr_contact:
+            hr_contact = User.query.filter_by(role='hr').first()
+    
+    # Fetch Knowledge Transfer data from database
+    kt_sessions = KTSession.query.order_by(KTSession.scheduled_date.desc()).all()
+    kt_documents = KTDocument.query.order_by(KTDocument.upload_date.desc()).all()
+    successor_training = SuccessorTraining.query.order_by(SuccessorTraining.created_at.desc()).all()
+    project_handovers = ProjectHandover.query.order_by(ProjectHandover.created_at.desc()).all()
+    
+    # Get or create KT progress for current employee
+    kt_progress = KTProgress.query.filter_by(employee_id=session['user_id']).first()
+    if not kt_progress:
+        kt_progress = KTProgress(
+            employee_id=session['user_id'],
+            sessions_completed=KTSession.query.filter_by(status='Completed').count(),
+            docs_uploaded=KTDocument.query.count(),
+            successor_trained_percent=calculate_successor_progress(),
+            projects_handover=ProjectHandover.query.filter_by(status='Completed').count(),
+            overall_progress=calculate_overall_progress(session['user_id'])
+        )
+        db.session.add(kt_progress)
+        db.session.commit()
+    
+    return render_template('knowledge_transfer.html', 
+                         employee=employee, 
+                         hr_contact=hr_contact,
+                         kt_sessions=kt_sessions,
+                         kt_documents=kt_documents,
+                         successor_training=successor_training,
+                         project_handovers=project_handovers,
+                         kt_progress=kt_progress)
+
+def calculate_successor_progress():
+    """Calculate successor training progress percentage"""
+    try:
+        total_modules = SuccessorTraining.query.count()
+        completed_modules = SuccessorTraining.query.filter_by(status='Completed').count()
+        if total_modules > 0:
+            return int((completed_modules / total_modules) * 100)
+        return 0
+    except:
+        return 0
+
+def calculate_overall_progress(employee_id):
+    """Calculate overall KT progress percentage"""
+    try:
+        # Get weights for different components
+        session_weight = 0.3
+        doc_weight = 0.2
+        training_weight = 0.3
+        project_weight = 0.2
+        
+        # Calculate individual progress
+        total_sessions = KTSession.query.count()
+        completed_sessions = KTSession.query.filter_by(status='Completed').count()
+        session_progress = (completed_sessions / total_sessions * 100) if total_sessions > 0 else 0
+        
+        doc_progress = 100 if KTDocument.query.count() > 0 else 0
+        training_progress = calculate_successor_progress()
+        
+        total_projects = ProjectHandover.query.count()
+        completed_projects = ProjectHandover.query.filter_by(status='Completed').count()
+        project_progress = (completed_projects / total_projects * 100) if total_projects > 0 else 0
+        
+        # Calculate weighted average
+        overall = (session_progress * session_weight + 
+                   doc_progress * doc_weight + 
+                   training_progress * training_weight + 
+                   project_progress * project_weight)
+        
+        return int(overall)
+    except:
+        return 0
 
 
 

@@ -203,8 +203,9 @@
                                             <span class="badge bg-{{ 'danger' if high_risk_count > 0 else 'success' }}">{{ high_risk_count }}</span>
                                         </div>
                                         <div class="progress bg-dark bg-opacity-50 mt-2" style="height: 8px;">
+                                            {% set risk_percentage = ((high_risk_count / total_analyzed) * 100) if total_analyzed > 0 else 0 %}
                                             <div class="progress-bar bg-{{ 'danger' if high_risk_count > 0 else 'success' }}" 
-                                                 style="width: {{ ((high_risk_count / total_analyzed) * 100) if total_analyzed > 0 else 0 }}%"></div>
+                                                 style="width: {{ risk_percentage }}%"></div>
                                         </div>
                                     </div>
                                     
@@ -378,7 +379,7 @@
             </div>
             
             <!-- Quick Actions -->
-            {% if offboarding_employee and session.get('role') == 'hr' %}
+            {% if session.get('role') == 'hr' %}
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-header bg-transparent border-0">
                     <h5 class="mb-0 text-light">
@@ -387,6 +388,10 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
+                        <a href="{{ url_for('knowledge_transfer') }}" class="btn btn-outline-primary text-start">
+                            <i class="fas fa-brain me-2"></i> Knowledge Transfer
+                        </a>
+                        {% if offboarding_employee %}
                         <button class="btn btn-outline-light text-start" type="button" data-bs-toggle="modal" data-bs-target="#sendReminderModal">
                             <i class="far fa-bell me-2"></i> Send Reminder
                         </button>
@@ -399,6 +404,7 @@
                         <button class="btn btn-outline-danger text-start" type="button" id="terminateImmediately">
                             <i class="fas fa-user-slash me-2"></i> Terminate Immediately
                         </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>

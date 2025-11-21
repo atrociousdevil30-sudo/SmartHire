@@ -1,0 +1,633 @@
+{% extends "base.html" %}
+
+{% block title %}Knowledge Transfer System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h1 class="h3 mb-1 text-light">
+                                <i class="fas fa-brain me-2"></i>Knowledge Transfer System
+                            </h1>
+                            <p class="text-muted mb-0">Document critical processes and ensure smooth transition</p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column align-items-md-end mt-3 mt-md-0">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-light" id="exportKTReport">
+                                        <i class="fas fa-download me-1"></i> Export KT Report
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" id="completeKT">
+                                        <i class="fas fa-check-circle me-1"></i> Complete Transfer
+                                    </button>
+                                    <a href="{{ url_for('exit_interview') }}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-1"></i> Back to Exit
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Knowledge Transfer Progress -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-tasks me-2"></i>Transfer Progress
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h3 class="mb-1 text-primary" id="sessionsCompleted">{{ kt_progress.sessions_completed }}</h3>
+                                    <p class="text-muted small mb-0">Sessions Completed</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h3 class="mb-1 text-success" id="docsUploaded">{{ kt_progress.docs_uploaded }}</h3>
+                                    <p class="text-muted small mb-0">Documents Uploaded</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h3 class="mb-1 text-warning" id="successorTrained">{{ kt_progress.successor_trained_percent }}%</h3>
+                                    <p class="text-muted small mb-0">Successor Trained</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-10 border-secondary text-center">
+                                <div class="card-body">
+                                    <h3 class="mb-1 text-info" id="projectsHandover">{{ kt_progress.projects_handover }}</h3>
+                                    <p class="text-muted small mb-0">Projects Handover</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Structured Knowledge Transfer Sessions -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>Structured Knowledge Transfer Sessions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Session Topic</th>
+                                    <th>Attendees</th>
+                                    <th>Scheduled Date</th>
+                                    <th>Status</th>
+                                    <th>Documentation</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ktSessionsTable">
+                                {% for session in kt_sessions %}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <strong>{{ session.session_topic }}</strong>
+                                            <br><small class="text-muted">{{ session.description or 'No description available' }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ session.attendees }}</span>
+                                    </td>
+                                    <td>{{ session.scheduled_date.strftime('%Y-%m-%d') if session.scheduled_date else 'Not scheduled' }}</td>
+                                    <td>
+                                        {% if session.status == 'Completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif session.status == 'In Progress' %}
+                                            <span class="badge bg-info">In Progress</span>
+                                        {% elif session.status == 'Cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Scheduled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if session.documentation_path %}
+                                            <button class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-upload"></i>
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-success me-1">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No knowledge transfer sessions scheduled yet</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <button class="btn btn-outline-primary mt-3" id="addKTSession">
+                        <i class="fas fa-plus me-1"></i> Add Session
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Critical Processes Documentation -->
+        <div class="col-lg-4">
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light">
+                        <i class="fas fa-file-alt me-2"></i>Critical Processes Documentation
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Upload Process Documents</label>
+                        <input type="file" class="form-control form-control-sm" id="processDocs" multiple accept=".pdf,.doc,.docx,.txt">
+                    </div>
+                    
+                    <div class="list-group" id="uploadedDocs">
+                        {% for document in kt_documents %}
+                        <div class="list-group-item bg-dark bg-opacity-50 border-secondary">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    {% if document.file_type.lower() == 'pdf' %}
+                                        <i class="fas fa-file-pdf text-danger me-2"></i>
+                                    {% elif document.file_type.lower() in ['doc', 'docx'] %}
+                                        <i class="fas fa-file-word text-primary me-2"></i>
+                                    {% elif document.file_type.lower() == 'txt' %}
+                                        <i class="fas fa-file-alt text-info me-2"></i>
+                                    {% else %}
+                                        <i class="fas fa-file text-secondary me-2"></i>
+                                    {% endif %}
+                                    <span class="text-light">{{ document.document_name }}</span>
+                                    {% if document.category %}
+                                        <small class="text-muted">({{ document.category }})</small>
+                                    {% endif %}
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument({{ document.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="list-group-item bg-dark bg-opacity-50 border-secondary">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-folder-open me-2"></i>
+                                No documents uploaded yet
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-light small">Documentation Progress</span>
+                            <span class="badge bg-success">80%</span>
+                        </div>
+                        <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: 80%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Successor Training Tracking -->
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light">
+                        <i class="fas fa-user-graduate me-2"></i>Successor Training Tracking
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Assigned Successor</label>
+                        <input type="text" class="form-control form-control-sm" id="successorName" placeholder="Enter successor name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Training Progress</label>
+                        <div class="progress bg-dark bg-opacity-50" style="height: 20px;">
+                            <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" id="successorProgress" style="width: {{ kt_progress.successor_trained_percent }}%">{{ kt_progress.successor_trained_percent }}%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Training Modules</label>
+                        {% for training in successor_training %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="module{{ training.id }}" {% if training.status == 'Completed' %}checked{% endif %}>
+                            <label class="form-check-label text-light small" for="module{{ training.id }}">
+                                {{ training.training_module }} ({{ training.status }})
+                                {% if training.completion_date %}
+                                    <small class="text-muted">- Completed {{ training.completion_date.strftime('%Y-%m-%d') }}</small>
+                                {% endif %}
+                            </label>
+                        </div>
+                        {% else %}
+                        <div class="text-muted small">No training modules assigned yet</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <button class="btn btn-sm btn-outline-primary w-100">
+                        <i class="fas fa-certificate me-1"></i> Generate Training Certificate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Handover Verification -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-project-diagram me-2"></i>Project Handover Verification
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Project Name</th>
+                                            <th>Status</th>
+                                            <th>Handover Date</th>
+                                            <th>Recipient</th>
+                                            <th>Documentation</th>
+                                            <th>Verification</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="projectsTable">
+                                        {% for project in project_handovers %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ project.project_name }}</strong>
+                                                {% if project.project_description %}
+                                                    <br><small class="text-muted">{{ project.project_description }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if project.status == 'Completed' %}
+                                                    <span class="badge bg-success">Completed</span>
+                                                {% elif project.status == 'In Progress' %}
+                                                    <span class="badge bg-warning">In Progress</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Pending</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ project.handover_date.strftime('%Y-%m-%d') if project.handover_date else 'Not set' }}</td>
+                                            <td>{{ project.recipient_name }}</td>
+                                            <td>
+                                                {% if project.documentation_path %}
+                                                    <button class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </button>
+                                                {% else %}
+                                                    <button class="btn btn-sm btn-outline-secondary" disabled>
+                                                        <i class="fas fa-eye"></i> View
+                                                    </button>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="verify{{ project.id }}" {% if project.verified %}checked{% endif %}>
+                                                    <label class="form-check-label" for="verify{{ project.id }}">Verified</label>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">No projects in handover process</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <button class="btn btn-outline-primary mt-3" id="addProject">
+                                <i class="fas fa-plus me-1"></i> Add Project
+                            </button>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="card bg-dark bg-opacity-10 border-secondary">
+                                <div class="card-body">
+                                    <h6 class="text-light mb-3">Handover Checklist</h6>
+                                    
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-light small">Source Code Access</span>
+                                            <span class="badge bg-success">✓</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-light small">Documentation Complete</span>
+                                            <span class="badge bg-warning">⚠</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-light small">Client Introduction</span>
+                                            <span class="badge bg-success">✓</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-light small">Password Transfer</span>
+                                            <span class="badge bg-secondary">○</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-light small">Timeline Handover</span>
+                                            <span class="badge bg-success">✓</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-light small">Budget Transfer</span>
+                                            <span class="badge bg-warning">⚠</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <button class="btn btn-sm btn-outline-success w-100">
+                                        <i class="fas fa-clipboard-check me-1"></i> Complete Verification
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Knowledge Transfer Summary -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-clipboard-list me-2"></i>Knowledge Transfer Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h6 class="text-light mb-3">Transfer Completion Status</h6>
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-light small">Overall Progress</span>
+                                    <span class="badge bg-primary">75%</span>
+                                </div>
+                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                    <div class="progress-bar bg-primary" style="width: 75%"></div>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-light small">Critical Knowledge Transfer</span>
+                                    <span class="badge bg-success">90%</span>
+                                </div>
+                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                    <div class="progress-bar bg-success" style="width: 90%"></div>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-light small">Documentation Completeness</span>
+                                    <span class="badge bg-warning">60%</span>
+                                </div>
+                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                    <div class="progress-bar bg-warning" style="width: 60%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-light mb-3">Risk Assessment</h6>
+                            <div class="alert alert-warning bg-dark bg-opacity-25 border-warning">
+                                <h6 class="alert-heading text-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Medium Risk Areas
+                                </h6>
+                                <ul class="text-light small mb-0">
+                                    <li>Client relationship handover needs verification</li>
+                                    <li>Advanced system training incomplete</li>
+                                    <li>Budget authority transfer pending</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add KT Session Modal -->
+<div class="modal fade" id="addKTSessionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Add Knowledge Transfer Session</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="ktSessionForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Session Topic</label>
+                            <input type="text" class="form-control" id="sessionTopic" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Attendees</label>
+                            <input type="text" class="form-control" id="sessionAttendees" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Scheduled Date</label>
+                            <input type="date" class="form-control" id="sessionDate" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Duration (hours)</label>
+                            <input type="number" class="form-control" id="sessionDuration" min="0.5" step="0.5" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="sessionDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveKTSession">Save Session</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.progress-bar-striped {
+    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+    background-size: 1rem 1rem;
+}
+
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    0% { background-position-x: 1rem; }
+}
+
+.list-group-item {
+    border: 1px solid #495057;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.alert {
+    border: 1px solid;
+}
+
+.alert-warning {
+    color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.badge {
+    font-size: 0.75em;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update successor training progress
+    function updateSuccessorProgress() {
+        const checkboxes = document.querySelectorAll('#successorTraining input[type="checkbox"]');
+        const checked = document.querySelectorAll('#successorTraining input[type="checkbox"]:checked');
+        const progress = Math.round((checked.length / checkboxes.length) * 100);
+        
+        const progressBar = document.getElementById('successorProgress');
+        progressBar.style.width = progress + '%';
+        progressBar.textContent = progress + '%';
+        
+        document.getElementById('successorTrained').textContent = progress + '%';
+    }
+
+    // Add event listeners for training modules
+    document.querySelectorAll('#successorTraining input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSuccessorProgress);
+    });
+
+    // Add KT Session Modal
+    const addKTSessionBtn = document.getElementById('addKTSession');
+    const ktSessionModal = new bootstrap.Modal(document.getElementById('addKTSessionModal'));
+    
+    addKTSessionBtn.addEventListener('click', function() {
+        ktSessionModal.show();
+    });
+
+    // Save KT Session
+    document.getElementById('saveKTSession').addEventListener('click', function() {
+        const form = document.getElementById('ktSessionForm');
+        if (form.checkValidity()) {
+            // Add session to table
+            const table = document.getElementById('ktSessionsTable');
+            const newRow = table.insertRow();
+            
+            newRow.innerHTML = `
+                <td>
+                    <div>
+                        <strong>${document.getElementById('sessionTopic').value}</strong>
+                        <br><small class="text-muted">${document.getElementById('sessionDescription').value}</small>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${document.getElementById('sessionAttendees').value}</span>
+                </td>
+                <td>${document.getElementById('sessionDate').value}</td>
+                <td><span class="badge bg-warning">Scheduled</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-upload"></i>
+                    </button>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-success me-1">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </td>
+            `;
+            
+            // Update sessions count
+            const sessionsCount = table.rows.length;
+            document.getElementById('sessionsCompleted').textContent = sessionsCount;
+            
+            ktSessionModal.hide();
+            form.reset();
+        }
+    });
+
+    // Export KT Report
+    document.getElementById('exportKTReport').addEventListener('click', function() {
+        alert('Knowledge Transfer report exported successfully!');
+    });
+
+    // Complete Knowledge Transfer
+    document.getElementById('completeKT').addEventListener('click', function() {
+        if (confirm('Are you sure you want to complete the knowledge transfer process?')) {
+            alert('Knowledge Transfer completed successfully!');
+            window.location.href = '{{ url_for("exit_interview") }}';
+        }
+    });
+
+    // Initialize progress
+    updateSuccessorProgress();
+    
+    // Set initial values
+    document.getElementById('sessionsCompleted').textContent = '3';
+    document.getElementById('docsUploaded').textContent = '2';
+    document.getElementById('projectsHandover').textContent = '3';
+});
+</script>
+{% endblock %}
