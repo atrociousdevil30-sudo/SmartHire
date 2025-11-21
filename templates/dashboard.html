@@ -50,6 +50,82 @@
         </div>
     </div>
 
+    <!-- Quick Actions Section -->
+    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+        <div class="card-header bg-transparent border-secondary">
+            <h5 class="mb-0 text-light">
+                <i class="fas fa-bolt me-2"></i>Quick Actions
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- Tasks -->
+                <div class="col-md-3">
+                    <a href="/hr/tasks" class="text-decoration-none">
+                        <div class="card bg-primary bg-opacity-10 border-primary h-100 hover-card">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="fas fa-tasks fa-2x text-primary"></i>
+                                </div>
+                                <h6 class="text-light mb-1">Tasks</h6>
+                                <span class="badge bg-primary">{{ pending_tasks_count or 0 }}</span>
+                                <div class="small text-muted">Manage Tasks</div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Messages -->
+                <div class="col-md-3">
+                    <a href="/hr/messages" class="text-decoration-none">
+                        <div class="card bg-success bg-opacity-10 border-success h-100 hover-card">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="fas fa-envelope fa-2x text-success"></i>
+                                </div>
+                                <h6 class="text-light mb-1">Messages</h6>
+                                <span class="badge bg-success">{{ unread_messages_count or 0 }}</span>
+                                <div class="small text-muted">View Messages</div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Goal Setting -->
+                <div class="col-md-3">
+                    <a href="{{ url_for('goal_setting') }}" class="text-decoration-none">
+                        <div class="card bg-warning bg-opacity-10 border-warning h-100 hover-card">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="fas fa-bullseye fa-2x text-warning"></i>
+                                </div>
+                                <h6 class="text-light mb-1">Goal Setting</h6>
+                                <span class="badge bg-warning">30-60-90</span>
+                                <div class="small text-muted">Set Employee Goals</div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Add Employee -->
+                <div class="col-md-3">
+                    <a href="/hr/employees/add" class="text-decoration-none">
+                        <div class="card bg-info bg-opacity-10 border-info h-100 hover-card">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="fas fa-user-plus fa-2x text-info"></i>
+                                </div>
+                                <h6 class="text-light mb-1">Add Employee</h6>
+                                <span class="badge bg-info">New</span>
+                                <div class="small text-muted">Onboard Staff</div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Stats Cards -->
     <div class="row g-4 mb-4">
         <!-- Total Employees -->
@@ -217,16 +293,16 @@
                                         </td>
                                         <td>{{ result.date }}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewInterviewSummary({{ result.id }})" title="{{ result.summary }}">
+                                            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewInterviewSummary('{{ result.id }}')" title="View Interview Summary">
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                             {% if result.recommendation == 'Proceed to Next Round' %}
-                                                <button class="btn btn-sm btn-outline-success" onclick="sendToNextRound({{ result.id }})">
+                                                <button class="btn btn-sm btn-outline-success" onclick="sendToNextRound('{{ result.id }}')">
                                                     <i class="bi bi-arrow-right"></i>
                                                 </button>
                                             {% else %}
-                                                <button class="btn btn-sm btn-outline-warning" onclick="scheduleReview({{ result.id }})">
-                                                    <i class="bi bi-clock"></i>
+                                                <button class="btn btn-sm btn-outline-warning" onclick="scheduleReview('{{ result.id }}')">
+                                                    <i class="bi bi-calendar"></i>
                                                 </button>
                                             {% endif %}
                                         </td>
@@ -256,33 +332,48 @@
                     <div class="row g-3">
                         {% set total_sentiment = sentiment_data.Positive + sentiment_data.Neutral + sentiment_data.Negative %}
                         {% if total_sentiment > 0 %}
+                            {% set positive_pct = ((sentiment_data.Positive / total_sentiment) * 100) | round(1) %}
+                            {% set neutral_pct = ((sentiment_data.Neutral / total_sentiment) * 100) | round(1) %}
+                            {% set negative_pct = ((sentiment_data.Negative / total_sentiment) * 100) | round(1) %}
+                            
                             <div class="col-md-6">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-light small">Positive Feedback</span>
-                                    <span class="text-light-50 small">{{ ((sentiment_data.Positive / total_sentiment) * 100) | round(1) }}%</span>
+                                    <span class="text-light-50 small">{{ positive_pct }}%</span>
                                 </div>
                                 <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ ((sentiment_data.Positive / total_sentiment) * 100) | round(1) }}%;"></div>
+                                    <div class="progress-bar bg-success" role="progressbar" data-width="{{ positive_pct }}" style="width: 0%;"></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-light small">Neutral Feedback</span>
-                                    <span class="text-light-50 small">{{ ((sentiment_data.Neutral / total_sentiment) * 100) | round(1) }}%</span>
+                                    <span class="text-light-50 small">{{ neutral_pct }}%</span>
                                 </div>
                                 <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ ((sentiment_data.Neutral / total_sentiment) * 100) | round(1) }}%;"></div>
+                                    <div class="progress-bar bg-warning" role="progressbar" data-width="{{ neutral_pct }}" style="width: 0%;"></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-light small">Negative Feedback</span>
-                                    <span class="text-light-50 small">{{ ((sentiment_data.Negative / total_sentiment) * 100) | round(1) }}%</span>
+                                    <span class="text-light-50 small">{{ negative_pct }}%</span>
                                 </div>
                                 <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ ((sentiment_data.Negative / total_sentiment) * 100) | round(1) }}%;"></div>
+                                    <div class="progress-bar bg-danger" role="progressbar" data-width="{{ negative_pct }}" style="width: 0%;"></div>
                                 </div>
                             </div>
+                            
+                            <script>
+                                // Set progress bar widths after page load
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const progressBars = document.querySelectorAll('[data-width]');
+                                    progressBars.forEach(function(bar) {
+                                        const width = bar.getAttribute('data-width');
+                                        bar.style.width = width + '%';
+                                    });
+                                });
+                            </script>
                         {% else %}
                             <div class="col-12 text-center text-muted py-3">
                                 <i class="bi bi-chat-square-text fs-1 mb-2 d-block"></i>
@@ -685,6 +776,26 @@ document.addEventListener('click', function(e) {
     
     .chart-container::-webkit-scrollbar-thumb:hover {
         background: #6c757d;
+    }
+    
+    /* Quick Actions Card Hover Effects */
+    .hover-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        border-color: var(--bs-primary) !important;
+    }
+    
+    .hover-card .badge {
+        transition: all 0.3s ease;
+    }
+    
+    .hover-card:hover .badge {
+        transform: scale(1.1);
     }
 </style>
 

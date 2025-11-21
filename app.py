@@ -702,6 +702,7 @@ class Message(db.Model):
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     message_type = db.Column(db.String(50), default='message')  # message, notification, reminder
     priority = db.Column(db.String(20), default='normal')  # low, normal, high, urgent
+    is_priority = db.Column(db.Boolean, default=False)  # Whether this is a priority message
     status = db.Column(db.String(50), default='unread')  # unread, read, archived
     sent_at = db.Column(db.DateTime, default=datetime.utcnow)
     read_at = db.Column(db.DateTime)
@@ -712,6 +713,93 @@ class Message(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
     recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
     replies = db.relationship('Message', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
+
+# Goal Setting Models
+class GoalTemplate(db.Model):
+    """Template for 30-60-90 day goals by department/role"""
+    __tablename__ = 'goal_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    department = db.Column(db.String(50), nullable=False)
+    position = db.Column(db.String(100), nullable=True)
+    milestone_days = db.Column(db.Integer, nullable=False)  # 30, 60, or 90
+    category = db.Column(db.String(50), nullable=False)  # 'technical', 'cultural', 'performance', 'development'
+    is_active = db.Column(db.Boolean, default=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    creator = db.relationship('User', foreign_keys=[created_by], backref='goal_templates')
+    employee_goals = db.relationship('EmployeeGoal', back_populates='template')
+
+class EmployeeGoal(db.Model):
+    """Individual goals assigned to employees"""
+    __tablename__ = 'employee_goals'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey('goal_templates.id'), nullable=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    milestone_days = db.Column(db.Integer, nullable=False)  # 30, 60, or 90
+    category = db.Column(db.String(50), nullable=False)
+    target_date = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'in_progress', 'completed', 'overdue'
+    priority = db.Column(db.String(10), default='medium')  # 'low', 'medium', 'high'
+    progress_percentage = db.Column(db.Integer, default=0)
+    assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships
+    employee = db.relationship('User', foreign_keys=[employee_id], backref='assigned_goals')
+    template = db.relationship('GoalTemplate', back_populates='employee_goals')
+    assigner = db.relationship('User', foreign_keys=[assigned_by], backref='assigned_employee_goals')
+    check_ins = db.relationship('GoalCheckIn', back_populates='goal', order_by='GoalCheckIn.scheduled_date')
+
+class GoalCheckIn(db.Model):
+    """Scheduled and completed check-ins for goals"""
+    __tablename__ = 'goal_check_ins'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    goal_id = db.Column(db.Integer, db.ForeignKey('employee_goals.id'), nullable=False)
+    scheduled_date = db.Column(db.DateTime, nullable=False)
+    actual_date = db.Column(db.DateTime, nullable=True)
+    check_in_type = db.Column(db.String(20), default='review')  # 'review', 'update', 'final'
+    status = db.Column(db.String(20), default='scheduled')  # 'scheduled', 'completed', 'cancelled', 'missed'
+    notes = db.Column(db.Text, nullable=True)
+    employee_notes = db.Column(db.Text, nullable=True)
+    hr_feedback = db.Column(db.Text, nullable=True)
+    next_steps = db.Column(db.Text, nullable=True)
+    rating = db.Column(db.Integer, nullable=True)  # 1-5 scale
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    goal = db.relationship('EmployeeGoal', back_populates='check_ins')
+    creator = db.relationship('User', backref='created_check_ins')
+
+class GoalProgress(db.Model):
+    """Progress updates for goals"""
+    __tablename__ = 'goal_progress'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    goal_id = db.Column(db.Integer, db.ForeignKey('employee_goals.id'), nullable=False)
+    progress_percentage = db.Column(db.Integer, nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+    attachments = db.Column(db.Text, nullable=True)  # JSON string of file paths
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    goal = db.relationship('EmployeeGoal', backref='progress_updates')
+    creator = db.relationship('User', backref='goal_progress_updates')
 
 
 # Make timedelta and datetime available in templates
@@ -1461,6 +1549,10 @@ def hr_dashboard():
             total_days = sum((c.completed_at - c.created_at).days for c in completed_checklists)
             avg_onboarding_days = total_days / len(completed_checklists)
     
+    # Get quick action counts
+    pending_tasks_count = Task.query.filter_by(status='pending').count()
+    unread_messages_count = Message.query.filter_by(recipient_id=session['user_id'], status='unread').count()
+    
     return render_template('dashboard.html',
                          user=user,
                          current_user=user,
@@ -1471,7 +1563,9 @@ def hr_dashboard():
                          sentiment_data=sentiment_counts,
                          engagement_score=engagement_score,
                          avg_onboarding_days=round(avg_onboarding_days, 1),
-                         departments=departments)
+                         departments=departments,
+                         pending_tasks_count=pending_tasks_count,
+                         unread_messages_count=unread_messages_count)
 
 # Employee Dashboard
 @app.route('/employee/dashboard')
@@ -7273,6 +7367,196 @@ def ai_generate_interview_summary():
         return jsonify({
             'status': 'error',
             'message': 'Failed to generate summary'
+        }), 500
+
+# Goal Setting Routes
+@app.route('/goal-setting', methods=['GET'])
+@login_required('hr')
+def goal_setting():
+    """Main goal setting page for HR"""
+    employee_id = request.args.get('employee_id')
+    selected_employee = None
+    goals_30_days = []
+    goals_60_days = []
+    goals_90_days = []
+    goal_stats = {'total': 0, 'in_progress': 0, 'completed': 0, 'completion_percentage': 0}
+    
+    if employee_id:
+        selected_employee = User.query.get(employee_id)
+        if selected_employee:
+            # Get employee goals
+            all_goals = EmployeeGoal.query.filter_by(employee_id=employee_id).order_by(EmployeeGoal.target_date).all()
+            
+            # Categorize goals by milestone
+            goals_30_days = [g for g in all_goals if g.milestone_days == 30]
+            goals_60_days = [g for g in all_goals if g.milestone_days == 60]
+            goals_90_days = [g for g in all_goals if g.milestone_days == 90]
+            
+            # Calculate stats
+            goal_stats['total'] = len(all_goals)
+            goal_stats['in_progress'] = len([g for g in all_goals if g.status == 'in_progress'])
+            goal_stats['completed'] = len([g for g in all_goals if g.status == 'completed'])
+            
+            if goal_stats['total'] > 0:
+                total_progress = sum(g.progress_percentage for g in all_goals)
+                goal_stats['completion_percentage'] = round(total_progress / goal_stats['total'])
+    
+    # Get all employees for selection
+    employees = User.query.filter_by(role='employee').order_by(User.full_name).all()
+    
+    return render_template('goal_setting.html',
+                         selected_employee=selected_employee,
+                         employees=employees,
+                         goals_30_days=goals_30_days,
+                         goals_60_days=goals_60_days,
+                         goals_90_days=goals_90_days,
+                         goal_stats=goal_stats)
+
+@app.route('/api/goals/create', methods=['POST'])
+@login_required('hr')
+def create_goal():
+    """Create a new goal for an employee"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['employee_id', 'title', 'milestone_days', 'category', 'target_date']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Missing required field: {field}'
+                }), 400
+        
+        # Create new goal
+        goal = EmployeeGoal(
+            employee_id=data['employee_id'],
+            title=data['title'],
+            description=data.get('description', ''),
+            milestone_days=data['milestone_days'],
+            category=data['category'],
+            target_date=datetime.strptime(data['target_date'], '%Y-%m-%d'),
+            priority=data.get('priority', 'medium'),
+            notes=data.get('notes', ''),
+            assigned_by=session['user_id']
+        )
+        
+        db.session.add(goal)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Goal created successfully',
+            'goal_id': goal.id
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error creating goal: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to create goal'
+        }), 500
+
+@app.route('/api/goals/templates', methods=['GET'])
+@login_required('hr')
+def get_goal_templates():
+    """Get goal templates with optional filters"""
+    try:
+        department = request.args.get('department')
+        milestone = request.args.get('milestone')
+        category = request.args.get('category')
+        
+        query = GoalTemplate.query.filter_by(is_active=True)
+        
+        if department:
+            query = query.filter_by(department=department)
+        if milestone:
+            query = query.filter_by(milestone_days=int(milestone))
+        if category:
+            query = query.filter_by(category=category)
+        
+        templates = query.order_by(GoalTemplate.department, GoalTemplate.milestone_days).all()
+        
+        template_list = []
+        for template in templates:
+            template_list.append({
+                'id': template.id,
+                'title': template.title,
+                'description': template.description,
+                'department': template.department,
+                'position': template.position,
+                'milestone_days': template.milestone_days,
+                'category': template.category
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'templates': template_list
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error getting templates: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get templates'
+        }), 500
+
+@app.route('/api/goals/create-from-template', methods=['POST'])
+@login_required('hr')
+def create_goal_from_template():
+    """Create a goal from a template"""
+    try:
+        data = request.get_json()
+        
+        template_id = data.get('template_id')
+        employee_id = data.get('employee_id')
+        
+        if not template_id or not employee_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing template_id or employee_id'
+            }), 400
+        
+        # Get template
+        template = GoalTemplate.query.get(template_id)
+        if not template:
+            return jsonify({
+                'status': 'error',
+                'message': 'Template not found'
+            }), 404
+        
+        # Calculate target date based on employee hire date
+        employee = User.query.get(employee_id)
+        hire_date = employee.hire_date if employee and employee.hire_date else datetime.utcnow()
+        target_date = hire_date + timedelta(days=template.milestone_days)
+        
+        # Create goal from template
+        goal = EmployeeGoal(
+            employee_id=employee_id,
+            template_id=template_id,
+            title=template.title,
+            description=template.description,
+            milestone_days=template.milestone_days,
+            category=template.category,
+            target_date=target_date,
+            priority='medium',
+            assigned_by=session['user_id']
+        )
+        
+        db.session.add(goal)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Goal created from template successfully',
+            'goal_id': goal.id
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error creating goal from template: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to create goal from template'
         }), 500
 
 if __name__ == '__main__':

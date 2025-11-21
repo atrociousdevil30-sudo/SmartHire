@@ -214,18 +214,8 @@
 
                     {% if user and user.role == 'hr' %}
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('tasks_management') %}active{% endif %}" href="{{ url_for('tasks_management') }}">
-                            <i class="fas fa-tasks"></i> Tasks
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('access_records_management') %}active{% endif %}" href="{{ url_for('access_records_management') }}">
                             <i class="fas fa-key"></i> Access Records
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('messages_management') %}active{% endif %}" href="{{ url_for('messages_management') }}">
-                            <i class="fas fa-envelope"></i> Messages
                         </a>
                     </li>
                     {% endif %}
