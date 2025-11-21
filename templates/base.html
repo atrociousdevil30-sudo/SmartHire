@@ -212,14 +212,7 @@
                         </a>
                     </li>
 
-                    {% if user and user.role == 'hr' %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('access_records_management') %}active{% endif %}" href="{{ url_for('access_records_management') }}">
-                            <i class="fas fa-key"></i> Access Records
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
+                    </ul>
             </div>
         </div>
     </nav>

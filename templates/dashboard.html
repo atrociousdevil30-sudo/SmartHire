@@ -27,7 +27,7 @@
                     <a href="{{ url_for('list_employees') }}" class="btn btn-outline-light me-2">
                         <i class="fas fa-users me-1"></i> View All Employees
                     </a>
-                    <a href="{{ url_for('add_employee') }}" class="btn btn-primary">
+                    <a href="/hr/employees/add" class="btn btn-primary">
                         <i class="fas fa-user-plus me-1"></i> Add New Employee
                     </a>
                 </div>
@@ -41,9 +41,6 @@
             <p class="text-muted mb-0">Welcome to your HR command center</p>
         </div>
         <div>
-            <a href="{{ url_for('add_employee') }}" class="btn btn-primary me-2">
-                <i class="fas fa-user-plus me-1"></i> Add Employee
-            </a>
             <a href="#" class="btn btn-outline-light">
                 <i class="fas fa-download me-1"></i> Export
             </a>
@@ -107,17 +104,17 @@
                     </a>
                 </div>
                 
-                <!-- Add Employee -->
+                <!-- Access Records -->
                 <div class="col-md-3">
-                    <a href="/hr/employees/add" class="text-decoration-none">
-                        <div class="card bg-info bg-opacity-10 border-info h-100 hover-card">
+                    <a href="/hr/access-records" class="text-decoration-none">
+                        <div class="card bg-secondary bg-opacity-10 border-secondary h-100 hover-card">
                             <div class="card-body text-center">
                                 <div class="mb-3">
-                                    <i class="fas fa-user-plus fa-2x text-info"></i>
+                                    <i class="fas fa-key fa-2x text-secondary"></i>
                                 </div>
-                                <h6 class="text-light mb-1">Add Employee</h6>
-                                <span class="badge bg-info">New</span>
-                                <div class="small text-muted">Onboard Staff</div>
+                                <h6 class="text-light mb-1">Access Records</h6>
+                                <span class="badge bg-secondary">Security</span>
+                                <div class="small text-muted">Manage Access</div>
                             </div>
                         </div>
                     </a>
@@ -505,64 +502,11 @@
     </div>
 </div>
 
-<!-- Add Employee Modal -->
-<div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark border-secondary">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title text-light">Add New Employee</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form>
-                    <div class="mb-3">
-                        <label class="form-label text-light-50">Full Name</label>
-                        <input type="text" class="form-control bg-dark text-light border-secondary">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-light-50">Email</label>
-                        <input type="email" class="form-control bg-dark text-light border-secondary">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-light-50">Department</label>
-                        <select class="form-select bg-dark text-light border-secondary">
-                            <option>Select Department</option>
-                            <option>Engineering</option>
-                            <option>Sales</option>
-                            <option>Marketing</option>
-                            <option>HR</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-light-50">Position</label>
-                        <input type="text" class="form-control bg-dark text-light border-secondary">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-light-50">Start Date</label>
-                        <input type="date" class="form-control bg-dark text-light border-secondary">
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer border-secondary">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary">Add Employee</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize modals
-    var myModal = new bootstrap.Modal(document.getElementById('addEmployeeModal'), {
-        keyboard: true
-    });
-
-
-    
     // Helper function to show toast notifications
     function showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toastContainer') || (() => {
