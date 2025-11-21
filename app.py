@@ -2098,6 +2098,12 @@ def interview():
     
     return render_template('interview.html')
 
+@app.route('/ai-interview-training')
+@login_required(['hr', 'employee'])
+def ai_interview_training():
+    """AI-powered interview training page"""
+    return render_template('ai_interview_training.html')
+
 @app.route('/employee/interview')
 @login_required('employee')
 def employee_interview():
@@ -5434,6 +5440,164 @@ def get_interview_questions():
     except Exception as e:
         app.logger.error(f'Error getting interview questions: {str(e)}')
         return jsonify({'status': 'error', 'message': 'Failed to get questions'}), 500
+
+@app.route('/api/ai/generate-interview-questions', methods=['POST'])
+@login_required(['hr', 'employee'])
+def ai_generate_interview_questions():
+    """Generate AI-powered interview questions based on difficulty and training type"""
+    try:
+        data = request.get_json()
+        difficulty_level = data.get('difficulty_level', 'intermediate')
+        training_type = data.get('training_type', 'behavioral')
+        job_role = data.get('job_role')
+        previous_responses = data.get('previous_responses')
+        
+        questions = ai_services.generate_interview_questions(
+            difficulty_level=difficulty_level,
+            training_type=training_type,
+            job_role=job_role,
+            previous_responses=previous_responses
+        )
+        
+        if questions:
+            return jsonify({
+                'status': 'success',
+                'questions': questions
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to generate questions'
+            }), 500
+            
+    except Exception as e:
+        app.logger.error(f'Error generating interview questions: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to generate questions'
+        }), 500
+
+@app.route('/api/ai/generate-follow-up-question', methods=['POST'])
+@login_required(['hr', 'employee'])
+def ai_generate_follow_up_question():
+    """Generate follow-up questions based on candidate responses"""
+    try:
+        data = request.get_json()
+        original_question = data.get('original_question')
+        candidate_answer = data.get('candidate_answer')
+        difficulty_level = data.get('difficulty_level', 'intermediate')
+        training_type = data.get('training_type', 'behavioral')
+        
+        if not original_question or not candidate_answer:
+            return jsonify({
+                'status': 'error',
+                'message': 'Original question and candidate answer are required'
+            }), 400
+        
+        follow_up = ai_services.generate_follow_up_question(
+            original_question=original_question,
+            candidate_answer=candidate_answer,
+            difficulty_level=difficulty_level,
+            training_type=training_type
+        )
+        
+        if follow_up:
+            return jsonify({
+                'status': 'success',
+                'follow_up_question': follow_up
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to generate follow-up question'
+            }), 500
+            
+    except Exception as e:
+        app.logger.error(f'Error generating follow-up question: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to generate follow-up question'
+        }), 500
+
+@app.route('/api/ai/analyze-interview-response', methods=['POST'])
+@login_required(['hr', 'employee'])
+def ai_analyze_interview_response():
+    """Analyze interview response and provide constructive feedback"""
+    try:
+        data = request.get_json()
+        question = data.get('question')
+        answer = data.get('answer')
+        difficulty_level = data.get('difficulty_level', 'intermediate')
+        training_type = data.get('training_type', 'behavioral')
+        
+        if not question or not answer:
+            return jsonify({
+                'status': 'error',
+                'message': 'Question and answer are required'
+            }), 400
+        
+        analysis = ai_services.analyze_interview_response(
+            question=question,
+            answer=answer,
+            difficulty_level=difficulty_level,
+            training_type=training_type
+        )
+        
+        if analysis:
+            return jsonify({
+                'status': 'success',
+                'analysis': analysis
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to analyze response'
+            }), 500
+            
+    except Exception as e:
+        app.logger.error(f'Error analyzing interview response: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to analyze response'
+        }), 500
+
+@app.route('/api/ai/generate-interview-summary', methods=['POST'])
+@login_required(['hr', 'employee'])
+def ai_generate_interview_summary():
+    """Generate a comprehensive interview summary with actionable insights"""
+    try:
+        data = request.get_json()
+        interview_data = data.get('interview_data')
+        overall_score = data.get('overall_score')
+        
+        if not interview_data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Interview data is required'
+            }), 400
+        
+        summary = ai_services.generate_interview_summary(
+            interview_data=interview_data,
+            overall_score=overall_score
+        )
+        
+        if summary:
+            return jsonify({
+                'status': 'success',
+                'summary': summary
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to generate summary'
+            }), 500
+            
+    except Exception as e:
+        app.logger.error(f'Error generating interview summary: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to generate summary'
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
