@@ -1020,6 +1020,33 @@ def view_employee(employee_id):
     checklist = OnboardingChecklist.query.filter_by(employee_id=employee_id).first()
     return render_template('hr/view_employee.html', employee=employee, checklist=checklist)
 
+
+@app.route('/hr/employees/<int:employee_id>/pre-offboarding', methods=['GET', 'POST'])
+@login_required('hr')
+def hr_pre_offboarding(employee_id):
+    employee = User.query.get_or_404(employee_id)
+
+    if request.method == 'POST':
+        exit_date_str = request.form.get('exit_date')
+        if exit_date_str:
+            try:
+                new_exit_date = datetime.strptime(exit_date_str, '%Y-%m-%d').date()
+                employee.exit_date = new_exit_date
+                db.session.commit()
+                flash('Last working day updated successfully.', 'success')
+            except ValueError:
+                flash('Invalid date format. Please use YYYY-MM-DD.', 'danger')
+
+    documents = EmployeeDocument.query.filter_by(user_id=employee.id).all()
+    today = datetime.utcnow().date()
+    notice_days = None
+    if employee.exit_date:
+        try:
+            notice_days = (employee.exit_date - today).days
+        except Exception:
+            notice_days = None
+    return render_template('hr/pre_offboarding.html', employee=employee, documents=documents, notice_days=notice_days)
+
 @app.route('/hr/employees')
 @login_required('hr')
 def list_employees():
@@ -1822,15 +1849,51 @@ def offboarding_tasks():
     # Get HR contact
     hr_contact = User.query.filter_by(role='hr', is_active=True).first()
     
+    # Get manager information if available
+    manager = None
+    if user.manager_id:
+        manager = User.query.get(user.manager_id)
+    
     offboarding = {
         'status': user.status or 'Active',
         'exit_date': user.exit_date,
         'documents': documents,
         'hr_contact': hr_contact,
-        'user': user
+        'user': user,
+        'manager': manager
     }
 
     return render_template('offboarding_tasks.html', offboarding=offboarding)
+
+
+@app.route('/employee/pre-offboarding')
+@login_required('employee')
+def employee_pre_offboarding():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+
+    if not user:
+        flash('Employee not found.', 'danger')
+        return redirect(url_for('employee_dashboard'))
+
+    status = user.status or 'Active'
+    phase = 'none'
+    if status in ['Pre-Offboarding', 'Pre Offboarding']:
+        phase = 'pre_offboarding'
+    elif status == 'Offboarding':
+        phase = 'offboarding'
+    elif status in ['Inactive', 'Exited']:
+        phase = 'completed'
+
+    today = datetime.utcnow().date()
+    notice_days = None
+    if user.exit_date:
+        try:
+            notice_days = (user.exit_date - today).days
+        except Exception:
+            notice_days = None
+
+    return render_template('pre-offboarding.html', user=user, phase=phase, notice_days=notice_days)
 
 @app.route('/download-document/<int:doc_id>')
 @login_required(['employee', 'hr'])
