@@ -19,6 +19,58 @@
         </div>
     </div>
 
+    <!-- Progress Overview -->
+    {% if checklist %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <h5 class="text-light mb-2">Your Onboarding Progress</h5>
+                            <div class="progress bg-dark bg-opacity-50 mb-2" style="height: 10px;">
+                                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" 
+                                     data-progress="{{ checklist.get_progress() }}"
+                                     aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">{{ "%.0f"|format(checklist.get_progress()) }}% Complete</small>
+                                {% set pending_count = checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length %}
+                                {% if pending_count > 0 %}
+                                <small class="text-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i> {{ pending_count }} task{{ 's' if pending_count > 1 else '' }} pending
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-wrap justify-content-md-end gap-2">
+                                <div class="border-end pe-3 me-3">
+                                    <h6 class="text-light mb-1">{{ checklist.tasks|length }}</h6>
+                                    <small class="text-muted">Total Tasks</small>
+                                </div>
+                                <div class="border-end pe-3 me-3">
+                                    <h6 class="text-success mb-1">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length }}</h6>
+                                    <small class="text-muted">Completed</small>
+                                </div>
+                                <div class="border-end pe-3 me-3">
+                                    <h6 class="text-warning mb-1">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length }}</h6>
+                                    <small class="text-muted">Pending</small>
+                                </div>
+                                <div>
+                                    <h6 class="text-info mb-1">{{ (now - checklist.created_at).days if checklist.created_at else 0 }}</h6>
+                                    <small class="text-muted">Days Since Start</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Task Categories -->
     <div class="row mb-4">
         <div class="col-md-4 mb-3">
@@ -68,11 +120,11 @@
                         <i class="bi bi-funnel me-1"></i> Filter
                     </button>
                     <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="filterDropdown">
-                        <li><a class="dropdown-item" href="#">All Tasks</a></li>
-                        <li><a class="dropdown-item" href="#">Pending</a></li>
-                        <li><a class="dropdown-item" href="#">Completed</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterTasks('all')">All Tasks</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterTasks('pending')">Pending</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterTasks('completed')">Completed</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#">Due Soon</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterTasks('issues')">Issues</a></li>
                     </ul>
                 </div>
             </div>
@@ -90,160 +142,119 @@
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- Task 1 -->
+                    <tbody id="tasksList">
+                        {% if checklist and checklist.tasks %}
+                            {% for task in checklist.tasks %}
+                            <tr class="task-item" data-status="{{ 'completed' if task.is_completed else 'pending' }}" data-task-id="{{ task.id }}">
+                                <td class="text-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input task-checkbox" type="checkbox" 
+                                               id="task{{ task.id }}" 
+                                               data-task-id="{{ task.id }}" 
+                                               {{ 'checked' if task.is_completed else '' }}>
+                                    </div>
+                                </td>
+                                <td>
+                                    <label class="form-check-label" for="task{{ task.id }}">
+                                        {{ task.task_name }}
+                                        {% if task.task_description %}
+                                        <small class="d-block text-muted">{{ task.task_description }}</small>
+                                        {% endif %}
+                                        {% if task.hr_resolution_note %}
+                                        <div class="mt-1">
+                                            <small class="text-success">
+                                                <i class="fas fa-info-circle me-1"></i>HR Note: {{ task.hr_resolution_note }}
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                    </label>
+                                </td>
+                                <td>
+                                    {% set category = 'Documentation' if 'document' in task.task_name.lower() or 'upload' in task.task_name.lower() or 'aadhaar' in task.task_name.lower() or 'pan' in task.task_name.lower() or 'bank' in task.task_name.lower() else 'Personal Information' if 'personal' in task.task_name.lower() or 'information' in task.task_name.lower() or 'form' in task.task_name.lower() else 'Orientation' %}
+                                    <span class="badge bg-secondary bg-opacity-25">{{ category }}</span>
+                                </td>
+                                <td>
+                                    {% if task.due_date %}
+                                        <span>{{ task.due_date.strftime('%b %d, %Y') }}</span>
+                                    {% else %}
+                                        <span>{{ (checklist.created_at + timedelta(days=task.order_index + 3)).strftime('%b %d, %Y') }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if task.is_completed %}
+                                        <span class="badge bg-success">Completed</span>
+                                        {% if task.completed_at %}
+                                        <small class="d-block text-muted">{{ task.completed_at.strftime('%b %d, %Y') }}</small>
+                                        {% endif %}
+                                    {% elif task.has_issue %}
+                                        <span class="badge bg-danger">Issue Reported</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if 'upload' in task.task_name.lower() or 'document' in task.task_name.lower() %}
+                                        <button class="btn btn-sm btn-outline-primary task-action" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#uploadModal" 
+                                                data-task="{{ task.task_name }}" 
+                                                data-task-id="{{ task.id }}" 
+                                                data-action="upload">
+                                            <i class="bi bi-upload me-1"></i> Upload
+                                        </button>
+                                    {% elif 'form' in task.task_name.lower() or 'complete' in task.task_name.lower() %}
+                                        <button class="btn btn-sm btn-primary task-action" 
+                                                data-task-id="{{ task.id }}" 
+                                                data-task-name="{{ task.task_name|tojson }}" 
+                                                data-action="open-form">
+                                            <i class="bi bi-pencil me-1"></i> Complete
+                                        </button>
+                                    {% elif 'watch' in task.task_name.lower() or 'video' in task.task_name.lower() %}
+                                        <button class="btn btn-sm btn-outline-info task-action" 
+                                                data-task-id="{{ task.id }}" 
+                                                data-task-name="{{ task.task_name|tojson }}" 
+                                                data-action="open-video">
+                                            <i class="bi bi-play-circle me-1"></i> Watch
+                                        </button>
+                                    {% elif 'acknowledge' in task.task_name.lower() or 'review' in task.task_name.lower() %}
+                                        <button class="btn btn-sm btn-primary task-action" 
+                                                data-task-id="{{ task.id }}" 
+                                                data-task-name="{{ task.task_name|tojson }}" 
+                                                data-action="open-policy">
+                                            <i class="bi bi-file-text me-1"></i> Review
+                                        </button>
+                                    {% elif 'sign' in task.task_name.lower() %}
+                                        <button class="btn btn-sm btn-outline-success task-action" 
+                                                data-task-id="{{ task.id }}" 
+                                                data-task-name="{{ task.task_name|tojson }}" 
+                                                data-action="sign-document">
+                                            <i class="bi bi-pen me-1"></i> Sign
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                                            <i class="bi bi-lock me-1"></i> Locked
+                                        </button>
+                                    {% endif %}
+                                    
+                                    <button class="btn btn-sm btn-outline-warning ms-1 task-action" 
+                                            data-task-id="{{ task.id }}" 
+                                            data-task-name="{{ task.task_name|tojson }}" 
+                                            data-action="report-issue">
+                                        <i class="bi bi-exclamation-triangle me-1"></i> Issue
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
                         <tr>
-                            <td class="text-center">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="task1" checked>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="bi bi-clipboard2-check fa-2x mb-2"></i>
+                                    <p>No onboarding tasks available. Please contact HR.</p>
                                 </div>
                             </td>
-                            <td>
-                                <label class="form-check-label" for="task1">
-                                    Upload Aadhaar Card
-                                </label>
-                            </td>
-                            <td>Documentation</td>
-                            <td>Nov 20, 2023</td>
-                            <td><span class="badge bg-success">Completed</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#uploadModal" data-task="Aadhaar Card">
-                                    <i class="bi bi-upload me-1"></i> View/Replace
-                                </button>
-                            </td>
                         </tr>
-                        
-                        <!-- Task 2 -->
-                        <tr>
-                            <td class="text-center">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="task2">
-                                </div>
-                            </td>
-                            <td>
-                                <label class="form-check-label" for="task2">
-                                    Upload PAN Card
-                                </label>
-                            </td>
-                            <td>Documentation</td>
-                            <td>Nov 20, 2023</td>
-                            <td><span class="badge bg-warning text-dark">Pending</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal" data-task="PAN Card">
-                                    <i class="bi bi-upload me-1"></i> Upload
-                                </button>
-                            </td>
-                        </tr>
-
-                        <!-- Task 3 -->
-                        <tr>
-                            <td class="text-center">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="task3">
-                                </div>
-                            </td>
-                            <td>
-                                <label class="form-check-label" for="task3">
-                                    Complete Personal Information Form
-                                </label>
-                            </td>
-                            <td>Personal Information</td>
-                            <td>Nov 22, 2023</td>
-                            <td><span class="badge bg-warning text-dark">In Progress</span></td>
-                            <td class="text-end">
-                                <a href="#" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-pencil me-1"></i> Complete Form
-                                </a>
-                            </td>
-                        </tr>
-
-                        <!-- Task 4 -->
-                        <tr>
-                            <td class="text-center">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="task4">
-                                </div>
-                            </td>
-                            <td>
-                                <label class="form-check-label" for="task4">
-                                    Submit Bank Details
-                                </label>
-                            </td>
-                            <td>Documentation</td>
-                            <td>Nov 25, 2023</td>
-                            <td><span class="badge bg-secondary">Not Started</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-secondary" disabled>
-                                    <i class="bi bi-lock me-1"></i> Locked
-                                </button>
-                            </td>
-                        </tr>
-
-                        <!-- Task 5 -->
-                        <tr>
-                            <td class="text-center">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="task5">
-                                </div>
-                            </td>
-                            <td>
-                                <label class="form-check-label" for="task5">
-                                    Sign Offer Letter
-                                </label>
-                            </td>
-                            <td>Documentation</td>
-                            <td>Nov 18, 2023</td>
-                            <td><span class="badge bg-danger">Overdue</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-pen me-1"></i> Sign Now
-                                </button>
-                            </td>
-                        </tr>
-
-                        <!-- Task 6 -->
-                        <tr>
-                            <td class="text-center">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="task6" checked>
-                                </div>
-                            </td>
-                            <td>
-                                <label class="form-check-label" for="task6">
-                                    Watch Company Introduction Video
-                                </label>
-                            </td>
-                            <td>Orientation</td>
-                            <td>Nov 30, 2023</td>
-                            <td><span class="badge bg-success">Completed</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-play-circle me-1"></i> Watch Again
-                                </button>
-                            </td>
-                        </tr>
-
-                        <!-- Task 7 -->
-                        <tr>
-                            <td class="text-center">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="task7">
-                                </div>
-                            </td>
-                            <td>
-                                <label class="form-check-label" for="task7">
-                                    Acknowledge Company Policies
-                                </label>
-                            </td>
-                            <td>Orientation</td>
-                            <td>Nov 28, 2023</td>
-                            <td><span class="badge bg-warning text-dark">Pending</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-primary">
-                                    <i class="bi bi-file-text me-1"></i> Review & Acknowledge
-                                </button>
-                            </td>
-                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -258,26 +269,39 @@
             </h2>
         </div>
         <div class="card-body">
-            <div class="mb-3">
-                <div class="d-flex mb-3">
-                    <div class="flex-shrink-0 me-3">
-                        <div class="avatar avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle">
-                            <i class="bi bi-person-fill"></i>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="card bg-dark bg-opacity-50 p-3">
-                            <div class="d-flex justify-content-between mb-2">
-                                <strong>HR Team</strong>
-                                <small class="text-muted">2 hours ago</small>
+            <div id="commentsSection">
+                {% if checklist and checklist.tasks %}
+                    {% for task in checklist.tasks %}
+                        {% if task.employee_comment %}
+                        <div class="d-flex mb-3">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="avatar avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
                             </div>
-                            <p class="mb-0">Please make sure to upload high-quality scans of your documents. Blurry images will not be accepted.</p>
+                            <div class="flex-grow-1">
+                                <div class="card bg-dark bg-opacity-50 p-3">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <strong>You</strong>
+                                        <small class="text-muted">{{ task.updated_at.strftime('%b %d, %Y %H:%M') if task.updated_at else 'Recently' }}</small>
+                                    </div>
+                                    <p class="mb-0"><strong>{{ task.task_name }}:</strong> {{ task.employee_comment }}</p>
+                                    {% if task.hr_resolution_note %}
+                                    <div class="mt-2 pt-2 border-top border-secondary">
+                                        <small class="text-success">
+                                            <strong>HR Response:</strong> {{ task.hr_resolution_note }}
+                                        </small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
             </div>
             
-            <form>
+            <form id="commentForm">
                 <div class="mb-3">
                     <label for="comment" class="form-label">Add a comment or question</label>
                     <textarea class="form-control bg-dark text-light" id="comment" rows="3" placeholder="Type your message here..."></textarea>
@@ -320,8 +344,46 @@
             </div>
             <div class="modal-footer border-secondary">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary">
+                <button type="button" class="btn btn-primary" onclick="uploadDocument()">
                     <i class="bi bi-upload me-1"></i> Upload Document
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Issue Modal -->
+<div class="modal fade" id="reportIssueModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Report Issue</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Task</label>
+                    <input type="text" class="form-control bg-dark text-light" id="issueTaskName" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Issue Type</label>
+                    <select class="form-select bg-dark text-light" id="issueType">
+                        <option value="technical">Technical Issue</option>
+                        <option value="access">Access Problem</option>
+                        <option value="clarification">Need Clarification</option>
+                        <option value="deadline">Deadline Extension</option>
+                        <option value="other">Other Issue</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Describe your issue</label>
+                    <textarea class="form-control bg-dark text-light" id="issueDescription" rows="4" placeholder="Please describe the issue you're experiencing..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitIssue()">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Report Issue
                 </button>
             </div>
         </div>
@@ -331,37 +393,627 @@
 
 {% block scripts %}
 <script>
-    // Initialize the upload modal with task-specific data
+    let currentTaskId = null;
+
     document.addEventListener('DOMContentLoaded', function() {
+        // Set progress bar width from data attribute
+        const progressBar = document.querySelector('.progress-bar[data-progress]');
+        if (progressBar) {
+            const progress = progressBar.getAttribute('data-progress');
+            progressBar.style.width = `${progress}%`;
+        }
+        
+        // Initialize the upload modal with task-specific data
         const uploadModal = document.getElementById('uploadModal');
         if (uploadModal) {
             uploadModal.addEventListener('show.bs.modal', function (event) {
                 const button = event.relatedTarget;
                 const taskName = button.getAttribute('data-task');
+                const taskId = button.getAttribute('data-task-id');
                 const modalTitle = uploadModal.querySelector('.modal-title');
                 const documentType = uploadModal.querySelector('#documentType');
                 
                 modalTitle.textContent = `Upload ${taskName}`;
                 documentType.value = taskName;
+                currentTaskId = taskId;
             });
         }
 
-        // Handle task completion
-        const checkboxes = document.querySelectorAll('.form-check-input');
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const row = this.closest('tr');
-                const statusBadge = row.querySelector('.badge');
+        // Initialize the issue modal with task-specific data
+        const issueModal = document.getElementById('reportIssueModal');
+        if (issueModal) {
+            issueModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const taskName = button.getAttribute('data-task-name');
+                const taskId = button.getAttribute('data-task-id');
                 
-                if (this.checked) {
-                    statusBadge.textContent = 'Completed';
-                    statusBadge.className = 'badge bg-success';
-                } else {
-                    statusBadge.textContent = 'Pending';
-                    statusBadge.className = 'badge bg-warning text-dark';
-                }
+                document.getElementById('issueTaskName').value = JSON.parse(taskName);
+                document.getElementById('issueType').value = 'technical';
+                document.getElementById('issueDescription').value = '';
+                currentTaskId = taskId;
             });
+        }
+
+        // Handle comment form submission
+        const commentForm = document.getElementById('commentForm');
+        if (commentForm) {
+            commentForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitComment();
+            });
+        }
+
+        // Event delegation for task checkboxes
+        document.getElementById('tasksList').addEventListener('change', function(e) {
+            if (e.target.classList.contains('task-checkbox')) {
+                const taskId = e.target.getAttribute('data-task-id');
+                const isChecked = e.target.checked;
+                updateTaskStatus(taskId, isChecked);
+            }
+        });
+
+        // Event delegation for task action buttons
+        document.getElementById('tasksList').addEventListener('click', function(e) {
+            const button = e.target.closest('.task-action');
+            if (button) {
+                const action = button.getAttribute('data-action');
+                const taskId = button.getAttribute('data-task-id');
+                const taskName = button.getAttribute('data-task-name');
+                
+                switch(action) {
+                    case 'open-form':
+                        openTaskForm(taskId, JSON.parse(taskName));
+                        break;
+                    case 'open-video':
+                        openVideo(taskId, JSON.parse(taskName));
+                        break;
+                    case 'open-policy':
+                        openPolicy(taskId, JSON.parse(taskName));
+                        break;
+                    case 'sign-document':
+                        signDocument(taskId, JSON.parse(taskName));
+                        break;
+                    case 'report-issue':
+                        reportIssue(taskId, JSON.parse(taskName));
+                        break;
+                }
+            }
         });
     });
+
+    // Update task status in real-time
+    function updateTaskStatus(taskId, isCompleted) {
+        fetch(`/api/employee/onboarding/tasks/${taskId}/toggle`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ completed: isCompleted })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update UI in real-time
+                const taskRow = document.querySelector(`tr[data-task-id="${taskId}"]`);
+                if (taskRow) {
+                    const statusBadge = taskRow.querySelector('.badge');
+                    const checkbox = taskRow.querySelector('.task-checkbox');
+                    
+                    if (isCompleted) {
+                        statusBadge.className = 'badge bg-success';
+                        statusBadge.textContent = 'Completed';
+                        checkbox.checked = true;
+                        taskRow.dataset.status = 'completed';
+                    } else {
+                        statusBadge.className = 'badge bg-warning text-dark';
+                        statusBadge.textContent = 'Pending';
+                        checkbox.checked = false;
+                        taskRow.dataset.status = 'pending';
+                    }
+                    
+                    // Update progress
+                    updateProgress();
+                }
+            } else {
+                console.error('Failed to update task:', data.message);
+                // Revert checkbox state
+                const checkbox = document.querySelector(`#task${taskId}`);
+                if (checkbox) checkbox.checked = !isCompleted;
+            }
+        })
+        .catch(error => {
+            console.error('Error updating task:', error);
+            // Revert checkbox state
+            const checkbox = document.querySelector(`#task${taskId}`);
+            if (checkbox) checkbox.checked = !isCompleted;
+        });
+    }
+
+    // Report an issue
+    function reportIssue(taskId, taskName) {
+        // Create a temporary button to trigger the modal
+        const tempButton = document.createElement('button');
+        tempButton.setAttribute('data-bs-toggle', 'modal');
+        tempButton.setAttribute('data-bs-target', '#reportIssueModal');
+        tempButton.setAttribute('data-task-name', JSON.stringify(taskName));
+        tempButton.setAttribute('data-task-id', taskId);
+        tempButton.style.display = 'none';
+        document.body.appendChild(tempButton);
+        tempButton.click();
+        document.body.removeChild(tempButton);
+    }
+
+    // Submit issue
+    function submitIssue() {
+        const issueType = document.getElementById('issueType').value;
+        const issueDescription = document.getElementById('issueDescription').value;
+        
+        if (!issueDescription.trim()) {
+            showToast('Please describe your issue.', 'error');
+            return;
+        }
+        
+        if (issueDescription.trim().length < 10) {
+            showToast('Please provide more details about your issue (at least 10 characters).', 'error');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = document.querySelector('#reportIssueModal .btn-danger');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Reporting...';
+        submitBtn.disabled = true;
+        
+        fetch(`/api/employee/onboarding/tasks/${currentTaskId}/report-issue`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                issue_type: issueType,
+                description: issueDescription
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update UI
+                const taskRow = document.querySelector(`tr[data-task-id="${currentTaskId}"]`);
+                if (taskRow) {
+                    const statusBadge = taskRow.querySelector('.badge');
+                    statusBadge.className = 'badge bg-danger';
+                    statusBadge.textContent = 'Issue Reported';
+                    taskRow.dataset.status = 'issue';
+                }
+                
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('reportIssueModal')).hide();
+                
+                // Show success
+                showToast(`Issue reported successfully. HR team will review it shortly.`, 'success');
+                
+                // Update progress
+                updateProgress();
+            } else {
+                showToast('Failed to report issue: ' + (data.message || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error reporting issue:', error);
+            showToast('Failed to report issue. Please try again.', 'error');
+        })
+        .finally(() => {
+            // Reset button
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            // Clear form
+            document.getElementById('issueDescription').value = '';
+            document.getElementById('issueType').value = 'technical';
+        });
+    }
+
+    // Submit comment
+    function submitComment() {
+        const comment = document.getElementById('comment').value;
+        
+        if (!comment.trim()) {
+            showToast('Please enter a comment.', 'error');
+            return;
+        }
+        
+        if (comment.trim().length < 5) {
+            showToast('Comment must be at least 5 characters long.', 'error');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = document.querySelector('#commentForm .btn-primary');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Sending...';
+        submitBtn.disabled = true;
+        
+        fetch('/api/employee/onboarding/comment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                comment: comment
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Clear form
+                document.getElementById('comment').value = '';
+                
+                // Show success
+                showToast('Comment sent successfully. HR team will respond shortly.', 'success');
+                
+                // Optionally add comment to UI immediately (for better UX)
+                // This would require the API to return the comment data
+            } else {
+                showToast('Failed to send comment: ' + (data.message || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error sending comment:', error);
+            showToast('Failed to send comment. Please try again.', 'error');
+        })
+        .finally(() => {
+            // Reset button
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    }
+
+    // Update progress
+    function updateProgress() {
+        const totalTasks = document.querySelectorAll('#tasksList tr[data-task-id]').length;
+        const completedTasks = document.querySelectorAll('#tasksList tr[data-status="completed"]').length;
+        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        
+        // Update progress bar
+        const progressBar = document.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+        }
+        
+        // Update counters
+        const completedCount = document.querySelector('.text-success');
+        const pendingCount = document.querySelector('.text-warning');
+        
+        if (completedCount) completedCount.textContent = completedTasks;
+        if (pendingCount) pendingCount.textContent = totalTasks - completedTasks;
+    }
+
+    // Filter tasks
+    function filterTasks(filter) {
+        const tasks = document.querySelectorAll('#tasksList .task-item');
+        
+        tasks.forEach(task => {
+            const status = task.dataset.status;
+            const hasIssue = task.querySelector('.bg-danger');
+            
+            let show = false;
+            
+            switch(filter) {
+                case 'all':
+                    show = true;
+                    break;
+                case 'pending':
+                    show = status === 'pending' && !hasIssue;
+                    break;
+                case 'completed':
+                    show = status === 'completed';
+                    break;
+                case 'issues':
+                    show = hasIssue !== null;
+                    break;
+            }
+            
+            task.style.display = show ? '' : 'none';
+        });
+        
+        // Update active filter button
+        document.querySelectorAll('#filterDropdown .dropdown-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`#filterDropdown .dropdown-item[onclick*="${filter}"]`).classList.add('active');
+    }
+
+    // Task-specific action functions
+    function openTaskForm(taskId, taskName) {
+        // Create and show a modal for form completion
+        const modalHtml = `
+            <div class="modal fade" id="taskFormModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content bg-dark text-light">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title">Complete: ${taskName}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="taskCompletionForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Completion Details</label>
+                                    <textarea class="form-control bg-dark text-light" rows="3" 
+                                              placeholder="Please provide any details about completing this task..." required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="confirmComplete" required>
+                                        <label class="form-check-label" for="confirmComplete">
+                                            I confirm that I have completed this task
+                                        </label>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer border-secondary">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success" onclick="submitTaskCompletion(${taskId})">Mark Complete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if present
+        const existingModal = document.getElementById('taskFormModal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to body and show it
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = new bootstrap.Modal(document.getElementById('taskFormModal'));
+        modal.show();
+    }
+
+    function openVideo(taskId, taskName) {
+        // Simulate opening a video player
+        const modalHtml = `
+            <div class="modal fade" id="videoModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content bg-dark text-light">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title">Watch: ${taskName}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="ratio ratio-16x9 bg-black">
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <div class="text-center">
+                                        <i class="bi bi-play-circle fa-4x text-primary mb-3"></i>
+                                        <h5>Video Player</h5>
+                                        <p class="text-muted">This would play the actual video content</p>
+                                        <button class="btn btn-primary" onclick="markVideoWatched(${taskId})">Mark as Watched</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if present
+        const existingModal = document.getElementById('videoModal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to body and show it
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = new bootstrap.Modal(document.getElementById('videoModal'));
+        modal.show();
+    }
+
+    function openPolicy(taskId, taskName) {
+        // Simulate opening a policy document
+        const modalHtml = `
+            <div class="modal fade" id="policyModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content bg-dark text-light">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title">Review: ${taskName}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="bg-dark bg-opacity-50 p-4 rounded">
+                                <h6>Policy Document</h6>
+                                <p>This would display the actual policy document content for review.</p>
+                                <div class="mt-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="acknowledgePolicy">
+                                        <label class="form-check-label" for="acknowledgePolicy">
+                                            I have read and acknowledge this policy
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-secondary">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-success" onclick="acknowledgePolicy(${taskId})">Acknowledge & Complete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if present
+        const existingModal = document.getElementById('policyModal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to body and show it
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = new bootstrap.Modal(document.getElementById('policyModal'));
+        modal.show();
+    }
+
+    function signDocument(taskId, taskName) {
+        // Simulate document signing
+        const modalHtml = `
+            <div class="modal fade" id="signatureModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content bg-dark text-light">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title">Sign: ${taskName}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="bg-dark bg-opacity-50 p-4 rounded">
+                                <h6>Document Preview</h6>
+                                <p class="text-muted">Document content would be displayed here for review before signing.</p>
+                                <div class="mt-3">
+                                    <label class="form-label">Digital Signature</label>
+                                    <div class="border border-secondary rounded p-3 bg-dark bg-opacity-25">
+                                        <p class="text-muted mb-0">By typing your name below, you agree to the terms of this document.</p>
+                                    </div>
+                                    <input type="text" class="form-control bg-dark text-light mt-2" 
+                                           placeholder="Type your full name to sign" id="signatureInput">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-secondary">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success" onclick="signDocumentSubmit(${taskId})">Sign Document</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if present
+        const existingModal = document.getElementById('signatureModal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to body and show it
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = new bootstrap.Modal(document.getElementById('signatureModal'));
+        modal.show();
+    }
+
+    // Helper functions for task completion
+    function submitTaskCompletion(taskId) {
+        const form = document.getElementById('taskCompletionForm');
+        if (form.checkValidity()) {
+            updateTaskStatus(taskId, true);
+            bootstrap.Modal.getInstance(document.getElementById('taskFormModal')).hide();
+            showToast('Task completed successfully!', 'success');
+        } else {
+            form.reportValidity();
+        }
+    }
+
+    function markVideoWatched(taskId) {
+        updateTaskStatus(taskId, true);
+        bootstrap.Modal.getInstance(document.getElementById('videoModal')).hide();
+        showToast('Video marked as watched!', 'success');
+    }
+
+    function acknowledgePolicy(taskId) {
+        const checkbox = document.getElementById('acknowledgePolicy');
+        if (checkbox.checked) {
+            updateTaskStatus(taskId, true);
+            bootstrap.Modal.getInstance(document.getElementById('policyModal')).hide();
+            showToast('Policy acknowledged and completed!', 'success');
+        } else {
+            alert('Please acknowledge the policy first.');
+        }
+    }
+
+    function signDocumentSubmit(taskId) {
+        const signature = document.getElementById('signatureInput').value;
+        if (signature.trim()) {
+            updateTaskStatus(taskId, true);
+            bootstrap.Modal.getInstance(document.getElementById('signatureModal')).hide();
+            showToast('Document signed successfully!', 'success');
+        } else {
+            alert('Please enter your signature.');
+        }
+    }
+
+    // Toast notification helper
+    function showToast(message, type = 'info') {
+        const toastHtml = `
+            <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'primary'} border-0" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+        
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Add toast and show it
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = toastContainer.lastElementChild;
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+        
+        // Remove toast after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+    }
+
+    function uploadDocument() {
+        // Handle document upload
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            showToast('Please select a file to upload.', 'error');
+            return;
+        }
+        
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('File size must be less than 5MB.', 'error');
+            return;
+        }
+        
+        // Check file type
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            showToast('Only PDF, JPG, and PNG files are allowed.', 'error');
+            return;
+        }
+        
+        // Show progress
+        const uploadBtn = document.querySelector('#uploadModal .btn-primary');
+        const originalText = uploadBtn.innerHTML;
+        uploadBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Uploading...';
+        uploadBtn.disabled = true;
+        
+        // Simulate upload (in real app, this would be an actual file upload)
+        setTimeout(() => {
+            // Mark task as complete
+            updateTaskStatus(currentTaskId, true);
+            
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+            
+            // Show success message
+            showToast(`Document "${file.name}" uploaded successfully!`, 'success');
+            
+            // Reset button
+            uploadBtn.innerHTML = originalText;
+            uploadBtn.disabled = false;
+            fileInput.value = '';
+            
+            // Clear notes
+            document.getElementById('documentNotes').value = '';
+        }, 2000);
+    }
 </script>
 {% endblock %}

@@ -206,6 +206,23 @@ class OnboardingTask(db.Model):
     completed_at = db.Column(db.DateTime, nullable=True)
     order_index = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    due_date = db.Column(db.Date, nullable=True)
+    
+    # Issue reporting fields
+    has_issue = db.Column(db.Boolean, default=False)
+    issue_type = db.Column(db.String(50), nullable=True)  # technical, access, clarification, deadline, other
+    issue_description = db.Column(db.Text, nullable=True)
+    issue_reported_at = db.Column(db.DateTime, nullable=True)
+    
+    # Employee comment field
+    employee_comment = db.Column(db.Text, nullable=True)
+    
+    # HR resolution fields
+    hr_resolution_note = db.Column(db.Text, nullable=True)
+    hr_resolved_at = db.Column(db.DateTime, nullable=True)
+    hr_resolved_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class OnboardingChecklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -327,6 +344,206 @@ class TeamIntroduction(db.Model):
     
     employee = db.relationship('User', foreign_keys=[employee_id], backref='introductions_received')
     team_member = db.relationship('User', foreign_keys=[team_member_id], backref='introductions_sent')
+
+
+class TeamBuildingActivity(db.Model):
+    """Team-building activities scheduling"""
+    id = db.Column(db.Integer, primary_key=True)
+    activity_name = db.Column(db.String(200), nullable=False)
+    activity_type = db.Column(db.String(50), nullable=False)  # 'team_building', 'social', 'training', 'wellness'
+    description = db.Column(db.Text, nullable=True)
+    scheduled_date = db.Column(db.Date, nullable=False)
+    start_time = db.Column(db.Time, nullable=True)
+    end_time = db.Column(db.Time, nullable=True)
+    location = db.Column(db.String(200), nullable=True)
+    virtual_link = db.Column(db.String(500), nullable=True)
+    max_participants = db.Column(db.Integer, nullable=True)
+    current_participants = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='scheduled')  # scheduled, ongoing, completed, cancelled
+    organizer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    budget = db.Column(db.Float, nullable=True)
+    requirements = db.Column(db.Text, nullable=True)  # JSON array of requirements
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    organizer = db.relationship('User', backref='organized_activities')
+
+
+class ActivityParticipant(db.Model):
+    """Participants for team-building activities"""
+    id = db.Column(db.Integer, primary_key=True)
+    activity_id = db.Column(db.Integer, db.ForeignKey('team_building_activity.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    registration_date = db.Column(db.DateTime, default=datetime.utcnow)
+    attendance_status = db.Column(db.String(20), default='registered')  # registered, attended, absent, cancelled
+    feedback_rating = db.Column(db.Integer, nullable=True)  # 1-5 scale
+    feedback_comment = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    activity = db.relationship('TeamBuildingActivity', backref='participants')
+    employee = db.relationship('User', backref='activity_registrations')
+
+
+class CrossDepartmentIntroduction(db.Model):
+    """Cross-departmental introductions"""
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    target_department = db.Column(db.String(50), nullable=False)
+    target_employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    introduction_type = db.Column(db.String(50), default='collaboration')  # collaboration, mentorship, project, networking
+    purpose = db.Column(db.Text, nullable=True)
+    scheduled_date = db.Column(db.Date, nullable=True)
+    meeting_format = db.Column(db.String(50), default='in_person')  # in_person, virtual, hybrid
+    status = db.Column(db.String(20), default='pending')  # pending, scheduled, completed, cancelled
+    facilitator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    follow_up_required = db.Column(db.Boolean, default=False)
+    follow_up_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    employee = db.relationship('User', foreign_keys=[employee_id], backref='cross_dept_introductions')
+    target_employee = db.relationship('User', foreign_keys=[target_employee_id], backref='cross_dept_received')
+    facilitator = db.relationship('User', foreign_keys=[facilitator_id], backref='facilitated_introductions')
+
+
+class SocialEvent(db.Model):
+    """Social events coordination"""
+    id = db.Column(db.Integer, primary_key=True)
+    event_name = db.Column(db.String(200), nullable=False)
+    event_type = db.Column(db.String(50), nullable=False)  # 'happy_hour', 'lunch', 'celebration', 'outing', 'virtual'
+    description = db.Column(db.Text, nullable=True)
+    event_date = db.Column(db.Date, nullable=False)
+    start_time = db.Column(db.Time, nullable=True)
+    end_time = db.Column(db.Time, nullable=True)
+    location = db.Column(db.String(200), nullable=True)
+    virtual_link = db.Column(db.String(500), nullable=True)
+    dress_code = db.Column(db.String(100), nullable=True)
+    dietary_accommodations = db.Column(db.Text, nullable=True)
+    budget_per_person = db.Column(db.Float, nullable=True)
+    total_budget = db.Column(db.Float, nullable=True)
+    registration_deadline = db.Column(db.Date, nullable=True)
+    max_attendees = db.Column(db.Integer, nullable=True)
+    current_attendees = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='planning')  # planning, open_registration, confirmed, completed, cancelled
+    organizer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recurring_event = db.Column(db.Boolean, default=False)
+    recurring_frequency = db.Column(db.String(20), nullable=True)  # weekly, monthly, quarterly
+    special_instructions = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    organizer = db.relationship('User', backref='organized_events')
+
+
+class SocialEventAttendee(db.Model):
+    """Attendees for social events"""
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('social_event.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    registration_date = db.Column(db.DateTime, default=datetime.utcnow)
+    attendance_status = db.Column(db.String(20), default='registered')  # registered, attended, absent, cancelled
+    plus_one = db.Column(db.Boolean, default=False)
+    guest_name = db.Column(db.String(100), nullable=True)
+    dietary_restrictions = db.Column(db.String(200), nullable=True)
+    feedback_rating = db.Column(db.Integer, nullable=True)  # 1-5 scale
+    feedback_comment = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    event = db.relationship('SocialEvent', backref='attendees')
+    employee = db.relationship('User', backref='social_event_registrations')
+
+
+class BuddyMentorSystem(db.Model):
+    """Buddy/mentor system beyond HR"""
+    id = db.Column(db.Integer, primary_key=True)
+    mentor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    mentee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    relationship_type = db.Column(db.String(20), default='buddy')  # buddy, mentor, peer_mentor
+    program_name = db.Column(db.String(100), nullable=True)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(20), default='active')  # active, completed, paused, terminated
+    matching_reason = db.Column(db.Text, nullable=True)
+    goals = db.Column(db.Text, nullable=True)  # JSON array of development goals
+    meeting_frequency = db.Column(db.String(20), default='weekly')  # daily, weekly, biweekly, monthly
+    meeting_duration = db.Column(db.Integer, default=60)  # minutes
+    communication_preferences = db.Column(db.Text, nullable=True)  # JSON array of preferences
+    progress_notes = db.Column(db.Text, nullable=True)
+    hr_supervisor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    mentor = db.relationship('User', foreign_keys=[mentor_id], backref='mentee_relationships')
+    mentee = db.relationship('User', foreign_keys=[mentee_id], backref='mentor_relationships')
+    hr_supervisor = db.relationship('User', foreign_keys=[hr_supervisor_id], backref='supervised_mentorships')
+
+
+class BuddyMentorMeeting(db.Model):
+    """Meetings between buddies/mentors"""
+    id = db.Column(db.Integer, primary_key=True)
+    relationship_id = db.Column(db.Integer, db.ForeignKey('buddy_mentor_system.id'), nullable=False)
+    meeting_date = db.Column(db.DateTime, nullable=False)
+    meeting_type = db.Column(db.String(50), default='check_in')  # check_in, goal_review, problem_solving, social
+    duration_minutes = db.Column(db.Integer, nullable=True)
+    location = db.Column(db.String(200), nullable=True)
+    virtual_link = db.Column(db.String(500), nullable=True)
+    agenda = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    action_items = db.Column(db.Text, nullable=True)  # JSON array of action items
+    next_meeting_date = db.Column(db.DateTime, nullable=True)
+    satisfaction_rating = db.Column(db.Integer, nullable=True)  # 1-5 scale
+    feedback = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    relationship = db.relationship('BuddyMentorSystem', backref='meetings')
+
+
+class CommunicationSkillsTraining(db.Model):
+    """Communication skills training sessions"""
+    id = db.Column(db.Integer, primary_key=True)
+    training_name = db.Column(db.String(200), nullable=False)
+    training_type = db.Column(db.String(50), nullable=False)  # 'workshop', 'seminar', 'online_course', 'coaching'
+    description = db.Column(db.Text, nullable=True)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    scheduled_date = db.Column(db.Date, nullable=False)
+    start_time = db.Column(db.Time, nullable=True)
+    end_time = db.Column(db.Time, nullable=True)
+    location = db.Column(db.String(200), nullable=True)
+    virtual_link = db.Column(db.String(500), nullable=True)
+    max_participants = db.Column(db.Integer, nullable=True)
+    current_participants = db.Column(db.Integer, default=0)
+    skill_focus = db.Column(db.String(100), nullable=True)  # 'public_speaking', 'active_listening', 'conflict_resolution', etc.
+    difficulty_level = db.Column(db.String(20), default='intermediate')  # beginner, intermediate, advanced
+    prerequisites = db.Column(db.Text, nullable=True)
+    materials = db.Column(db.Text, nullable=True)  # JSON array of training materials
+    assessment_required = db.Column(db.Boolean, default=False)
+    certificate_offered = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default='scheduled')  # scheduled, in_progress, completed, cancelled
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    instructor = db.relationship('User', backref='conducted_trainings')
+
+
+class TrainingParticipant(db.Model):
+    """Participants for communication skills training"""
+    id = db.Column(db.Integer, primary_key=True)
+    training_id = db.Column(db.Integer, db.ForeignKey('communication_skills_training.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    registration_date = db.Column(db.DateTime, default=datetime.utcnow)
+    completion_status = db.Column(db.String(20), default='registered')  # registered, in_progress, completed, dropped
+    attendance_percentage = db.Column(db.Float, nullable=True)
+    assessment_score = db.Column(db.Float, nullable=True)
+    feedback_rating = db.Column(db.Integer, nullable=True)  # 1-5 scale
+    feedback_comment = db.Column(db.Text, nullable=True)
+    certificate_issued = db.Column(db.Boolean, default=False)
+    certificate_date = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    training = db.relationship('CommunicationSkillsTraining', backref='participants')
+    employee = db.relationship('User', backref='training_registrations')
 
 
 class Employee(db.Model):
@@ -504,6 +721,14 @@ def inject_datetime():
         'timedelta': timedelta,
         'now': datetime.utcnow
     }
+
+@app.context_processor
+def inject_user():
+    """Inject current user into all templates"""
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        return {'user': user}
+    return {'user': None}
 
 # Create database tables
 with app.app_context():
@@ -1010,7 +1235,7 @@ def add_employee():
             if not hire_date_str:
                 flash('Hire date is required for onboarding new employees.', 'danger')
                 managers = User.query.filter_by(role='manager', is_active=True).all()
-                return render_template('hr/add_employee.html', managers=managers, 
+                return render_template('hr/add_employee.html', managers=managers, now=datetime.utcnow(),
                                    form_data=request.form)
             
             try:
@@ -1018,12 +1243,12 @@ def add_employee():
                 if hire_date > datetime.utcnow().date():
                     flash('Hire date cannot be in the future.', 'danger')
                     managers = User.query.filter_by(role='manager', is_active=True).all()
-                    return render_template('hr/add_employee.html', managers=managers, 
+                    return render_template('hr/add_employee.html', managers=managers, now=datetime.utcnow(),
                                        form_data=request.form)
             except ValueError:
                 flash('Invalid hire date format. Please use YYYY-MM-DD.', 'danger')
                 managers = User.query.filter_by(role='manager', is_active=True).all()
-                return render_template('hr/add_employee.html', managers=managers, 
+                return render_template('hr/add_employee.html', managers=managers, now=datetime.utcnow(),
                                    form_data=request.form)
 
             # Create new user with 'Onboarding' status
@@ -1055,19 +1280,31 @@ def add_employee():
             db.session.add(checklist)
             db.session.flush()  # Get the checklist ID
             
-            # Get custom tasks from form
+            # First, add department-specific tasks
+            dept_tasks = get_department_tasks(department, position)
+            for i, task_data in enumerate(dept_tasks):
+                task = OnboardingTask(
+                    checklist_id=checklist.id,
+                    task_name=task_data['name'],
+                    task_description=task_data['description'],
+                    order_index=i
+                )
+                db.session.add(task)
+            
+            # Then, add any custom tasks from form (if provided)
             task_names = request.form.getlist('task_name[]')
             task_descriptions = request.form.getlist('task_description[]')
             task_enabled = request.form.getlist('task_enabled[]')
             
-            # Create custom onboarding tasks
+            # Create custom onboarding tasks (additional to department tasks)
+            custom_task_offset = len(dept_tasks)
             for i, task_name in enumerate(task_names):
                 if task_name.strip() and str(i+1) in task_enabled:
                     task = OnboardingTask(
                         checklist_id=checklist.id,
                         task_name=task_name.strip(),
                         task_description=task_descriptions[i].strip() if i < len(task_descriptions) else '',
-                        order_index=i
+                        order_index=custom_task_offset + i
                     )
                     db.session.add(task)
             
@@ -1082,8 +1319,9 @@ def add_employee():
             flash('An error occurred while adding the employee. Please try again.', 'danger')
     
     # For GET request or if there was an error
+    from datetime import datetime
     managers = User.query.filter_by(role='manager', is_active=True).all()
-    return render_template('hr/add_employee.html', managers=managers)
+    return render_template('hr/add_employee.html', managers=managers, now=datetime.utcnow())
 @app.route('/hr/employees/<int:employee_id>')
 @login_required('hr')
 def view_employee(employee_id):
@@ -1837,75 +2075,7 @@ def onboarding_tasks():
 
     checklist = OnboardingChecklist.query.filter_by(employee_id=user.id).first()
 
-    tasks = []
-    if checklist:
-        tasks = [
-            {
-                'id': 1,
-                'field': 'paperwork_completed',
-                'title': 'Complete HR paperwork',
-                'category': 'Documentation',
-                'due_date': (checklist.created_at + timedelta(days=3)).strftime('%b %d, %Y'),
-                'completed': bool(checklist.paperwork_completed),
-            },
-            {
-                'id': 2,
-                'field': 'equipment_assigned',
-                'title': 'Confirm equipment received',
-                'category': 'Documentation',
-                'due_date': (checklist.created_at + timedelta(days=5)).strftime('%b %d, %Y'),
-                'completed': bool(checklist.equipment_assigned),
-            },
-            {
-                'id': 3,
-                'field': 'training_completed',
-                'title': 'Complete mandatory training',
-                'category': 'Orientation',
-                'due_date': (checklist.created_at + timedelta(days=14)).strftime('%b %d, %Y'),
-                'completed': bool(checklist.training_completed),
-            },
-            {
-                'id': 4,
-                'field': 'hr_orientation',
-                'title': 'Attend HR orientation',
-                'category': 'Orientation',
-                'due_date': (checklist.created_at + timedelta(days=7)).strftime('%b %d, %Y'),
-                'completed': bool(checklist.hr_orientation),
-            },
-            {
-                'id': 5,
-                'field': 'team_introduction',
-                'title': 'Meet your team',
-                'category': 'Orientation',
-                'due_date': (checklist.created_at + timedelta(days=10)).strftime('%b %d, %Y'),
-                'completed': bool(checklist.team_introduction),
-            },
-        ]
-
-    total_tasks = len(tasks)
-    completed_tasks = sum(1 for t in tasks if t['completed'])
-    in_progress_tasks = 0
-    pending_tasks = total_tasks - completed_tasks
-    overdue_tasks = 0
-
-    stats = {
-        'total_tasks': total_tasks,
-        'completed_tasks': completed_tasks,
-        'in_progress_tasks': in_progress_tasks,
-        'pending_tasks': pending_tasks,
-        'overdue_tasks': overdue_tasks,
-        'completion_percentage': checklist.get_progress() if checklist else 0,
-    }
-
-    comments = []
-
-    return render_template(
-        'onboarding_tasks.html',
-        tasks=tasks,
-        stats=stats,
-        comments=comments,
-        now=datetime.utcnow(),
-    )
+    return render_template('onboarding_tasks.html', user=user, checklist=checklist, now=datetime.utcnow())
 
 
 @app.route('/employee/offboarding-tasks')
@@ -2002,6 +2172,12 @@ def pre_onboarding():
     # Enhanced pre-onboarding with communication features and ATS screening
     employees = User.query.filter_by(role='employee', status='Onboarding').order_by(User.created_at.desc()).all()
     return render_template('pre-onboarding-enhanced.html', employees=employees)
+
+@app.route('/social-integration')
+@login_required('hr')
+def social_integration():
+    # Social integration events management
+    return render_template('social-integration.html')
 
 # API Routes for Pre-Onboarding Features
 
@@ -2383,6 +2559,385 @@ def create_notification(employee_id=None, user_id=None, title=None, message=None
     except Exception as e:
         logger.error(f"Error creating notification: {e}")
 
+# API Routes for Social Integration Features
+
+@app.route('/api/employees', methods=['GET'])
+@login_required('hr')
+def get_employees():
+    """Get all employees for dropdowns"""
+    try:
+        employees = User.query.filter_by(role='employee').all()
+        return jsonify({
+            'status': 'success',
+            'employees': [
+                {
+                    'id': emp.id,
+                    'full_name': emp.full_name,
+                    'department': getattr(emp, 'department', 'Unknown')
+                }
+                for emp in employees
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/team-building', methods=['GET'])
+@login_required('hr')
+def get_team_building_activities():
+    """Get team-building activities"""
+    try:
+        activities = TeamBuildingActivity.query.all()
+        return jsonify({
+            'status': 'success',
+            'activities': [
+                {
+                    'id': activity.id,
+                    'activity_name': activity.activity_name,
+                    'activity_type': activity.activity_type,
+                    'description': activity.description,
+                    'scheduled_date': activity.scheduled_date.isoformat(),
+                    'start_time': activity.start_time.isoformat() if activity.start_time else None,
+                    'end_time': activity.end_time.isoformat() if activity.end_time else None,
+                    'location': activity.location,
+                    'virtual_link': activity.virtual_link,
+                    'max_participants': activity.max_participants,
+                    'current_participants': activity.current_participants,
+                    'status': activity.status,
+                    'budget': activity.budget
+                }
+                for activity in activities
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/team-building', methods=['POST'])
+@login_required('hr')
+def create_team_building_activity():
+    """Create team-building activity"""
+    try:
+        data = request.json
+        
+        activity = TeamBuildingActivity(
+            activity_name=data['activity_name'],
+            activity_type=data['activity_type'],
+            description=data.get('description'),
+            scheduled_date=datetime.strptime(data['scheduled_date'], '%Y-%m-%d').date(),
+            start_time=datetime.strptime(data['start_time'], '%H:%M').time() if data.get('start_time') else None,
+            end_time=datetime.strptime(data['end_time'], '%H:%M').time() if data.get('end_time') else None,
+            location=data.get('location'),
+            virtual_link=data.get('virtual_link'),
+            max_participants=data.get('max_participants'),
+            budget=data.get('budget'),
+            requirements=json.dumps(data.get('requirements', [])),
+            organizer_id=session.get('user_id')
+        )
+        
+        db.session.add(activity)
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'message': 'Team-building activity created successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/cross-departmental', methods=['GET'])
+@login_required('hr')
+def get_cross_departmental_introductions():
+    """Get cross-departmental introductions"""
+    try:
+        introductions = CrossDepartmentIntroduction.query.all()
+        return jsonify({
+            'status': 'success',
+            'introductions': [
+                {
+                    'id': intro.id,
+                    'employee_name': intro.employee.full_name,
+                    'target_department': intro.target_department,
+                    'target_employee_name': intro.target_employee.full_name if intro.target_employee else None,
+                    'introduction_type': intro.introduction_type,
+                    'purpose': intro.purpose,
+                    'scheduled_date': intro.scheduled_date.isoformat() if intro.scheduled_date else None,
+                    'meeting_format': intro.meeting_format,
+                    'status': intro.status
+                }
+                for intro in introductions
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/cross-departmental', methods=['POST'])
+@login_required('hr')
+def create_cross_departmental_introduction():
+    """Create cross-departmental introduction"""
+    try:
+        data = request.json
+        
+        introduction = CrossDepartmentIntroduction(
+            employee_id=data['employee_id'],
+            target_department=data['target_department'],
+            target_employee_id=data.get('target_employee_id'),
+            introduction_type=data['introduction_type'],
+            purpose=data.get('purpose'),
+            scheduled_date=datetime.strptime(data['scheduled_date'], '%Y-%m-%d').date() if data.get('scheduled_date') else None,
+            meeting_format=data['meeting_format'],
+            facilitator_id=session.get('user_id')
+        )
+        
+        db.session.add(introduction)
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'message': 'Cross-departmental introduction created successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/social-events', methods=['GET'])
+@login_required('hr')
+def get_social_events():
+    """Get social events"""
+    try:
+        events = SocialEvent.query.all()
+        return jsonify({
+            'status': 'success',
+            'events': [
+                {
+                    'id': event.id,
+                    'event_name': event.event_name,
+                    'event_type': event.event_type,
+                    'description': event.description,
+                    'event_date': event.event_date.isoformat(),
+                    'start_time': event.start_time.isoformat() if event.start_time else None,
+                    'end_time': event.end_time.isoformat() if event.end_time else None,
+                    'location': event.location,
+                    'virtual_link': event.virtual_link,
+                    'max_attendees': event.max_attendees,
+                    'current_attendees': event.current_attendees,
+                    'status': event.status,
+                    'recurring_event': event.recurring_event,
+                    'recurring_frequency': event.recurring_frequency
+                }
+                for event in events
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/social-events', methods=['POST'])
+@login_required('hr')
+def create_social_event():
+    """Create social event"""
+    try:
+        data = request.json
+        
+        event = SocialEvent(
+            event_name=data['event_name'],
+            event_type=data['event_type'],
+            description=data.get('description'),
+            event_date=datetime.strptime(data['event_date'], '%Y-%m-%d').date(),
+            start_time=datetime.strptime(data['start_time'], '%H:%M').time() if data.get('start_time') else None,
+            end_time=datetime.strptime(data['end_time'], '%H:%M').time() if data.get('end_time') else None,
+            location=data.get('location'),
+            virtual_link=data.get('virtual_link'),
+            max_attendees=data.get('max_attendees'),
+            budget_per_person=data.get('budget_per_person'),
+            registration_deadline=datetime.strptime(data['registration_deadline'], '%Y-%m-%d').date() if data.get('registration_deadline') else None,
+            dress_code=data.get('dress_code'),
+            dietary_accommodations=data.get('dietary_accommodations'),
+            recurring_event=data.get('recurring_event', False),
+            recurring_frequency=data.get('recurring_frequency'),
+            organizer_id=session.get('user_id')
+        )
+        
+        # Calculate total budget if budget per person and max attendees provided
+        if event.budget_per_person and event.max_attendees:
+            event.total_budget = event.budget_per_person * event.max_attendees
+        
+        db.session.add(event)
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'message': 'Social event created successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/buddy-mentor', methods=['GET'])
+@login_required('hr')
+def get_buddy_mentor_programs():
+    """Get buddy/mentor programs"""
+    try:
+        programs = BuddyMentorSystem.query.all()
+        return jsonify({
+            'status': 'success',
+            'programs': [
+                {
+                    'id': program.id,
+                    'mentor_name': program.mentor.full_name,
+                    'mentee_name': program.mentee.full_name,
+                    'relationship_type': program.relationship_type,
+                    'program_name': program.program_name,
+                    'start_date': program.start_date.isoformat(),
+                    'end_date': program.end_date.isoformat() if program.end_date else None,
+                    'status': program.status,
+                    'meeting_frequency': program.meeting_frequency,
+                    'meetings_count': len(program.meetings)
+                }
+                for program in programs
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/buddy-mentor', methods=['POST'])
+@login_required('hr')
+def create_buddy_mentor_partnership():
+    """Create buddy/mentor partnership"""
+    try:
+        data = request.json
+        
+        partnership = BuddyMentorSystem(
+            mentor_id=data['mentor_id'],
+            mentee_id=data['mentee_id'],
+            relationship_type=data['relationship_type'],
+            program_name=data.get('program_name'),
+            start_date=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
+            end_date=datetime.strptime(data['end_date'], '%Y-%m-%d').date() if data.get('end_date') else None,
+            meeting_frequency=data['meeting_frequency'],
+            meeting_duration=data['meeting_duration'],
+            matching_reason=data.get('matching_reason'),
+            goals=json.dumps(data.get('goals', [])),
+            hr_supervisor_id=data.get('hr_supervisor_id')
+        )
+        
+        db.session.add(partnership)
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'message': 'Buddy/Mentor partnership created successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/communication-training', methods=['GET'])
+@login_required('hr')
+def get_communication_training():
+    """Get communication training sessions"""
+    try:
+        trainings = CommunicationSkillsTraining.query.all()
+        return jsonify({
+            'status': 'success',
+            'trainings': [
+                {
+                    'id': training.id,
+                    'training_name': training.training_name,
+                    'training_type': training.training_type,
+                    'description': training.description,
+                    'instructor_name': training.instructor.full_name if training.instructor else None,
+                    'scheduled_date': training.scheduled_date.isoformat(),
+                    'start_time': training.start_time.isoformat() if training.start_time else None,
+                    'end_time': training.end_time.isoformat() if training.end_time else None,
+                    'location': training.location,
+                    'virtual_link': training.virtual_link,
+                    'max_participants': training.max_participants,
+                    'current_participants': training.current_participants,
+                    'skill_focus': training.skill_focus,
+                    'difficulty_level': training.difficulty_level,
+                    'status': training.status,
+                    'certificate_offered': training.certificate_offered
+                }
+                for training in trainings
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/communication-training', methods=['POST'])
+@login_required('hr')
+def create_communication_training():
+    """Create communication training session"""
+    try:
+        data = request.json
+        
+        training = CommunicationSkillsTraining(
+            training_name=data['training_name'],
+            training_type=data['training_type'],
+            description=data.get('description'),
+            instructor_id=data.get('instructor_id'),
+            scheduled_date=datetime.strptime(data['scheduled_date'], '%Y-%m-%d').date(),
+            start_time=datetime.strptime(data['start_time'], '%H:%M').time() if data.get('start_time') else None,
+            end_time=datetime.strptime(data['end_time'], '%H:%M').time() if data.get('end_time') else None,
+            location=data.get('location'),
+            virtual_link=data.get('virtual_link'),
+            max_participants=data.get('max_participants'),
+            skill_focus=data['skill_focus'],
+            difficulty_level=data['difficulty_level'],
+            prerequisites=json.dumps(data.get('prerequisites', [])),
+            materials=json.dumps(data.get('materials', [])),
+            assessment_required=data.get('assessment_required', False),
+            certificate_offered=data.get('certificate_offered', False)
+        )
+        
+        db.session.add(training)
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'message': 'Communication training created successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/social-integration/statistics', methods=['GET'])
+@login_required('hr')
+def get_social_integration_statistics():
+    """Get social integration statistics"""
+    try:
+        # Team-building statistics
+        total_activities = TeamBuildingActivity.query.count()
+        total_participants = db.session.query(func.sum(TeamBuildingActivity.current_participants)).scalar() or 0
+        
+        # Cross-departmental statistics
+        total_introductions = CrossDepartmentIntroduction.query.count()
+        departments_connected = db.session.query(func.count(func.distinct(CrossDepartmentIntroduction.target_department))).scalar() or 0
+        
+        # Social events statistics
+        total_events = SocialEvent.query.count()
+        total_attendance = db.session.query(func.sum(SocialEvent.current_attendees)).scalar() or 0
+        
+        # Buddy/mentor statistics
+        active_partnerships = BuddyMentorSystem.query.filter_by(status='active').count()
+        total_meetings = BuddyMentorMeeting.query.count()
+        
+        # Communication training statistics
+        total_trainings = CommunicationSkillsTraining.query.count()
+        certifications_issued = TrainingParticipant.query.filter_by(certificate_issued=True).count()
+        
+        return jsonify({
+            'status': 'success',
+            'statistics': {
+                'team_building': {
+                    'total': total_activities,
+                    'participants': total_participants
+                },
+                'cross_departmental': {
+                    'total': total_introductions,
+                    'departments': departments_connected
+                },
+                'social_events': {
+                    'total': total_events,
+                    'attendance': total_attendance
+                },
+                'buddy_mentor': {
+                    'active': active_partnerships,
+                    'meetings': total_meetings
+                },
+                'communication_training': {
+                    'total': total_trainings,
+                    'certifications': certifications_issued
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/hr/start-onboarding', methods=['POST'])
 @login_required('hr')
 def hr_start_onboarding():
@@ -2477,10 +3032,14 @@ def onboarding():
             
             db.session.commit()
         
+        # Get current logged-in HR user
+        current_hr = User.query.get(session['user_id'])
+        
         # Render onboarding template with employee's specific data
         return render_template('onboarding.html', 
                              selected_employee=employee,
                              checklist=checklist,
+                             user=current_hr,
                              sample_candidates=[])
     
     candidates = Candidate.query.order_by(Candidate.created_at.desc()).all()
@@ -2518,9 +3077,13 @@ def onboarding():
             }
         })
     
+    # Get current logged-in HR user
+    current_hr = User.query.get(session['user_id'])
+    
     return render_template('onboarding.html', 
                          sample_candidates=candidates,
-                         selected_candidate=selected_candidate)
+                         selected_candidate=selected_candidate,
+                         user=current_hr)
 
 def get_department_tasks(department, position):
     """Get department-specific onboarding tasks"""
@@ -4765,6 +5328,153 @@ def delete_onboarding_task(task_id):
             'status': 'error',
             'message': 'Failed to delete task'
         }), 500
+
+@app.route('/api/employee/onboarding/tasks/<int:task_id>/toggle', methods=['PUT'])
+@login_required('employee')
+def employee_toggle_onboarding_task(task_id):
+    """Toggle onboarding task completion (employee view)"""
+    try:
+        user_id = session.get('user_id')
+        task = OnboardingTask.query.join(OnboardingChecklist).filter(
+            OnboardingTask.id == task_id,
+            OnboardingChecklist.employee_id == user_id
+        ).first_or_404()
+        
+        data = request.json
+        is_completed = data.get('completed', False)
+        
+        task.is_completed = is_completed
+        if is_completed:
+            task.completed_at = datetime.utcnow()
+        else:
+            task.completed_at = None
+        
+        task.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'message': 'Task updated successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/employee/onboarding/tasks/<int:task_id>/report-issue', methods=['POST'])
+@login_required('employee')
+def employee_report_issue(task_id):
+    """Report an issue with a task"""
+    try:
+        user_id = session.get('user_id')
+        task = OnboardingTask.query.join(OnboardingChecklist).filter(
+            OnboardingTask.id == task_id,
+            OnboardingChecklist.employee_id == user_id
+        ).first_or_404()
+        
+        data = request.json
+        issue_type = data.get('issue_type')
+        issue_description = data.get('description')
+        
+        if not issue_description:
+            return jsonify({'status': 'error', 'message': 'Issue description is required'}), 400
+        
+        task.has_issue = True
+        task.issue_type = issue_type
+        task.issue_description = issue_description
+        task.issue_reported_at = datetime.utcnow()
+        task.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Create notification for HR
+        create_notification(
+            user_id=user_id,
+            title=f'Issue Reported: {task.task_name}',
+            message=f'Employee reported an issue with task: {issue_description}',
+            notification_type='task_issue',
+            priority='high'
+        )
+        
+        return jsonify({'status': 'success', 'message': 'Issue reported successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/employee/onboarding/comment', methods=['POST'])
+@login_required('employee')
+def employee_add_comment():
+    """Add a comment about onboarding"""
+    try:
+        user_id = session.get('user_id')
+        data = request.json
+        comment = data.get('comment')
+        
+        if not comment:
+            return jsonify({'status': 'error', 'message': 'Comment is required'}), 400
+        
+        # Store comment in the first pending task or create a general comment
+        checklist = OnboardingChecklist.query.filter_by(employee_id=user_id).first()
+        if not checklist:
+            return jsonify({'status': 'error', 'message': 'No onboarding checklist found'}), 404
+        
+        # Find the first task to store the comment (or update existing)
+        task = OnboardingTask.query.filter_by(checklist_id=checklist.id).first()
+        if task:
+            task.employee_comment = comment
+            task.updated_at = datetime.utcnow()
+            db.session.commit()
+        
+        # Create notification for HR
+        create_notification(
+            user_id=user_id,
+            title='New Employee Comment',
+            message=f'Employee added a comment: {comment}',
+            notification_type='employee_comment',
+            priority='normal'
+        )
+        
+        return jsonify({'status': 'success', 'message': 'Comment added successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/onboarding/tasks/<int:task_id>/resolve-issue', methods=['POST'])
+@login_required('hr')
+def resolve_task_issue(task_id):
+    """Resolve a task issue (HR view)"""
+    try:
+        task = OnboardingTask.query.get_or_404(task_id)
+        data = request.json
+        
+        resolution_action = data.get('action')
+        resolution_notes = data.get('notes')
+        
+        if not resolution_notes:
+            return jsonify({'status': 'error', 'message': 'Resolution notes are required'}), 400
+        
+        task.has_issue = False
+        task.hr_resolution_note = resolution_notes
+        task.hr_resolved_at = datetime.utcnow()
+        task.hr_resolved_by = session.get('user_id')
+        task.updated_at = datetime.utcnow()
+        
+        # Clear issue fields
+        task.issue_type = None
+        task.issue_description = None
+        task.issue_reported_at = None
+        
+        db.session.commit()
+        
+        # Create notification for employee
+        create_notification(
+            user_id=task.checklist.employee_id,
+            title=f'Issue Resolved: {task.task_name}',
+            message=f'HR has resolved your issue: {resolution_notes}',
+            notification_type='issue_resolved',
+            priority='normal'
+        )
+        
+        return jsonify({'status': 'success', 'message': 'Issue resolved successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/onboarding/tasks/<int:task_id>/toggle', methods=['PUT'])
 @login_required('hr')
