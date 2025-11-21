@@ -395,36 +395,6 @@ document.getElementById('generateSummary')?.addEventListener('click', function()
     console.warn('generateSummary button is deprecated.');
 });
 
-document.getElementById('restartAIInterview')?.addEventListener('click', function() {
-    console.warn('restartAIInterview button is deprecated. Use restartInterview instead.');
-});
-
-// Legacy Response Form Handler - Deprecated
-document.getElementById('responseForm')?.addEventListener('submit', function(e) {
-    e.preventDefault();
-    console.warn('Legacy response form handler is deprecated. Use the new AI handler.');
-});
-
-// Legacy Skip Question Handler - Deprecated  
-document.getElementById('skipQuestion')?.addEventListener('click', function() {
-    console.warn('Legacy skipQuestion handler is deprecated. Use the new AI handler.');
-});
-
-function completeInterview() {
-    // This is the legacy completeInterview function - deprecated
-    // Use the new AI-based completeInterview() function instead
-    console.warn('Legacy completeInterview is deprecated. Use the new AI version.');
-}
-
-document.getElementById('restartInterview')?.addEventListener('click', function() {
-    console.warn('Legacy restartInterview handler is deprecated. Use the new AI handler.');
-});
-
-if ('{{ session.role }}' === 'hr') {
-    loadReadyEmployees();
-    setInterval(loadReadyEmployees, 3000);
-}
-
 if ('{{ session.role }}' === 'employee') {
     // Employee interview status checking - deprecated
     // This will be replaced by the new AI system
@@ -679,6 +649,12 @@ async function submitResponse() {
     // Add user's response to chat
     addMessage(currentAnswer, 'user');
     
+    // Debug: Log what's being sent
+    console.log('=== DEBUG: Submitting Response ===');
+    console.log('Question:', currentQuestion);
+    console.log('Answer:', currentAnswer);
+    console.log('Question Index:', currentQuestionIndex - 1);
+    
     // Disable form and show loading
     submitButton.disabled = true;
     submitSpinner.classList.remove('d-none');
@@ -698,11 +674,18 @@ async function submitResponse() {
             })
         });
         
+        console.log('=== DEBUG: Response Status ===');
+        console.log('Status:', response.status);
+        
         if (!response.ok) {
             throw new Error('Failed to analyze response');
         }
         
         const data = await response.json();
+        
+        console.log('=== DEBUG: API Response ===');
+        console.log('Full Response:', data);
+        console.log('Feedback:', data.feedback);
         
         // Show feedback
         showFeedback(data.feedback);
