@@ -258,6 +258,77 @@ class OnboardingChecklist(db.Model):
             return (completed / len(legacy_tasks)) * 100 if legacy_tasks else 0
 
 
+class PreOnboardingTask(db.Model):
+    """Pre-onboarding administrative tasks"""
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    task_name = db.Column(db.String(200), nullable=False)
+    task_description = db.Column(db.Text, nullable=True)
+    task_type = db.Column(db.String(50), nullable=False)  # 'admin', 'documentation', 'preparation'
+    due_date = db.Column(db.Date, nullable=True)
+    is_completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    assigned_to = db.Column(db.String(100), nullable=True)  # HR or employee
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    employee = db.relationship('User', backref='pre_onboarding_tasks')
+
+
+class WelcomePackage(db.Model):
+    """Welcome packages/swag tracking"""
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    package_name = db.Column(db.String(200), nullable=False)
+    items = db.Column(db.Text, nullable=True)  # JSON array of items
+    status = db.Column(db.String(20), default='pending')  # pending, ordered, shipped, delivered
+    tracking_number = db.Column(db.String(100), nullable=True)
+    shipping_address = db.Column(db.Text, nullable=True)
+    estimated_delivery = db.Column(db.Date, nullable=True)
+    actual_delivery = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    employee = db.relationship('User', backref='welcome_packages')
+
+
+class FirstDayAgenda(db.Model):
+    """First day agenda for new hires"""
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    agenda_date = db.Column(db.Date, nullable=False)
+    agenda_items = db.Column(db.Text, nullable=False)  # JSON array of agenda items
+    start_time = db.Column(db.Time, nullable=True)
+    end_time = db.Column(db.Time, nullable=True)
+    location = db.Column(db.String(200), nullable=True)
+    meeting_links = db.Column(db.Text, nullable=True)  # JSON array of virtual meeting links
+    preparation_notes = db.Column(db.Text, nullable=True)
+    is_shared = db.Column(db.Boolean, default=False)
+    shared_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    employee = db.relationship('User', backref='first_day_agendas')
+
+
+class TeamIntroduction(db.Model):
+    """Early team introductions"""
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    team_member_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    introduction_type = db.Column(db.String(50), default='peer')  # peer, manager, mentor, buddy
+    message = db.Column(db.Text, nullable=True)
+    is_sent = db.Column(db.Boolean, default=False)
+    sent_at = db.Column(db.DateTime, nullable=True)
+    scheduled_date = db.Column(db.Date, nullable=True)
+    response_received = db.Column(db.Boolean, default=False)
+    response_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    employee = db.relationship('User', foreign_keys=[employee_id], backref='introductions_received')
+    team_member = db.relationship('User', foreign_keys=[team_member_id], backref='introductions_sent')
+
+
 class Employee(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -1928,9 +1999,389 @@ def download_document(doc_id):
 @app.route('/pre-onboarding')
 @login_required('hr')
 def pre_onboarding():
-    # Show employees who are currently in the Onboarding stage
+    # Enhanced pre-onboarding with communication features and ATS screening
     employees = User.query.filter_by(role='employee', status='Onboarding').order_by(User.created_at.desc()).all()
-    return render_template('pre-onboarding.html', employees=employees)
+    return render_template('pre-onboarding-enhanced.html', employees=employees)
+
+# API Routes for Pre-Onboarding Features
+
+@app.route('/api/team-members', methods=['GET'])
+@login_required('hr')
+def get_team_members():
+    """Get all team members for introductions"""
+    try:
+        team_members = User.query.filter(
+            User.role.in_(['hr', 'manager', 'employee']),
+            User.status == 'Active'
+        ).all()
+        
+        return jsonify({
+            'status': 'success',
+            'team_members': [
+                {
+                    'id': member.id,
+                    'full_name': member.full_name,
+                    'position': getattr(member, 'position', 'Team Member')
+                }
+                for member in team_members
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/welcome-packages/<int:employee_id>', methods=['GET'])
+@login_required('hr')
+def get_welcome_packages(employee_id):
+    """Get welcome packages for an employee"""
+    try:
+        packages = WelcomePackage.query.filter_by(employee_id=employee_id).all()
+        return jsonify({
+            'status': 'success',
+            'packages': [
+                {
+                    'id': pkg.id,
+                    'package_name': pkg.package_name,
+                    'items': json.loads(pkg.items) if pkg.items else [],
+                    'status': pkg.status,
+                    'tracking_number': pkg.tracking_number,
+                    'estimated_delivery': pkg.estimated_delivery.isoformat() if pkg.estimated_delivery else None,
+                    'notes': pkg.notes
+                }
+                for pkg in packages
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/welcome-package', methods=['POST'])
+@login_required('hr')
+def create_welcome_package():
+    """Create a new welcome package"""
+    try:
+        data = request.json
+        
+        package = WelcomePackage(
+            employee_id=data['employee_id'],
+            package_name=data['package_name'],
+            items=json.dumps(data['items']),
+            shipping_address=data.get('shipping_address'),
+            estimated_delivery=datetime.strptime(data['estimated_delivery'], '%Y-%m-%d').date() if data.get('estimated_delivery') else None,
+            notes=data.get('notes')
+        )
+        
+        db.session.add(package)
+        db.session.commit()
+        
+        # Create notification
+        create_notification(
+            employee_id=data['employee_id'],
+            title=f'Welcome Package: {data["package_name"]}',
+            message=f'Welcome package "{data["package_name"]}" has been prepared for you.',
+            notification_type='welcome_package',
+            priority='normal'
+        )
+        
+        return jsonify({'status': 'success', 'message': 'Welcome package created successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/admin-tasks/<int:employee_id>', methods=['GET'])
+@login_required('hr')
+def get_admin_tasks(employee_id):
+    """Get administrative tasks for an employee"""
+    try:
+        tasks = PreOnboardingTask.query.filter_by(employee_id=employee_id).all()
+        return jsonify({
+            'status': 'success',
+            'tasks': [
+                {
+                    'id': task.id,
+                    'task_name': task.task_name,
+                    'task_description': task.task_description,
+                    'task_type': task.task_type,
+                    'due_date': task.due_date.isoformat() if task.due_date else None,
+                    'is_completed': task.is_completed,
+                    'assigned_to': task.assigned_to
+                }
+                for task in tasks
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/admin-task', methods=['POST'])
+@login_required('hr')
+def create_admin_task():
+    """Create a new administrative task"""
+    try:
+        data = request.json
+        
+        task = PreOnboardingTask(
+            employee_id=data['employee_id'],
+            task_name=data['task_name'],
+            task_description=data.get('task_description'),
+            task_type=data['task_type'],
+            due_date=datetime.strptime(data['due_date'], '%Y-%m-%d').date() if data.get('due_date') else None,
+            assigned_to=data['assigned_to']
+        )
+        
+        db.session.add(task)
+        db.session.commit()
+        
+        # Create notification if assigned to employee
+        if data['assigned_to'] == 'Employee':
+            create_notification(
+                employee_id=data['employee_id'],
+                title=f'Administrative Task: {data["task_name"]}',
+                message=f'Please complete: {data.get("task_description", data["task_name"])}',
+                notification_type='admin_task',
+                priority='normal'
+            )
+        
+        return jsonify({'status': 'success', 'message': 'Administrative task created successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/agenda/<int:employee_id>', methods=['GET'])
+@login_required('hr')
+def get_first_day_agenda(employee_id):
+    """Get first-day agenda for an employee"""
+    try:
+        agenda = FirstDayAgenda.query.filter_by(employee_id=employee_id).first()
+        if agenda:
+            return jsonify({
+                'status': 'success',
+                'agenda': {
+                    'id': agenda.id,
+                    'agenda_date': agenda.agenda_date.isoformat(),
+                    'start_time': agenda.start_time.isoformat() if agenda.start_time else None,
+                    'end_time': agenda.end_time.isoformat() if agenda.end_time else None,
+                    'location': agenda.location,
+                    'agenda_items': json.loads(agenda.agenda_items) if agenda.agenda_items else [],
+                    'meeting_links': json.loads(agenda.meeting_links) if agenda.meeting_links else [],
+                    'preparation_notes': agenda.preparation_notes,
+                    'is_shared': agenda.is_shared
+                }
+            })
+        else:
+            return jsonify({'status': 'success', 'agenda': None})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/first-day-agenda', methods=['POST'])
+@login_required('hr')
+def create_first_day_agenda():
+    """Create a new first-day agenda"""
+    try:
+        data = request.json
+        
+        agenda = FirstDayAgenda(
+            employee_id=data['employee_id'],
+            agenda_date=datetime.strptime(data['agenda_date'], '%Y-%m-%d').date(),
+            start_time=datetime.strptime(data['start_time'], '%H:%M').time() if data.get('start_time') else None,
+            end_time=datetime.strptime(data['end_time'], '%H:%M').time() if data.get('end_time') else None,
+            location=data.get('location'),
+            agenda_items=json.dumps(data['agenda_items']),
+            meeting_links=json.dumps(data.get('meeting_links', [])),
+            preparation_notes=data.get('preparation_notes')
+        )
+        
+        db.session.add(agenda)
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'message': 'First-day agenda created successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/share-agenda/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def share_agenda_with_employee(employee_id):
+    """Share first-day agenda with employee"""
+    try:
+        agenda = FirstDayAgenda.query.filter_by(employee_id=employee_id).first()
+        if not agenda:
+            return jsonify({'status': 'error', 'message': 'No agenda found'}), 404
+        
+        agenda.is_shared = True
+        agenda.shared_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Create notification for employee
+        create_notification(
+            employee_id=employee_id,
+            title='First-Day Agenda Available',
+            message=f'Your first-day agenda for {agenda.agenda_date.strftime("%B %d, %Y")} is now available.',
+            notification_type='agenda_shared',
+            priority='high'
+        )
+        
+        return jsonify({'status': 'success', 'message': 'Agenda shared successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/team-introductions/<int:employee_id>', methods=['GET'])
+@login_required('hr')
+def get_team_introductions(employee_id):
+    """Get team introductions for an employee"""
+    try:
+        introductions = TeamIntroduction.query.filter_by(employee_id=employee_id).all()
+        return jsonify({
+            'status': 'success',
+            'introductions': [
+                {
+                    'id': intro.id,
+                    'team_member_id': intro.team_member_id,
+                    'team_member_name': intro.team_member.full_name,
+                    'introduction_type': intro.introduction_type,
+                    'message': intro.message,
+                    'is_sent': intro.is_sent,
+                    'scheduled_date': intro.scheduled_date.isoformat() if intro.scheduled_date else None
+                }
+                for intro in introductions
+            ]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/team-introduction', methods=['POST'])
+@login_required('hr')
+def create_team_introduction():
+    """Create a new team introduction"""
+    try:
+        data = request.json
+        
+        introduction = TeamIntroduction(
+            employee_id=data['employee_id'],
+            team_member_id=data['team_member_id'],
+            introduction_type=data['introduction_type'],
+            message=data.get('message'),
+            scheduled_date=datetime.strptime(data['scheduled_date'], '%Y-%m-%d').date() if data.get('scheduled_date') else None
+        )
+        
+        db.session.add(introduction)
+        db.session.commit()
+        
+        # Create notification for team member
+        create_notification(
+            user_id=data['team_member_id'],
+            title=f'New Team Member Introduction',
+            message=f'You have been assigned to introduce yourself to a new team member.',
+            notification_type='team_introduction',
+            priority='normal'
+        )
+        
+        return jsonify({'status': 'success', 'message': 'Team introduction scheduled successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/timeline/<int:employee_id>', methods=['GET'])
+@login_required('hr')
+def get_communication_timeline(employee_id):
+    """Get communication timeline for an employee"""
+    try:
+        timeline_events = []
+        
+        # Welcome packages
+        packages = WelcomePackage.query.filter_by(employee_id=employee_id).all()
+        for pkg in packages:
+            timeline_events.append({
+                'type': 'welcome_package',
+                'title': f'Welcome Package: {pkg.package_name}',
+                'description': f'Status: {pkg.status}',
+                'date': pkg.created_at.isoformat()
+            })
+        
+        # Admin tasks
+        tasks = PreOnboardingTask.query.filter_by(employee_id=employee_id).all()
+        for task in tasks:
+            timeline_events.append({
+                'type': 'admin_task',
+                'title': f'Administrative Task: {task.task_name}',
+                'description': f'Assigned to: {task.assigned_to}',
+                'date': task.created_at.isoformat()
+            })
+        
+        # Agenda
+        agenda = FirstDayAgenda.query.filter_by(employee_id=employee_id).first()
+        if agenda:
+            timeline_events.append({
+                'type': 'agenda',
+                'title': 'First-Day Agenda Created',
+                'description': f'Date: {agenda.agenda_date.strftime("%B %d, %Y")}',
+                'date': agenda.created_at.isoformat()
+            })
+        
+        # Team introductions
+        intros = TeamIntroduction.query.filter_by(employee_id=employee_id).all()
+        for intro in intros:
+            timeline_events.append({
+                'type': 'team_intro',
+                'title': f'Team Introduction: {intro.introduction_type}',
+                'description': f'With: {intro.team_member.full_name}',
+                'date': intro.created_at.isoformat()
+            })
+        
+        # Sort by date (most recent first)
+        timeline_events.sort(key=lambda x: x['date'], reverse=True)
+        
+        return jsonify({
+            'status': 'success',
+            'timeline': timeline_events
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/pre-onboarding/progress/<int:employee_id>', methods=['GET'])
+@login_required('hr')
+def get_pre_onboarding_progress(employee_id):
+    """Get pre-onboarding progress for an employee"""
+    try:
+        # Welcome packages progress
+        total_packages = WelcomePackage.query.filter_by(employee_id=employee_id).count()
+        delivered_packages = WelcomePackage.query.filter_by(employee_id=employee_id, status='delivered').count()
+        
+        # Admin tasks progress
+        total_tasks = PreOnboardingTask.query.filter_by(employee_id=employee_id).count()
+        completed_tasks = PreOnboardingTask.query.filter_by(employee_id=employee_id, is_completed=True).count()
+        
+        # Team introductions progress
+        total_intros = TeamIntroduction.query.filter_by(employee_id=employee_id).count()
+        sent_intros = TeamIntroduction.query.filter_by(employee_id=employee_id, is_sent=True).count()
+        
+        return jsonify({
+            'status': 'success',
+            'progress': {
+                'welcome_packages': {
+                    'total': total_packages,
+                    'completed': delivered_packages
+                },
+                'admin_tasks': {
+                    'total': total_tasks,
+                    'completed': completed_tasks
+                },
+                'team_introductions': {
+                    'total': total_intros,
+                    'completed': sent_intros
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Helper function to create notifications
+def create_notification(employee_id=None, user_id=None, title=None, message=None, notification_type=None, priority='normal'):
+    """Create a notification for an employee or user"""
+    try:
+        # This would integrate with your existing notification system
+        # For now, we'll just log it
+        logger.info(f"Notification created: {title} - {message}")
+    except Exception as e:
+        logger.error(f"Error creating notification: {e}")
 
 @app.route('/hr/start-onboarding', methods=['POST'])
 @login_required('hr')

@@ -12,39 +12,44 @@ var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
     return new bootstrap.Popover(popoverTriggerEl);
 });
 
-// Toast notifications
+// Toast notifications (DISABLED)
 function showToast(type, title, message) {
-    const toastContainer = document.getElementById('toastContainer');
-    if (!toastContainer) return;
+    // Toast functionality disabled - no popup notifications
+    console.log(`${type.toUpperCase()}: ${title} - ${message}`);
+    return null;
     
-    const toastId = 'toast-' + Date.now();
-    const toast = document.createElement('div');
-    toast.id = toastId;
-    toast.className = 'toast align-items-center text-white bg-' + type + ' border-0';
-    toast.role = 'alert';
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-    
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                <strong>${title}</strong><br>
-                ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    
-    toastContainer.appendChild(toast);
-    const bsToast = new bootstrap.Toast(toast);
-    bsToast.show();
-    
-    // Remove toast after it's hidden
-    toast.addEventListener('hidden.bs.toast', function() {
-        toast.remove();
-    });
-    
-    return toastId;
+    // Original toast code commented out:
+    // const toastContainer = document.getElementById('toastContainer');
+    // if (!toastContainer) return;
+    // 
+    // const toastId = 'toast-' + Date.now();
+    // const toast = document.createElement('div');
+    // toast.id = toastId;
+    // toast.className = 'toast align-items-center text-white bg-' + type + ' border-0';
+    // toast.role = 'alert';
+    // toast.setAttribute('aria-live', 'assertive');
+    // toast.setAttribute('aria-atomic', 'true');
+    // 
+    // toast.innerHTML = `
+    //     <div class="d-flex">
+    //         <div class="toast-body">
+    //             <strong>${title}</strong><br>
+    //             ${message}
+    //         </div>
+    //         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    //     </div>
+    // `;
+    // 
+    // toastContainer.appendChild(toast);
+    // const bsToast = new bootstrap.Toast(toast);
+    // bsToast.show();
+    // 
+    // // Remove toast after it's hidden
+    // toast.addEventListener('hidden.bs.toast', function() {
+    //     toast.remove();
+    // });
+    // 
+    // return toastId;
 }
 
 // Form validation

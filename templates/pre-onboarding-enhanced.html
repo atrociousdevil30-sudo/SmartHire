@@ -1,0 +1,567 @@
+{% extends "base.html" %}
+
+{% block title %}Pre-Onboarding Communication - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-handshake me-2"></i>Pre-Onboarding Communication
+            </h1>
+            <p class="text-muted">Reduce first-day anxiety by 60% with comprehensive pre-onboarding communication.</p>
+        </div>
+    </div>
+    
+    <!-- ATS Screening Section - Main Selling Point -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-gradient bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-robot me-2"></i>AI-Powered ATS Screening
+                            </h5>
+                            <small class="opacity-75">Analyze resumes against job descriptions with AI precision</small>
+                        </div>
+                        <div class="badge bg-light text-primary">
+                            <i class="fas fa-star me-1"></i>Main Feature
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Left Column - Employees in Onboarding -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Employees in Onboarding</h6>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="list-group list-group-flush">
+                                        {% if employees and employees|length > 0 %}
+                                            {% for emp in employees %}
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h6 class="mb-1">{{ emp.full_name }}</h6>
+                                                    <p class="mb-0 small text-muted">
+                                                        {{ emp.position or 'Employee' }}
+                                                        {% if emp.department %} · {{ emp.department }}{% endif %}
+                                                    </p>
+                                                </div>
+                                                <span class="badge bg-info text-dark">Onboarding</span>
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="list-group-item">
+                                                <small class="text-muted">No employees currently in onboarding.</small>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column - ATS Screening Form -->
+                        <div class="col-lg-8">
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-search me-2"></i>New Candidate ATS Analysis
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="analysisForm">
+                                        <div class="mb-3">
+                                            <label for="candidateName" class="form-label">Candidate Name</label>
+                                            <input type="text" class="form-control" id="candidateName" name="candidateName" autocomplete="name" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="jobDescription" class="form-label">Job Description</label>
+                                            <textarea class="form-control" id="jobDescription" name="jobDescription" autocomplete="off" rows="3" required></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label for="resumeFile" class="form-label mb-0">Resume (PDF/DOC/DOCX)</label>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearForm">
+                                                    <i class="fas fa-eraser me-1"></i>Clear Form
+                                                </button>
+                                            </div>
+                                            <input type="file" class="form-control" id="resumeFile" accept=".pdf,.doc,.docx">
+                                            <div class="form-text">Upload the candidate's resume, then click Analyze Resume.</div>
+                                        </div>
+                                        <div class="d-grid">
+                                            <button type="button" id="analyzeBtn" class="btn btn-success btn-lg">
+                                                <span id="analyzeText">🤖 Analyze Resume with AI</span>
+                                                <span id="analyzeSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ATS Results Section -->
+                    <div id="resultCard" class="card d-none mt-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>ATS Screening Results
+                            </h5>
+                            <button id="startOnboardingBtn" class="btn btn-sm btn-success d-none">
+                                <i class="fas fa-play me-1"></i> Start Onboarding
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <!-- ATS Score Section -->
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <h6 class="text-muted mb-0">AI Match Score</h6>
+                                    <span id="scoreValue" class="fw-bold h5 mb-0">0%</span>
+                                </div>
+                                <div class="progress" style="height: 30px;">
+                                    <div id="scoreProgress" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-1">Score above 60% qualifies for onboarding</small>
+                            </div>
+
+                            <!-- AI Summary Section -->
+                            <div class="mb-4">
+                                <h6 class="text-muted mb-2">AI Analysis Summary</h6>
+                                <div class="alert alert-light border">
+                                    <p id="aiSummary" class="mb-0 small">Analyzing resume...</p>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="d-grid gap-2">
+                                <button id="startOnboardingBtn" class="btn btn-success btn-lg d-none">
+                                    <i class="fas fa-check-circle me-2"></i>Start Onboarding
+                                </button>
+                                <button class="btn btn-outline-secondary" id="reviewBtn">
+                                    <i class="fas fa-eye me-2"></i>Review Candidate Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Selection Section -->
+    <div class="row mb-4" id="employeeSelectionSection">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>Select Employee for Pre-Onboarding Communication
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="employeeSelect" class="form-label">Choose Employee</label>
+                            <select class="form-select" id="employeeSelect">
+                                <option value="">Select an employee...</option>
+                                {% if employees and employees|length > 0 %}
+                                    {% for emp in employees %}
+                                    <option value="{{ emp.id }}" data-name="{{ emp.full_name }}" data-email="{{ emp.email }}">
+                                        {{ emp.full_name }} - {{ emp.position or 'Employee' }}
+                                        {% if emp.department %} ({{ emp.department }}){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-end h-100">
+                                <button class="btn btn-info" id="loadEmployeeData" disabled>
+                                    <i class="fas fa-rocket me-2"></i>Load Pre-Onboarding Features
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pre-Onboarding Sections -->
+    <div id="preOnboardingContent" class="d-none">
+        <!-- Welcome Package Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-gift me-2"></i>Welcome Package & Swag
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <h6>Current Welcome Packages</h6>
+                                <div id="welcomePackagesList" class="mb-3">
+                                    <p class="text-muted">No welcome packages configured.</p>
+                                </div>
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#welcomePackageModal">
+                                    <i class="fas fa-plus me-1"></i>Add Welcome Package
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-2">Package Status</h6>
+                                        <div class="progress mb-2" style="height: 10px;">
+                                            <div id="packageProgress" class="progress-bar bg-success" style="width: 0%"></div>
+                                        </div>
+                                        <small id="packageStatusText">No packages</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pre-First-Day Administrative Tasks -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tasks me-2"></i>Pre-First-Day Administrative Tasks
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <h6>Administrative Tasks</h6>
+                                <div id="adminTasksList" class="mb-3">
+                                    <p class="text-muted">No administrative tasks configured.</p>
+                                </div>
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#adminTaskModal">
+                                    <i class="fas fa-plus me-1"></i>Add Administrative Task
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-2">Task Completion</h6>
+                                        <div class="progress mb-2" style="height: 10px;">
+                                            <div id="adminTasksProgress" class="progress-bar bg-warning" style="width: 0%"></div>
+                                        </div>
+                                        <small id="adminTasksStatusText">No tasks</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- First-Day Agenda Sharing -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calendar-day me-2"></i>First-Day Agenda
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <h6>Agenda Status</h6>
+                                <div id="agendaStatus" class="mb-3">
+                                    <p class="text-muted">No agenda created yet.</p>
+                                </div>
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#agendaModal">
+                                    <i class="fas fa-plus me-1"></i>Create First-Day Agenda
+                                </button>
+                                <button class="btn btn-success btn-sm ms-2 id="shareAgendaBtn" disabled>
+                                    <i class="fas fa-share me-1"></i>Share with Employee
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-2">Agenda Status</h6>
+                                        <i id="agendaStatusIcon" class="fas fa-clock fa-2x text-muted mb-2"></i>
+                                        <small id="agendaStatusText">Not created</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Early Team Introductions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>Early Team Introductions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <h6>Team Introductions</h6>
+                                <div id="teamIntroductionsList" class="mb-3">
+                                    <p class="text-muted">No team introductions configured.</p>
+                                </div>
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#teamIntroModal">
+                                    <i class="fas fa-plus me-1"></i>Schedule Team Introduction
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-2">Introduction Progress</h6>
+                                        <div class="progress mb-2" style="height: 10px;">
+                                            <div id="teamIntroProgress" class="progress-bar bg-secondary" style="width: 0%"></div>
+                                        </div>
+                                        <small id="teamIntroStatusText">No introductions</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Communication Timeline -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-timeline me-2"></i>Communication Timeline
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="communicationTimeline">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-comments fa-3x mb-3"></i>
+                                <p>Select an employee to view their pre-onboarding communication timeline.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Welcome Package Modal -->
+<div class="modal fade" id="welcomePackageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Welcome Package</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="welcomePackageForm">
+                    <div class="mb-3">
+                        <label class="form-label">Package Name</label>
+                        <input type="text" class="form-control" id="packageName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Items (one per line)</label>
+                        <textarea class="form-control" id="packageItems" rows="4" placeholder="Company T-shirt&#10;Water Bottle&#10;Notebook&#10;Pen&#10;Welcome Letter"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Shipping Address</label>
+                                <textarea class="form-control" id="shippingAddress" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Estimated Delivery</label>
+                                <input type="date" class="form-control" id="estimatedDelivery">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="packageNotes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveWelcomePackage">Save Package</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Administrative Task Modal -->
+<div class="modal fade" id="adminTaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Administrative Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adminTaskForm">
+                    <div class="mb-3">
+                        <label class="form-label">Task Name</label>
+                        <input type="text" class="form-control" id="taskName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="taskDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Task Type</label>
+                                <select class="form-select" id="taskType">
+                                    <option value="admin">Administrative</option>
+                                    <option value="documentation">Documentation</option>
+                                    <option value="preparation">Preparation</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Due Date</label>
+                                <input type="date" class="form-control" id="taskDueDate">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Assigned To</label>
+                        <select class="form-select" id="taskAssignedTo">
+                            <option value="HR">HR Team</option>
+                            <option value="Employee">Employee</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveAdminTask">Save Task</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- First-Day Agenda Modal -->
+<div class="modal fade" id="agendaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create First-Day Agenda</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="agendaForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Agenda Date</label>
+                                <input type="date" class="form-control" id="agendaDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Start Time</label>
+                                <input type="time" class="form-control" id="agendaStartTime">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">End Time</label>
+                                <input type="time" class="form-control" id="agendaEndTime">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-control" id="agendaLocation" placeholder="e.g., Conference Room A, Virtual Meeting">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Agenda Items (one per line with time)</label>
+                        <textarea class="form-control" id="agendaItems" rows="6" placeholder="9:00 AM - Welcome and Introduction&#10;9:30 AM - HR Orientation&#10;10:30 AM - IT Setup&#10;11:00 AM - Team Meeting&#10;12:00 PM - Lunch with Team&#10;1:00 PM - Department Overview&#10;2:00 PM - System Training&#10;3:00 PM - Q&A Session"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Virtual Meeting Links (optional)</label>
+                        <textarea class="form-control" id="meetingLinks" rows="3" placeholder="Meeting 1: https://zoom.us/j/...&#10;Meeting 2: https://teams.microsoft.com/..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Preparation Notes</label>
+                        <textarea class="form-control" id="preparationNotes" rows="3" placeholder="Bring ID documents, laptop will be provided, etc."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveAgenda">Save Agenda</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Introduction Modal -->
+<div class="modal fade" id="teamIntroModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule Team Introduction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="teamIntroForm">
+                    <div class="mb-3">
+                        <label class="form-label">Team Member</label>
+                        <select class="form-select" id="teamMemberSelect" required>
+                            <option value="">Select team member...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Introduction Type</label>
+                        <select class="form-select" id="introType">
+                            <option value="peer">Peer Introduction</option>
+                            <option value="manager">Manager Introduction</option>
+                            <option value="mentor">Mentor Assignment</option>
+                            <option value="buddy">Buddy System</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-control" id="introMessage" rows="4" placeholder="Welcome to the team! Looking forward to working with you..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Scheduled Date</label>
+                        <input type="date" class="form-control" id="introScheduledDate">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveTeamIntro">Schedule Introduction</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pre-onboarding-enhanced.js') }}"></script>
+{% endblock %}

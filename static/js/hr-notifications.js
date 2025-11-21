@@ -46,12 +46,13 @@ function checkHRNotifications() {
             // Update badge with count of non-daily summary notifications
             updateHRNotificationBadge(filteredNotifications.length);
             
-            // Show toast for new high-priority notifications
-            filteredNotifications.forEach(notification => {
-                if (notification.priority === 'urgent' || notification.priority === 'high') {
-                    showHRNotificationToast(notification);
-                }
-            });
+            // Show toast for new high-priority notifications (DISABLED)
+            // filteredNotifications.forEach(notification => {
+            //     if ((notification.priority === 'urgent' || notification.priority === 'high') && 
+            //         notification.message_type === 'interview_ready') {
+            //         showHRNotificationToast(notification);
+            //     }
+            // });
         }
     })
     .catch(error => {
@@ -148,7 +149,12 @@ function loadHRNotifications() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            displayHRNotificationsModal(data.notifications);
+            // Apply same filtering: include interview_ready, exclude daily summaries
+            const filteredNotifications = (data.notifications || []).filter(notification => {
+                return notification.message_type === 'interview_ready' || 
+                       !(notification.notification_data && notification.notification_data.notification_type === 'daily_summary');
+            });
+            displayHRNotificationsModal(filteredNotifications);
         }
     })
     .catch(error => {
