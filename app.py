@@ -4266,6 +4266,36 @@ def calculate_overall_progress(employee_id):
     except:
         return 0
 
+@app.route('/api/project/<int:project_id>/details')
+@login_required(['hr', 'admin', 'manager'])
+def get_project_details(project_id):
+    """Get project details for view modal"""
+    try:
+        project = ProjectHandover.query.get_or_404(project_id)
+        
+        # Get related documents (in a real implementation, you'd have a separate documents table)
+        sample_docs = [
+            {'name': 'Project Plan.pdf', 'type': 'pdf', 'size': '2.3 MB', 'path': '/uploads/project_plan.pdf'},
+            {'name': 'Technical Documentation.docx', 'type': 'docx', 'size': '1.8 MB', 'path': '/uploads/tech_docs.docx'},
+            {'name': 'Meeting Notes.txt', 'type': 'txt', 'size': '45 KB', 'path': '/uploads/meeting_notes.txt'}
+        ]
+        
+        return jsonify({
+            'id': project.id,
+            'name': project.project_name,
+            'description': project.project_description or 'No description available',
+            'status': project.status,
+            'handover_date': project.handover_date.strftime('%Y-%m-%d') if project.handover_date else None,
+            'recipient': project.recipient_name,
+            'verified': project.verified,
+            'notes': project.notes,
+            'documents': sample_docs if project.documentation_path else []
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error fetching project details: {str(e)}')
+        return jsonify({'error': 'Failed to fetch project details'}), 500
+
 
 
 @app.route('/support')
