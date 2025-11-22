@@ -162,6 +162,7 @@ class User(db.Model):
     
     # Relationships
     manager = db.relationship('User', remote_side=[id], backref=db.backref('direct_reports', lazy=True))
+    skills = db.relationship('EmployeeSkill', backref='employee', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -186,6 +187,20 @@ class User(db.Model):
     def clear_reset_token(self):
         self.reset_token = None
         self.reset_token_expires = None
+
+
+class EmployeeSkill(db.Model):
+    """Employee skills and expertise"""
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    skill_name = db.Column(db.String(100), nullable=False)
+    skill_category = db.Column(db.String(50), nullable=True)  # Technical, Soft Skills, Domain, etc.
+    proficiency_level = db.Column(db.String(20), default='Intermediate')  # Beginner, Intermediate, Advanced, Expert
+    years_experience = db.Column(db.Float, nullable=True)
+    last_used = db.Column(db.Date, nullable=True)
+    certification = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class PreOnboardingTask(db.Model):
@@ -375,12 +390,8 @@ class KTProgress(db.Model):
     completion_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    expires_at = db.Column(db.DateTime, nullable=True)  # When to expire the remembered credentials
-    is_active = db.Column(db.Boolean, default=True)
     
-    # Relationships
-    user = db.relationship('User', backref=db.backref('remembered_credentials', lazy=True))
+    employee = db.relationship('User', backref='kt_progress')
 
 class EmployeeFeedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -474,6 +485,20 @@ class Message(db.Model):
     recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
     replies = db.relationship('Message', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
 
+
+class RememberedCredential(db.Model):
+    """Remembered login credentials for devices"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    username = db.Column(db.String(80), nullable=False)
+    encrypted_password = db.Column(db.String(255), nullable=False)
+    device_info = db.Column(db.String(500), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    last_used = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='remembered_credentials')
 
 
 # Make timedelta and datetime available in templates
@@ -1068,11 +1093,58 @@ def view_employee(employee_id):
     # Get all users for partner selection (excluding current employee)
     all_users = User.query.filter(User.id != employee_id).all()
     
+    # Get employee skills from database or add sample Indian resume skills
+    employee_skills = EmployeeSkill.query.filter_by(employee_id=employee_id).all()
+    
+    # If no skills exist, add sample Indian resume-based skills
+    if not employee_skills:
+        sample_skills = [
+            # Technical Skills (common in Indian IT resumes)
+            {"skill_name": "Python", "skill_category": "Technical", "proficiency_level": "Advanced", "years_experience": 3.5, "certification": "Python Professional Certification"},
+            {"skill_name": "Java", "skill_category": "Technical", "proficiency_level": "Intermediate", "years_experience": 2.0, "certification": None},
+            {"skill_name": "React.js", "skill_category": "Technical", "proficiency_level": "Advanced", "years_experience": 2.5, "certification": "React Developer Certificate"},
+            {"skill_name": "Node.js", "skill_category": "Technical", "proficiency_level": "Intermediate", "years_experience": 1.5, "certification": None},
+            {"skill_name": "SQL", "skill_category": "Technical", "proficiency_level": "Advanced", "years_experience": 4.0, "certification": "SQL Database Expert"},
+            {"skill_name": "MongoDB", "skill_category": "Technical", "proficiency_level": "Intermediate", "years_experience": 1.0, "certification": None},
+            
+            # Cloud & DevOps (popular in Indian tech industry)
+            {"skill_name": "AWS", "skill_category": "Cloud", "proficiency_level": "Intermediate", "years_experience": 2.0, "certification": "AWS Solutions Architect Associate"},
+            {"skill_name": "Docker", "skill_category": "DevOps", "proficiency_level": "Intermediate", "years_experience": 1.5, "certification": None},
+            {"skill_name": "Git", "skill_category": "DevOps", "proficiency_level": "Advanced", "years_experience": 3.0, "certification": None},
+            
+            # Soft Skills (emphasized in Indian corporate culture)
+            {"skill_name": "Communication", "skill_category": "Soft Skills", "proficiency_level": "Advanced", "years_experience": 4.0, "certification": "Business Communication Certificate"},
+            {"skill_name": "Team Leadership", "skill_category": "Soft Skills", "proficiency_level": "Intermediate", "years_experience": 2.0, "certification": "Leadership Training Program"},
+            {"skill_name": "Problem Solving", "skill_category": "Soft Skills", "proficiency_level": "Advanced", "years_experience": 4.0, "certification": None},
+            
+            # Domain & Business Skills
+            {"skill_name": "Agile Methodologies", "skill_category": "Domain", "proficiency_level": "Advanced", "years_experience": 3.0, "certification": "Certified ScrumMaster"},
+            {"skill_name": "Project Management", "skill_category": "Domain", "proficiency_level": "Intermediate", "years_experience": 2.5, "certification": "PMP Certification"},
+            {"skill_name": "Data Analysis", "skill_category": "Domain", "proficiency_level": "Intermediate", "years_experience": 2.0, "certification": "Data Analytics Professional"},
+        ]
+        
+        # Add sample skills to database
+        for skill_data in sample_skills:
+            skill = EmployeeSkill(
+                employee_id=employee_id,
+                skill_name=skill_data["skill_name"],
+                skill_category=skill_data["skill_category"],
+                proficiency_level=skill_data["proficiency_level"],
+                years_experience=skill_data["years_experience"],
+                certification=skill_data["certification"],
+                last_used=datetime.utcnow().date()
+            )
+            db.session.add(skill)
+        
+        db.session.commit()
+        employee_skills = EmployeeSkill.query.filter_by(employee_id=employee_id).all()
+    
     return render_template('hr/view_employee.html', 
                          employee=employee, 
                          checklist=checklist,
                          buddy_mentor_relationships=buddy_mentor_relationships,
-                         all_users=all_users)
+                         all_users=all_users,
+                         employee_skills=employee_skills)
 
 
 @app.route('/api/hr/buddy-mentor-assign', methods=['POST'])
