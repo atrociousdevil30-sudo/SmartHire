@@ -84,6 +84,17 @@
                     </a>
                 </li>
                 
+                <!-- Messages -->
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'employee_messages' %}active{% endif %} text-light" 
+                       href="{{ url_for('employee_messages') }}">
+                        <i class="bi bi-envelope me-1"></i> Messages
+                        {% if unread_messages_count > 0 %}
+                        <span class="badge bg-danger">{{ unread_messages_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                
                 <!-- My Journey -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if request.endpoint in ['onboarding_tasks', 'employee_pre_offboarding', 'employee_goal_setting', 'employee_performance', 'employee_mood_tracking'] %}active{% endif %} text-light" 

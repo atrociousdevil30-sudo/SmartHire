@@ -9,7 +9,7 @@ from functools import wraps
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timedelta
-from sqlalchemy import orm
+from sqlalchemy import orm, or_
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -1969,6 +1969,12 @@ def employee_dashboard():
     # Get employee documents count
     documents_count = EmployeeDocument.query.filter_by(user_id=user.id).count()
     
+    # Get unread messages count
+    unread_messages_count = Message.query.filter_by(recipient_id=session['user_id'], status='unread').count()
+    
+    # Get HR contacts for messaging
+    hr_contacts = User.query.filter_by(role='hr', is_active=True).all()
+    
     # Generate employee journey timeline data
     employee_journey = {
         'offer_accepted': {
@@ -2007,6 +2013,8 @@ def employee_dashboard():
                          user=user,
                          hr_contact=hr_contact,
                          documents_count=documents_count,
+                         unread_messages_count=unread_messages_count,
+                         hr_contacts=hr_contacts,
                          onboarding_progress=onboarding_progress,
                          employee_journey=employee_journey,
                          current_user=user,  # For compatibility with existing templates
@@ -2089,6 +2097,73 @@ def access_records_management():
                          users=users,
                          current_user=User.query.get(session['user_id']))
 
+@app.route('/employee/messages')
+@login_required('employee')
+def employee_messages():
+    """Messages page for employees to communicate with HR"""
+    current_user_id = session['user_id']
+    
+    # Get conversations (unique users with messages)
+    conversations = []
+    users_with_messages = db.session.query(
+        Message.recipient_id, Message.sender_id, User
+    ).filter(
+        (Message.sender_id == current_user_id) | (Message.recipient_id == current_user_id)
+    ).join(User, or_(
+        (Message.sender_id == User.id) & (Message.recipient_id == current_user_id),
+        (Message.recipient_id == User.id) & (Message.sender_id == current_user_id)
+    )).distinct().all()
+    
+    for recipient_id, sender_id, user in users_with_messages:
+        other_user_id = recipient_id if sender_id == current_user_id else sender_id
+        
+        # Get last message
+        last_message = Message.query.filter(
+            ((Message.sender_id == current_user_id) & (Message.recipient_id == other_user_id)) |
+            ((Message.sender_id == other_user_id) & (Message.recipient_id == current_user_id))
+        ).order_by(Message.sent_at.desc()).first()
+        
+        # Count unread messages
+        unread_count = Message.query.filter(
+            Message.sender_id == other_user_id,
+            Message.recipient_id == current_user_id,
+            Message.status == 'unread'
+        ).count()
+        
+        conversations.append({
+            'user_id': other_user_id,
+            'user': user,
+            'last_message_content': last_message.content if last_message else '',
+            'last_message_time': last_message.sent_at if last_message else None,
+            'unread_count': unread_count
+        })
+    
+    # Sort by last message time
+    formatted_conversations = sorted(conversations, key=lambda x: x['last_message_time'] or datetime.min, reverse=True)
+    
+    # Get statistics
+    total_messages = Message.query.filter(
+        (Message.sender_id == current_user_id) | (Message.recipient_id == current_user_id)
+    ).count()
+    
+    unread_count = Message.query.filter(
+        Message.recipient_id == current_user_id,
+        Message.status == 'unread'
+    ).count()
+    
+    today_active = Message.query.filter(
+        (Message.sender_id == current_user_id) | (Message.recipient_id == current_user_id),
+        Message.sent_at >= datetime.now().date()
+    ).count()
+    
+    return render_template('employee_messages.html', 
+                         conversations=formatted_conversations,
+                         total_conversations=len(formatted_conversations),
+                         total_messages=total_messages,
+                         unread_count=unread_count,
+                         today_active=today_active,
+                         hr_contacts=User.query.filter_by(role='hr', is_active=True).all())
+
 @app.route('/hr/messages')
 @login_required('hr')
 def messages_management():
@@ -2166,6 +2241,34 @@ def messages_management():
                          today_active=today_active,
                          users=users,
                          current_user=User.query.get(current_user_id))
+
+@app.route('/api/hr-contacts', methods=['GET'])
+@login_required('employee')
+def get_hr_contacts():
+    """Get list of HR contacts for employees to message"""
+    try:
+        hr_contacts = User.query.filter_by(role='hr', is_active=True).all()
+        contacts_list = []
+        
+        for hr in hr_contacts:
+            contacts_list.append({
+                'id': hr.id,
+                'full_name': hr.full_name,
+                'username': hr.username,
+                'email': hr.email,
+                'position': hr.position or 'HR Representative'
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'contacts': contacts_list
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching HR contacts: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch HR contacts'
+        }), 500
 
 @app.route('/api/messages', methods=['POST'])
 @login_required(['hr', 'employee'])

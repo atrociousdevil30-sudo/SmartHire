@@ -33,23 +33,23 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label text-light">Full Name</label>
-                                <input type="text" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.full_name }}" disabled>
+                                <input type="text" id="fullName" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.full_name }}" disabled>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-light">Email</label>
-                                <input type="email" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.email }}" disabled>
+                                <input type="email" id="email" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.email }}" disabled>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-light">Phone</label>
-                                <input type="text" name="phone" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.phone }}" required>
+                                <input type="text" id="phone" name="phone" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.phone }}" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-light">Department</label>
-                                <input type="text" name="department" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.department or '' }}">
+                                <input type="text" id="department" name="department" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.department or '' }}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-light">Position</label>
-                                <input type="text" name="position" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.position or '' }}">
+                                <input type="text" id="position" name="position" class="form-control bg-dark bg-opacity-50 border-secondary text-light" value="{{ user.position or '' }}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-light">Manager</label>

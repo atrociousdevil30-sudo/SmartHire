@@ -1,0 +1,470 @@
+{% extends "employee_base.html" %}
+
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-envelope me-2"></i>Messages
+        </h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#composeMessageModal">
+            <i class="fas fa-paper-plane me-1"></i> Compose Message
+        </button>
+    </div>
+
+    <div class="row">
+        <!-- Conversations List -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold">Conversations</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if conversations %}
+                    <div class="list-group list-group-flush">
+                        {% for conversation in conversations %}
+                        <a href="#" class="list-group-item list-group-item-action conversation-item" 
+                           data-conversation-id="{{ conversation.user_id }}"
+                           data-user-name="{{ conversation.user.full_name or conversation.user.username }}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ conversation.user.full_name or conversation.user.username }}
+                                    {% if conversation.user.role == 'hr' %}
+                                    <span class="badge bg-primary ms-2">HR</span>
+                                    {% endif %}
+                                </h6>
+                                <small>{{ conversation.last_message_time.strftime('%H:%M') if conversation.last_message_time else '' }}</small>
+                            </div>
+                            <p class="mb-1 text-truncate">{{ conversation.last_message_content[:50] }}{% if conversation.last_message_content|length > 50 %}...{% endif %}</p>
+                            <small class="text-muted">
+                                {% if conversation.unread_count > 0 %}
+                                <span class="badge bg-danger">{{ conversation.unread_count }} unread</span>
+                                {% endif %}
+                            </small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-comments fa-2x text-gray-300 mb-2"></i>
+                        <p class="text-gray-500 mb-0">No conversations yet</p>
+                        <p class="text-gray-400 small">Start a conversation with HR</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Thread -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold" id="conversationHeader">
+                        Select a conversation to view messages
+                    </h6>
+                    <div id="conversationActions" style="display: none;">
+                        <button class="btn btn-sm btn-outline-primary" onclick="replyToMessage()">
+                            <i class="fas fa-reply"></i> Reply
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body" style="height: 500px; overflow-y: auto;">
+                    <div id="messageThread">
+                        <div class="text-center py-5">
+                            <i class="fas fa-comments fa-3x text-gray-300 mb-3"></i>
+                            <h5 class="text-gray-500">Select a conversation</h5>
+                            <p class="text-gray-400">Choose a conversation from the list to start messaging</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Quick Reply -->
+                <div class="card-footer" id="quickReply" style="display: none;">
+                    <form id="replyForm">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="replyMessage" placeholder="Type your message...">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-paper-plane"></i> Send
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Messages</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_messages }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-envelope fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Unread Messages</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ unread_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-envelope-open-text fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Conversations</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_conversations }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-comments fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Active Today</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ today_active }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compose Message Modal -->
+    <div class="modal fade" id="composeMessageModal" tabindex="-1" aria-labelledby="composeMessageModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="composeMessageModalLabel">Compose Message</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="composeForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="recipientSelect" class="form-label">To:</label>
+                            <select class="form-select" id="recipientSelect" required>
+                                <option value="">Select HR Contact</option>
+                                {% for hr in hr_contacts %}
+                                <option value="{{ hr.id }}">{{ hr.full_name }} - {{ hr.position or 'HR' }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="messageSubject" class="form-label">Subject:</label>
+                            <input type="text" class="form-control" id="messageSubject" placeholder="Enter subject" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="messageContent" class="form-label">Message:</label>
+                            <textarea class="form-control" id="messageContent" rows="5" placeholder="Type your message..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="priorityMessage">
+                                <label class="form-check-label" for="priorityMessage">
+                                    Mark as priority message
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-1"></i> Send Message
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentConversationId = null;
+
+// Initialize event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click event listeners to conversation items
+    const conversationItems = document.querySelectorAll('.conversation-item');
+    conversationItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const conversationId = parseInt(this.getAttribute('data-conversation-id'));
+            loadConversation(conversationId);
+        });
+    });
+    
+    console.log('Employee messaging system loaded');
+});
+
+// Load conversation
+function loadConversation(userId) {
+    currentConversationId = userId;
+    
+    // Update UI
+    document.getElementById('conversationHeader').textContent = 'Loading...';
+    document.getElementById('messageThread').innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>';
+    
+    // Fetch messages
+    fetch(`/api/messages/conversation/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displayMessages(data.messages);
+                updateConversationHeader(userId);
+                showQuickReply();
+                markAsRead(userId);
+            } else {
+                showError('Failed to load conversation');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Error loading conversation');
+        });
+}
+
+// Display messages
+function displayMessages(messages) {
+    const messageThread = document.getElementById('messageThread');
+    messageThread.innerHTML = '';
+    
+    messages.forEach(message => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${message.is_sent ? 'sent' : 'received'} mb-3`;
+        
+        const messageContent = `
+            <div class="d-flex ${message.is_sent ? 'justify-content-end' : 'justify-content-start'}">
+                <div class="message-bubble ${message.is_sent ? 'bg-primary text-white' : 'bg-light'} p-3 rounded" style="max-width: 70%;">
+                    <div class="small ${message.is_sent ? 'text-white-50' : 'text-muted'} mb-1">
+                        ${message.is_sent ? 'You' : message.sender_name} • ${formatTime(message.sent_at)}
+                    </div>
+                    <div>${message.content}</div>
+                    ${message.priority ? '<div class="small mt-1"><i class="fas fa-exclamation-circle"></i> Priority</div>' : ''}
+                </div>
+            </div>
+        `;
+        
+        messageDiv.innerHTML = messageContent;
+        messageThread.appendChild(messageDiv);
+    });
+    
+    // Scroll to bottom
+    messageThread.scrollTop = messageThread.scrollHeight;
+}
+
+// Update conversation header
+function updateConversationHeader(userId) {
+    const conversationItem = document.querySelector(`[data-conversation-id="${userId}"]`);
+    if (conversationItem) {
+        const userName = conversationItem.querySelector('h6').textContent.trim();
+        document.getElementById('conversationHeader').textContent = userName;
+    }
+}
+
+// Show quick reply
+function showQuickReply() {
+    document.getElementById('quickReply').style.display = 'block';
+    document.getElementById('conversationActions').style.display = 'block';
+}
+
+// Reply to message
+function replyToMessage() {
+    document.getElementById('replyMessage').focus();
+}
+
+// Mark messages as read
+function markAsRead(userId) {
+    fetch(`/api/messages/mark-read/${userId}`, { method: 'PUT' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update unread count
+                const badge = document.querySelector(`[data-conversation-id="${userId}"] .badge`);
+                if (badge) {
+                    badge.remove();
+                }
+            }
+        })
+        .catch(error => console.error('Error marking as read:', error));
+}
+
+// Send reply
+document.getElementById('replyForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const messageContent = document.getElementById('replyMessage').value;
+    if (!messageContent.trim()) return;
+    
+    const messageData = {
+        recipient_id: currentConversationId,
+        content: messageContent,
+        message_type: 'message',
+        priority: false
+    };
+    
+    fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messageData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            document.getElementById('replyMessage').value = '';
+            loadConversation(currentConversationId);
+        } else {
+            showError('Failed to send message');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Error sending message');
+    });
+});
+
+// Compose message
+document.getElementById('composeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const recipientId = document.getElementById('recipientSelect').value;
+    const subject = document.getElementById('messageSubject').value;
+    const content = document.getElementById('messageContent').value;
+    const priority = document.getElementById('priorityMessage').checked;
+    
+    if (!recipientId || !subject || !content) return;
+    
+    const messageData = {
+        recipient_id: parseInt(recipientId),
+        content: `${subject}\n\n${content}`,
+        message_type: 'message',
+        priority: priority
+    };
+    
+    fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messageData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Close modal and reset form
+            const modal = bootstrap.Modal.getInstance(document.getElementById('composeMessageModal'));
+            modal.hide();
+            document.getElementById('composeForm').reset();
+            
+            // Load conversation if not already loaded
+            if (currentConversationId !== parseInt(recipientId)) {
+                loadConversation(parseInt(recipientId));
+            } else {
+                loadConversation(currentConversationId);
+            }
+            
+            // Show success message
+            showSuccess('Message sent successfully');
+        } else {
+            showError('Failed to send message');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Error sending message');
+    });
+});
+
+// Format time
+function formatTime(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Show error message
+function showError(message) {
+    // You can implement a toast notification here
+    console.error(message);
+}
+
+// Show success message
+function showSuccess(message) {
+    // You can implement a toast notification here
+    console.log(message);
+}
+
+// Load HR contacts for compose modal
+document.addEventListener('DOMContentLoaded', function() {
+    // HR contacts are already loaded in the template
+    console.log('Employee messaging system loaded');
+});
+</script>
+
+<style>
+.message-bubble {
+    border-radius: 15px;
+    position: relative;
+}
+
+.message-bubble::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 0;
+    height: 0;
+    border: 8px solid transparent;
+}
+
+.message-bubble.sent::before {
+    right: -8px;
+    border-left-color: inherit;
+}
+
+.message-bubble.received::before {
+    left: -8px;
+    border-right-color: inherit;
+}
+
+.conversation-item.active {
+    background-color: #f8f9fc;
+    border-left: 4px solid #4e73df;
+}
+
+.message {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}

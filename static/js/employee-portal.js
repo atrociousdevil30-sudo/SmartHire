@@ -14,12 +14,18 @@ function loadProfileModal() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            // Populate form with user data
-            document.getElementById('fullName').value = data.data.full_name;
-            document.getElementById('email').value = data.data.email;
-            document.getElementById('phone').value = data.data.phone;
-            document.getElementById('department').value = data.data.department;
-            document.getElementById('position').value = data.data.position;
+            // Populate form with user data - check if elements exist first
+            const fullNameEl = document.getElementById('fullName');
+            const emailEl = document.getElementById('email');
+            const phoneEl = document.getElementById('phone');
+            const departmentEl = document.getElementById('department');
+            const positionEl = document.getElementById('position');
+            
+            if (fullNameEl) fullNameEl.value = data.data.full_name;
+            if (emailEl) emailEl.value = data.data.email;
+            if (phoneEl) phoneEl.value = data.data.phone;
+            if (departmentEl) departmentEl.value = data.data.department;
+            if (positionEl) positionEl.value = data.data.position;
         } else {
             showToast('danger', 'Error', 'Failed to load profile data');
         }
@@ -33,9 +39,20 @@ function loadProfileModal() {
 function saveProfile() {
     console.log('saveProfile function called');
     
-    const phone = document.getElementById('phone').value;
-    const department = document.getElementById('department').value;
-    const position = document.getElementById('position').value;
+    // Check if form elements exist before accessing them
+    const phoneEl = document.getElementById('phone');
+    const departmentEl = document.getElementById('department');
+    const positionEl = document.getElementById('position');
+    
+    if (!phoneEl || !departmentEl || !positionEl) {
+        console.error('Profile form elements not found');
+        showToast('danger', 'Error', 'Profile form not available');
+        return;
+    }
+    
+    const phone = phoneEl.value;
+    const department = departmentEl.value;
+    const position = positionEl.value;
     
     console.log('Form values:', { phone, department, position });
     
