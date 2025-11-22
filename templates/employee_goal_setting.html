@@ -107,7 +107,8 @@
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center mb-2">
-                                                <input class="form-check-input me-2" type="checkbox" 
+                                                <input class="form-check-input me-2 goal-checkbox" type="checkbox" 
+                                                       data-goal-id="{{ goal.id }}"
                                                        {% if goal.status == 'completed' %}checked{% endif %}>
                                                 <h6 class="mb-0 text-light">{{ goal.title }}</h6>
                                             </div>
@@ -144,7 +145,8 @@
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center mb-2">
-                                                <input class="form-check-input me-2" type="checkbox" 
+                                                <input class="form-check-input me-2 goal-checkbox" type="checkbox" 
+                                                       data-goal-id="{{ goal.id }}"
                                                        {% if goal.status == 'completed' %}checked{% endif %}>
                                                 <h6 class="mb-0 text-light">{{ goal.title }}</h6>
                                             </div>
@@ -181,7 +183,8 @@
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center mb-2">
-                                                <input class="form-check-input me-2" type="checkbox" 
+                                                <input class="form-check-input me-2 goal-checkbox" type="checkbox" 
+                                                       data-goal-id="{{ goal.id }}"
                                                        {% if goal.status == 'completed' %}checked{% endif %}>
                                                 <h6 class="mb-0 text-light">{{ goal.title }}</h6>
                                             </div>
@@ -498,24 +501,111 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Handle goal checkbox changes
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const checkboxes = document.querySelectorAll('.goal-checkbox');
     checkboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
+            const goalId = this.getAttribute('data-goal-id');
+            const isCompleted = this.checked;
             const listItem = this.closest('.list-group-item');
-            if (listItem) {
-                const badge = listItem.querySelector('.badge');
-                if (badge && badge.textContent.includes('Not Started')) {
-                    if (this.checked) {
-                        badge.className = 'badge bg-success bg-opacity-25 text-success';
-                        badge.textContent = 'Completed';
-                    } else {
-                        badge.className = 'badge bg-warning bg-opacity-25 text-warning';
-                        badge.textContent = 'In Progress';
+            
+            // Show loading state
+            this.disabled = true;
+            
+            // Call API to update goal progress
+            fetch('/api/employee/goal-progress', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    goal_id: parseInt(goalId),
+                    completed: isCompleted
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update UI based on response
+                    if (listItem) {
+                        const badge = listItem.querySelector('.badge');
+                        if (badge) {
+                            if (isCompleted) {
+                                badge.className = 'badge bg-success bg-opacity-25 text-success';
+                                badge.textContent = 'Completed';
+                            } else {
+                                badge.className = 'badge bg-warning bg-opacity-25 text-warning';
+                                badge.textContent = 'In Progress';
+                            }
+                        }
                     }
+                    
+                    // Show success feedback
+                    showToast('Goal progress updated successfully', 'success');
+                    
+                    // Refresh progress overview after a short delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    // Revert checkbox on error
+                    this.checked = !isCompleted;
+                    showToast(data.message || 'Failed to update goal', 'error');
                 }
-            }
+            })
+            .catch(error => {
+                console.error('Error updating goal:', error);
+                // Revert checkbox on error
+                this.checked = !isCompleted;
+                showToast('Network error. Please try again.', 'error');
+            })
+            .finally(() => {
+                // Re-enable checkbox
+                this.disabled = false;
+            });
         });
     });
+    
+    // Helper function to show toast notifications
+    function showToast(message, type = 'info') {
+        // Create toast element if it doesn't exist
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+            document.body.appendChild(toastContainer);
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} bg-dark bg-opacity-90 border-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} text-light`;
+        toast.style.cssText = 'margin-bottom: 10px; padding: 12px 20px; border-radius: 8px; min-width: 250px; animation: slideInRight 0.3s ease-out;';
+        toast.textContent = message;
+        
+        toastContainer.appendChild(toast);
+        
+        // Remove toast after 3 seconds
+        setTimeout(() => {
+            toast.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+    
+    // Add CSS animations for toast
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
 
     // Modal form handlers (simplified for demo)
     const addGoalBtn = document.querySelector('#addGoalModal .btn-primary');

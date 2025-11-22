@@ -4907,7 +4907,8 @@ def employee_goal_setting():
         return round(total_progress / len(goals), 1)
     
     # Get recent check-ins
-    recent_checkins = GoalCheckIn.query.filter_by(goal_id__in=[g.id for g in goals_30 + goals_60 + goals_90])\
+    goal_ids = [g.id for g in goals_30 + goals_60 + goals_90]
+    recent_checkins = GoalCheckIn.query.filter(GoalCheckIn.goal_id.in_(goal_ids))\
                                      .order_by(GoalCheckIn.scheduled_date.desc())\
                                      .limit(5).all()
     
@@ -5125,6 +5126,60 @@ def employee_mood_tracking():
         mood_distribution=mood_distribution,
         chart_data=chart_data
     )
+
+@app.route('/api/employee/goal-progress', methods=['POST'])
+@login_required('employee')
+def update_goal_progress():
+    """Update goal progress when employee checks/unchecks a goal."""
+    from flask import session, jsonify
+    from flask import request
+    
+    # Get current user from session
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'status': 'error', 'message': 'User not logged in'}), 401
+    
+    # Get goal data from request
+    data = request.get_json()
+    if not data or 'goal_id' not in data or 'completed' not in data:
+        return jsonify({'status': 'error', 'message': 'Missing required data'}), 400
+    
+    goal_id = data['goal_id']
+    completed = data['completed']
+    
+    try:
+        # Get the goal
+        goal = EmployeeGoal.query.filter_by(id=goal_id, employee_id=user_id).first()
+        if not goal:
+            return jsonify({'status': 'error', 'message': 'Goal not found'}), 404
+        
+        # Update goal status and progress
+        if completed:
+            goal.status = 'completed'
+            goal.progress_percentage = 100
+            goal.completed_at = datetime.utcnow()
+        else:
+            goal.status = 'in_progress'
+            goal.progress_percentage = 50  # Partial progress when unchecked
+            goal.completed_at = None
+        
+        # Update the timestamp
+        goal.updated_at = datetime.utcnow()
+        
+        # Commit to database
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Goal progress updated successfully',
+            'goal_status': goal.status,
+            'progress': goal.progress_percentage
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error updating goal progress: {str(e)}')
+        return jsonify({'status': 'error', 'message': 'Failed to update goal progress'}), 500
 
 def extract_text_from_pdf(file_stream):
     pdf_reader = PyPDF2.PdfReader(file_stream)
