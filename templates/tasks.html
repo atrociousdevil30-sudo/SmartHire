@@ -115,7 +115,7 @@
                             <td>
                                 {% if task.due_date %}
                                 {{ task.due_date.strftime('%Y-%m-%d') }}
-                                {% if task.due_date < today() %}
+                                {% if task.due_date.date() < today %}
                                 <br><small class="text-danger">Overdue</small>
                                 {% endif %}
                                 {% else %}
@@ -124,13 +124,13 @@
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary" onclick="editTask({{ task.id }})">
+                                    <button type="button" class="btn btn-outline-primary" onclick="editTask('{{ task.id }}')">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button type="button" class="btn btn-outline-success" onclick="updateTaskStatus({{ task.id }})">
+                                    <button type="button" class="btn btn-outline-success" onclick="updateTaskStatus('{{ task.id }}')">
                                         <i class="fas fa-check"></i>
                                     </button>
-                                    <button type="button" class="btn btn-outline-danger" onclick="deleteTask({{ task.id }})">
+                                    <button type="button" class="btn btn-outline-danger" onclick="deleteTask('{{ task.id }}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>

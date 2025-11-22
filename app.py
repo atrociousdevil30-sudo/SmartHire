@@ -2030,6 +2030,8 @@ def employee_dashboard():
 @login_required('hr')
 def tasks_management():
     """Task management page for HR"""
+    from datetime import datetime
+    
     # Get all tasks with user relationships
     tasks = db.session.query(Task, User).outerjoin(User, Task.assigned_to == User.id).all()
     
@@ -2053,6 +2055,7 @@ def tasks_management():
     return render_template('tasks.html', 
                          tasks=formatted_tasks, 
                          users=users,
+                         today=datetime.utcnow().date(),
                          current_user=User.query.get(session['user_id']))
 
 @app.route('/hr/access-records')
