@@ -29,6 +29,7 @@
     <!-- Progress Section -->
     <div class="row mb-4">
         <div class="col-12">
+            {% if employee.status == 'Onboarding' %}
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
                     <h6 class="text-light mb-0">Onboarding Progress</h6>
@@ -37,23 +38,53 @@
                 <div class="card-body">
                     <div class="progress mb-3" style="height: 20px;">
                         <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" 
-                             data-progress="{{ onboarding_progress }}" aria-valuenow="{{ onboarding_progress }}" aria-valuemin="0" aria-valuemax="100">{{ onboarding_progress }}%</div>
+                             data-progress="{{ employee['onboarding_progress']['percentage'] }}" aria-valuenow="{{ employee['onboarding_progress']['percentage'] }}" aria-valuemin="0" aria-valuemax="100">{{ employee['onboarding_progress']['percentage'] }}%</div>
                     </div>
                     <div class="text-center small">
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 8 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Employment Paperwork</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 17 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Document Collection</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 25 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Welcome Email & Handbook</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 33 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> ID Card Creation</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 42 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Email Account Setup</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 50 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Development Environment</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 58 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Code Repository Access</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 67 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Technical Orientation</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 75 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Laptop & Equipment</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 83 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Team Introduction</span>
-                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 92 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> First Week Check-in</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 8 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Employment Paperwork</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 17 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Document Collection</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 25 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Welcome Email & Handbook</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 33 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> ID Card Creation</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 42 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Email Account Setup</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 50 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Development Environment</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 58 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Code Repository Access</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 67 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Technical Orientation</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 75 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Laptop & Equipment</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 83 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Team Introduction</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 92 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> First Week Check-in</span>
                     </div>
                 </div>
             </div>
+            {% elif employee.status == 'Offboarding' %}
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                    <h6 class="text-light mb-0">Offboarding Progress</h6>
+                    <span class="text-warning">Day {{ employee['offboarding_progress']['current_day'] }} of {{ employee['offboarding_progress']['total_days'] }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" 
+                             data-progress="{{ employee['offboarding_progress']['percentage'] }}" aria-valuenow="{{ employee['offboarding_progress']['percentage'] }}" aria-valuemin="0" aria-valuemax="100">{{ employee['offboarding_progress']['percentage'] }}%</div>
+                    </div>
+                    <div class="text-center small">
+                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 20 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Handover Responsibilities</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 40 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Return Company Assets</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 60 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Exit Interview</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 80 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Final Documentation</span>
+                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 100 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Account Closure</span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">Welcome to Your Dashboard</h6>
+                </div>
+                <div class="card-body text-center">
+                    <p class="text-muted mb-0">You are an active employee. No onboarding or offboarding tasks are currently assigned.</p>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 

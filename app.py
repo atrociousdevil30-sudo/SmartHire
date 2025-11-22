@@ -1846,32 +1846,70 @@ def employee_dashboard():
     # Get HR contact information - prioritize assigned HR or first available HR
     hr_contact = None
     
-    # Try to get assigned HR from onboarding checklist
-    onboarding_checklist = OnboardingChecklist.query.filter_by(employee_id=user.id).first()
-    if onboarding_checklist and onboarding_checklist.assigned_hr_id:
-        hr_contact = User.query.get(onboarding_checklist.assigned_hr_id)
+    # Initialize progress variables
+    onboarding_progress = 0
+    offboarding_progress = 0
+    current_day = 0
+    total_days = 0
+    total_offboarding_tasks = 0
+    completed_offboarding_tasks = 0
     
-    # Fallback to any HR user if no assigned HR found
-    if not hr_contact:
-        hr_contact = User.query.filter_by(role='hr', is_active=True).first()
-    
-    # Get onboarding checklist for progress calculation
-    onboarding_checklist = OnboardingChecklist.query.filter_by(employee_id=user.id).first()
-    onboarding_progress = 20  # Default progress
-    if onboarding_checklist:
-        onboarding_progress = onboarding_checklist.get_progress()
-    
-    # Calculate actual onboarding days from hire date
-    current_day = 1
-    total_days = 10  # Extended to 10 business days (2 weeks) for more realistic onboarding
-    if user.hire_date:
-        # Convert hire_date to datetime for proper comparison
-        hire_datetime = datetime.combine(user.hire_date, datetime.min.time())
-        days_since_hire = (datetime.utcnow() - hire_datetime).days
-        # Calculate business days (excluding weekends) - rough approximation
-        business_days = days_since_hire - (days_since_hire // 7) * 2
-        business_days = max(0, business_days)  # Don't go negative
-        current_day = min(business_days + 1, total_days)  # +1 to start from Day 1
+    # Check user status and get appropriate checklist
+    if user.status == 'Onboarding':
+        # Get onboarding checklist for progress calculation
+        onboarding_checklist = OnboardingChecklist.query.filter_by(employee_id=user.id).first()
+        onboarding_progress = 20  # Default progress
+        if onboarding_checklist:
+            onboarding_progress = onboarding_checklist.get_progress()
+        
+        # Calculate actual onboarding days from hire date
+        current_day = 1
+        total_days = 10  # Extended to 10 business days (2 weeks) for more realistic onboarding
+        if user.hire_date:
+            # Convert hire_date to datetime for proper comparison
+            hire_datetime = datetime.combine(user.hire_date, datetime.min.time())
+            days_since_hire = (datetime.utcnow() - hire_datetime).days
+            # Calculate business days (excluding weekends) - rough approximation
+            business_days = days_since_hire - (days_since_hire // 7) * 2
+            business_days = max(0, business_days)  # Don't go negative
+            current_day = min(business_days + 1, total_days)  # +1 to start from Day 1
+        
+        # Try to get assigned HR from onboarding checklist
+        if onboarding_checklist and onboarding_checklist.assigned_hr_id:
+            hr_contact = User.query.get(onboarding_checklist.assigned_hr_id)
+        
+    elif user.status == 'Offboarding':
+        # Get offboarding tasks using the general Task model
+        offboarding_tasks = Task.query.filter_by(
+            assigned_to=user.id, 
+            task_type='offboarding'
+        ).all()
+        
+        # Calculate offboarding progress
+        total_offboarding_tasks = len(offboarding_tasks)
+        completed_offboarding_tasks = len([task for task in offboarding_tasks if task.status == 'completed'])
+        offboarding_progress = 0
+        if total_offboarding_tasks > 0:
+            offboarding_progress = int((completed_offboarding_tasks / total_offboarding_tasks) * 100)
+        
+        # Calculate days since offboarding started
+        current_day = 1
+        total_days = 5  # Standard offboarding period
+        # For now, use a simple calculation - this could be enhanced with actual offboarding start date
+        current_day = 1  # Could be calculated from earliest task created_at
+        
+        # Try to get assigned HR from offboarding tasks
+        if offboarding_tasks:
+            hr_assignments = [task.assigned_by for task in offboarding_tasks if task.assigned_by]
+            if hr_assignments:
+                hr_contact = User.query.get(hr_assignments[0])
+        
+    else:
+        # Active employee - no specific checklist
+        onboarding_progress = 100
+        offboarding_progress = 0
+        current_day = 0
+        total_days = 0
     
     # Generate employee data based on the logged-in user
     employee_data = {
@@ -1911,13 +1949,21 @@ def employee_dashboard():
             {'name': 'Company Policies', 'type': 'document', 'format': 'PDF'},
             {'name': 'IT Helpdesk', 'type': 'link', 'url': '#'}
         ],
+        # Set appropriate progress based on user status
         'onboarding_progress': {
-            'current_day': current_day,
-            'total_days': total_days,
-            'percentage': onboarding_progress,
-            'tasks_completed': int(onboarding_progress / 20) if onboarding_progress else 1,
-            'total_tasks': 5
-        }
+            'current_day': current_day if user.status == 'Onboarding' else 0,
+            'total_days': total_days if user.status == 'Onboarding' else 0,
+            'percentage': onboarding_progress if user.status == 'Onboarding' else 0,
+            'tasks_completed': int(onboarding_progress / 10) if user.status == 'Onboarding' and onboarding_progress else 0,
+            'total_tasks': 10 if user.status == 'Onboarding' else 0
+        } if user.status == 'Onboarding' else None,
+        'offboarding_progress': {
+            'current_day': current_day if user.status == 'Offboarding' else 0,
+            'total_days': total_days if user.status == 'Offboarding' else 0,
+            'percentage': offboarding_progress if user.status == 'Offboarding' else 0,
+            'tasks_completed': completed_offboarding_tasks if user.status == 'Offboarding' else 0,
+            'total_tasks': total_offboarding_tasks if user.status == 'Offboarding' else 0
+        } if user.status == 'Offboarding' else None,
     }
     
     # Get employee documents count
