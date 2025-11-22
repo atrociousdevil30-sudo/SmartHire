@@ -135,6 +135,66 @@
                 </div>
             </div>
 
+            <!-- Buddy/Mentor Assignment -->
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-light">
+                        <i class="fas fa-user-friends me-2"></i> Buddy/Mentor Assignment
+                    </h5>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#buddyMentorModal">
+                        <i class="fas fa-plus me-1"></i> Assign Buddy/Mentor
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% set current_buddy_mentor = None %}
+                    {% for relationship in buddy_mentor_relationships %}
+                        {% if relationship.mentee_id == employee.id or relationship.mentor_id == employee.id %}
+                            {% set current_buddy_mentor = relationship %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if current_buddy_mentor %}
+                        <div class="alert alert-success bg-success bg-opacity-25 border-success">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-user-check me-2"></i>
+                                <div class="flex-grow-1">
+                                    <strong class="text-light">
+                                        {% if current_buddy_mentor.mentee_id == employee.id %}
+                                            Mentor: {{ current_buddy_mentor.mentor.full_name }}
+                                        {% else %}
+                                            Mentee: {{ current_buddy_mentor.mentee.full_name }}
+                                        {% endif %}
+                                    </strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ current_buddy_mentor.relationship_type.title() }} 
+                                        {% if current_buddy_mentor.program_name %} - {{ current_buddy_mentor.program_name }}{% endif %}
+                                    </small>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-warning" 
+                                            data-relationship-id="{{ current_buddy_mentor.id }}" 
+                                            onclick="editBuddyMentor(this)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" 
+                                            data-relationship-id="{{ current_buddy_mentor.id }}" 
+                                            onclick="endBuddyMentor(this)">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-user-friends fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No buddy/mentor assigned</p>
+                            <small class="text-muted">Click "Assign Buddy/Mentor" to create a partnership</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- Skills & Expertise -->
             <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-0">
@@ -1164,5 +1224,217 @@
             });
         }
     });
+</script>
+
+<!-- Buddy/Mentor Assignment Modal -->
+<div class="modal fade" id="buddyMentorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header bg-transparent border-0">
+                <h5 class="modal-title text-light">Assign Buddy/Mentor</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="buddyMentorForm" data-employee-id="{{ employee.id }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-light">Current Employee</label>
+                                <input type="text" class="form-control bg-dark text-light border-secondary" 
+                                       value="{{ employee.full_name }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-light">Role</label>
+                                <select class="form-select bg-dark text-light border-secondary" id="employeeRole" required>
+                                    <option value="mentee">This employee is the Mentee</option>
+                                    <option value="mentor">This employee is the Mentor</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-light">Partner</label>
+                                <select class="form-select bg-dark text-light border-secondary" id="partnerSelect" required>
+                                    <option value="">Select a partner...</option>
+                                    {% for user in all_users %}
+                                        {% if user.id != employee.id and user.role in ['hr', 'employee'] %}
+                                            <option value="{{ user.id }}">{{ user.full_name }} ({{ user.role.title() }})</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-light">Relationship Type</label>
+                                <select class="form-select bg-dark text-light border-secondary" id="relationshipType" required>
+                                    <option value="buddy">Buddy</option>
+                                    <option value="mentor">Mentor</option>
+                                    <option value="peer_mentor">Peer Mentor</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Program Name (Optional)</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" id="programName" 
+                               placeholder="e.g., New Hire Buddy Program, Leadership Mentorship">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Matching Reason</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" id="matchingReason" rows="3" 
+                                  placeholder="Why this partnership makes sense..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Development Goals</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" id="developmentGoals" rows="3" 
+                                  placeholder="What are the goals for this partnership? (One goal per line)"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-light">Start Date</label>
+                                <input type="date" class="form-control bg-dark text-light border-secondary" id="startDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-light">End Date (Optional)</label>
+                                <input type="date" class="form-control bg-dark text-light border-secondary" id="endDate">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-transparent border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveBuddyMentor">Create Partnership</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Buddy/Mentor JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait a bit for Bootstrap to fully initialize
+    setTimeout(function() {
+        initializeBuddyMentor();
+    }, 100);
+});
+
+function initializeBuddyMentor() {
+    const saveBuddyMentorBtn = document.getElementById('saveBuddyMentor');
+    if (saveBuddyMentorBtn) {
+        saveBuddyMentorBtn.addEventListener('click', saveBuddyMentorAssignment);
+    }
+    
+    // Set today's date as default start date
+    const startDateInput = document.getElementById('startDate');
+    if (startDateInput) {
+        startDateInput.value = new Date().toISOString().split('T')[0];
+    }
+}
+
+function saveBuddyMentorAssignment() {
+    const employeeRole = document.getElementById('employeeRole').value;
+    const partnerId = document.getElementById('partnerSelect').value;
+    const relationshipType = document.getElementById('relationshipType').value;
+    const programName = document.getElementById('programName').value;
+    const matchingReason = document.getElementById('matchingReason').value;
+    const developmentGoals = document.getElementById('developmentGoals').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!partnerId || !relationshipType || !startDate) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    const formData = {
+        employee_id: parseInt(document.getElementById('buddyMentorForm').dataset.employeeId),
+        employee_role: employeeRole,
+        partner_id: parseInt(partnerId),
+        relationship_type: relationshipType,
+        program_name: programName || null,
+        matching_reason: matchingReason || null,
+        goals: developmentGoals ? developmentGoals.split('\n').filter(goal => goal.trim()) : [],
+        start_date: startDate,
+        end_date: endDate || null
+    };
+    
+    fetch('/api/hr/buddy-mentor-assign', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Safely hide modal
+            const modalElement = document.getElementById('buddyMentorModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            } else {
+                // Fallback: manually hide modal
+                modalElement.classList.remove('show');
+                modalElement.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                }
+            }
+            
+            document.getElementById('buddyMentorForm').reset();
+            location.reload(); // Reload to show the new assignment
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to create partnership');
+    });
+}
+
+function editBuddyMentor(button) {
+    const relationshipId = button.dataset.relationshipId;
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon!');
+}
+
+function endBuddyMentor(button) {
+    const relationshipId = button.dataset.relationshipId;
+    if (confirm('Are you sure you want to end this buddy/mentor relationship?')) {
+        fetch(`/api/hr/buddy-mentor/${relationshipId}/end`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to end relationship');
+        });
+    }
+}
 </script>
 {% endblock %}

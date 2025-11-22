@@ -149,7 +149,7 @@
 </head>
 <body>
     <!-- Navigation - Show for all authenticated users except employee pages -->
-    {% if 'user_id' in session and not request.path.startswith('/employee/') and request.path != url_for('support') %}
+    {% if 'user_id' in session and not request.path.startswith('/employee/') %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <!-- User Info -->

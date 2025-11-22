@@ -1611,8 +1611,112 @@ def add_employee():
 def view_employee(employee_id):
     employee = User.query.get_or_404(employee_id)
     checklist = OnboardingChecklist.query.filter_by(employee_id=employee_id).first()
-    return render_template('hr/view_employee.html', employee=employee, checklist=checklist)
+    
+    # Get buddy/mentor relationships for this employee
+    buddy_mentor_relationships = []
+    try:
+        buddy_mentor_relationships = BuddyMentorSystem.query.filter(
+            (BuddyMentorSystem.mentee_id == employee_id) | (BuddyMentorSystem.mentor_id == employee_id)
+        ).all()
+    except:
+        buddy_mentor_relationships = []
+    
+    # Get all users for partner selection (excluding current employee)
+    all_users = User.query.filter(User.id != employee_id).all()
+    
+    return render_template('hr/view_employee.html', 
+                         employee=employee, 
+                         checklist=checklist,
+                         buddy_mentor_relationships=buddy_mentor_relationships,
+                         all_users=all_users)
 
+
+@app.route('/api/hr/buddy-mentor-assign', methods=['POST'])
+@login_required('hr')
+def assign_buddy_mentor_from_employee():
+    """Assign buddy/mentor from employee view"""
+    try:
+        data = request.json
+        employee_id = data['employee_id']
+        employee_role = data['employee_role']
+        partner_id = data['partner_id']
+        relationship_type = data['relationship_type']
+        program_name = data.get('program_name')
+        matching_reason = data.get('matching_reason')
+        goals = data.get('goals', [])
+        start_date = data['start_date']
+        end_date = data.get('end_date')
+        
+        # Determine mentor and mentee based on role
+        if employee_role == 'mentee':
+            mentor_id = partner_id
+            mentee_id = employee_id
+        else:  # employee is mentor
+            mentor_id = employee_id
+            mentee_id = partner_id
+        
+        # Check if there's already an active relationship
+        existing = BuddyMentorSystem.query.filter(
+            ((BuddyMentorSystem.mentor_id == mentor_id) & (BuddyMentorSystem.mentee_id == mentee_id)) |
+            ((BuddyMentorSystem.mentor_id == mentee_id) & (BuddyMentorSystem.mentee_id == mentor_id))
+        ).filter_by(status='active').first()
+        
+        if existing:
+            return jsonify({
+                'status': 'error',
+                'message': 'An active relationship already exists between these employees'
+            }), 400
+        
+        # Create new relationship
+        relationship = BuddyMentorSystem(
+            mentor_id=mentor_id,
+            mentee_id=mentee_id,
+            relationship_type=relationship_type,
+            program_name=program_name,
+            start_date=datetime.strptime(start_date, '%Y-%m-%d').date(),
+            end_date=datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None,
+            matching_reason=matching_reason,
+            goals=json.dumps(goals) if goals else None,
+            status='active'
+        )
+        
+        db.session.add(relationship)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Buddy/Mentor relationship created successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/hr/buddy-mentor/<int:relationship_id>/end', methods=['POST'])
+@login_required('hr')
+def end_buddy_mentor_relationship(relationship_id):
+    """End a buddy/mentor relationship"""
+    try:
+        relationship = BuddyMentorSystem.query.get_or_404(relationship_id)
+        relationship.status = 'completed'
+        relationship.end_date = datetime.utcnow().date()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Relationship ended successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/hr/employees/<int:employee_id>/update-status', methods=['POST'])
 @login_required('hr')
@@ -2014,6 +2118,30 @@ def employee_dashboard():
         }
     }
     
+    # Get tasks assigned to this employee
+    employee_tasks = Task.query.filter_by(assigned_to=user.id).all()
+    formatted_employee_tasks = []
+    for task in employee_tasks:
+        formatted_employee_tasks.append({
+            'id': task.id,
+            'title': task.title,
+            'description': task.description,
+            'priority': task.priority,
+            'status': task.status,
+            'task_type': task.task_type,
+            'due_date': task.due_date,
+            'is_overdue': task.due_date and task.due_date.date() < datetime.utcnow().date() if task.due_date else False
+        })
+
+    # Get buddy/mentor assignments for this employee
+    buddy_mentor = None
+    try:
+        buddy_mentor = BuddyMentorSystem.query.filter(
+            (BuddyMentorSystem.mentee_id == user.id) | (BuddyMentorSystem.mentor_id == user.id)
+        ).filter_by(status='active').first()
+    except:
+        buddy_mentor = None
+
     return render_template('employee_dashboard.html', 
                          employee=employee_data, 
                          user=user,
@@ -2023,6 +2151,8 @@ def employee_dashboard():
                          hr_contacts=hr_contacts,
                          onboarding_progress=onboarding_progress,
                          employee_journey=employee_journey,
+                         employee_tasks=formatted_employee_tasks,
+                         buddy_mentor=buddy_mentor,
                          current_user=user,  # For compatibility with existing templates
                          title=f'{user.full_name}\'s Dashboard')
 
@@ -2057,6 +2187,50 @@ def tasks_management():
                          users=users,
                          today=datetime.utcnow().date(),
                          current_user=User.query.get(session['user_id']))
+
+@app.route('/api/employee/tasks/<int:task_id>/status', methods=['PUT'])
+@login_required('employee')
+def update_employee_task_status(task_id):
+    """Update task status for employee"""
+    try:
+        task = Task.query.get_or_404(task_id)
+        user_id = session.get('user_id')
+        
+        # Verify task is assigned to this employee
+        if task.assigned_to != user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'You can only update your own tasks'
+            }), 403
+        
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        # Validate status
+        valid_statuses = ['pending', 'in_progress', 'completed']
+        if new_status not in valid_statuses:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid status'
+            }), 400
+        
+        task.status = new_status
+        if new_status == 'completed':
+            task.completed_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Task status updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/hr/access-records')
 @login_required('hr')
@@ -4896,47 +5070,6 @@ def get_project_details(project_id):
 
 
 
-@app.route('/support')
-@login_required('employee')
-def support():
-    """Render the support page for employees with recent issues from the database."""
-    recent_issues = []
-
-    try:
-        # Lazily detect a Ticket/Issue-style model if it exists to avoid breaking imports
-        TicketModel = None
-
-        for candidate_name in ['Ticket', 'Issue', 'SupportTicket', 'ITIssue']:
-            try:
-                TicketModel = globals().get(candidate_name)
-                if TicketModel is not None:
-                    break
-            except Exception:
-                TicketModel = None
-
-        if TicketModel is not None:
-            user_id = session.get('user_id')
-            if user_id:
-                # Try common field names for user reference and timestamps
-                query = TicketModel.query
-
-                if hasattr(TicketModel, 'user_id'):
-                    query = query.filter(TicketModel.user_id == user_id)
-                elif hasattr(TicketModel, 'employee_id'):
-                    query = query.filter(TicketModel.employee_id == user_id)
-
-                # Order by recent update/creation if available
-                if hasattr(TicketModel, 'updated_at'):
-                    query = query.order_by(TicketModel.updated_at.desc())
-                elif hasattr(TicketModel, 'created_at'):
-                    query = query.order_by(TicketModel.created_at.desc())
-
-                recent_issues = query.limit(5).all()
-    except Exception as e:
-        app.logger.error(f"Error loading recent issues for support page: {str(e)}")
-        recent_issues = []
-
-    return render_template('support.html', title='Support', recent_issues=recent_issues)
 
 @app.route('/alumni-network', methods=['GET'])
 @login_required(['hr', 'admin'])

@@ -118,18 +118,67 @@
                     <div class="tab-content" id="dashboardTabsContent">
                         <!-- Pending Tasks Tab -->
                         <div class="tab-pane fade show active" id="tasks" role="tabpanel">
+                            {% if employee_tasks %}
                             <div class="list-group">
-                                {% for task in employee['pending_tasks'] %}
-                                <a href="{{ url_for('onboarding_tasks') }}" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1 text-light">{{ task['title'] }}</h6>
-                                        <small class="{% if task['priority'] == 'high' %}text-danger{% elif task['priority'] == 'medium' %}text-warning{% else %}text-info{% endif %}">{{ task['due'] }}</small>
+                                {% for task in employee_tasks %}
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                    <div class="d-flex w-100 justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 me-2 text-light">{{ task.title }}</h6>
+                                                <span class="badge bg-{{ 'danger' if task.priority == 'high' else 'warning' if task.priority == 'medium' else 'success' }} me-2">
+                                                    {{ task.priority.title() }}
+                                                </span>
+                                                <span class="badge bg-{{ 'success' if task.status == 'completed' else 'primary' if task.status == 'in_progress' else 'secondary' }}">
+                                                    {{ task.status.replace('_', ' ').title() }}
+                                                </span>
+                                            </div>
+                                            {% if task.description %}
+                                            <p class="mb-2 text-muted small">{{ task.description[:100] }}{% if task.description|length > 100 %}...{% endif %}</p>
+                                            {% endif %}
+                                            <div class="d-flex align-items-center">
+                                                {% if task.due_date %}
+                                                <small class="{% if task.is_overdue %}text-danger{% else %}text-info{% endif %} me-3">
+                                                    <i class="bi bi-calendar me-1"></i>{{ task.due_date.strftime('%Y-%m-%d') }}
+                                                    {% if task.is_overdue %}<span class="ms-1">(Overdue)</span>{% endif %}
+                                                </small>
+                                                {% endif %}
+                                                <small class="text-muted">
+                                                    <i class="bi bi-tag me-1"></i>{{ task.task_type.title() }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {% if task.status != 'completed' %}
+                                        <div class="btn-group btn-group-sm ms-2" role="group">
+                                            <button type="button" class="btn btn-outline-success" 
+                                                    data-task-id="{{ task.id }}" 
+                                                    data-status="completed" 
+                                                    onclick="updateTaskStatus(this)" 
+                                                    title="Mark as Complete">
+                                                <i class="bi bi-check"></i>
+                                            </button>
+                                            {% if task.status == 'pending' %}
+                                            <button type="button" class="btn btn-outline-primary" 
+                                                    data-task-id="{{ task.id }}" 
+                                                    data-status="in_progress" 
+                                                    onclick="updateTaskStatus(this)" 
+                                                    title="Start Task">
+                                                <i class="bi bi-play"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
                                     </div>
-                                    <p class="mb-1 text-muted">{% if task['title'] == 'Submit timesheet' %}Complete your weekly timesheet in the employee portal.{% elif task['title'] == 'Complete training module' %}Mandatory training module for new employees.{% else %}Update project documentation as assigned.{% endif %}</p>
-                                    <small class="text-muted">{% if task['priority'] == 'high' %}HR Department{% elif task['priority'] == 'medium' %}IT Department{% else %}Operations{% endif %}</small>
-                                </a>
+                                </div>
                                 {% endfor %}
                             </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="bi bi-check-circle fa-3x text-muted mb-3"></i>
+                                <h6 class="text-muted">No tasks assigned</h6>
+                                <p class="text-muted small">You don't have any tasks assigned to you right now.</p>
+                            </div>
+                            {% endif %}
                         </div>
                         
                         <!-- Employee Journey Tab -->
@@ -182,6 +231,51 @@
                                             </button>
                                         </div>
                                     </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">Buddy/Mentor</h6>
+                                    {% if buddy_mentor %}
+                                    <div class="card bg-dark bg-opacity-50 border-secondary mb-3">
+                                        <div class="card-body text-center">
+                                            <div class="avatar-sm bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                                                <i class="bi bi-people"></i>
+                                            </div>
+                                            {% set buddy_user = buddy_mentor.mentor if buddy_mentor.mentee_id == user.id else buddy_mentor.mentee %}
+                                            <h6 class="text-light">{{ buddy_user.full_name or buddy_user.username }}</h6>
+                                            <p class="text-muted small">{{ buddy_mentor.relationship_type.title() }}</p>
+                                            {% if buddy_mentor.program_name %}
+                                            <p class="text-muted small">{{ buddy_mentor.program_name }}</p>
+                                            {% endif %}
+                                            <p class="mb-2">
+                                                <a href="mailto:{{ buddy_user.email }}" class="text-success">
+                                                    <i class="bi bi-envelope me-1"></i>{{ buddy_user.email }}
+                                                </a>
+                                            </p>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-success" onclick="messageBuddy()">
+                                                    <i class="bi bi-envelope me-1"></i> Message
+                                                </button>
+                                                <button class="btn btn-outline-info" onclick="scheduleMeeting()">
+                                                    <i class="bi bi-calendar me-1"></i> Meet
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <div class="card bg-dark bg-opacity-50 border-secondary mb-3">
+                                        <div class="card-body text-center">
+                                            <div class="avatar-sm bg-secondary bg-opacity-10 text-secondary rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                                                <i class="bi bi-people"></i>
+                                            </div>
+                                            <h6 class="text-light">No Buddy/Mentor Assigned</h6>
+                                            <p class="text-muted small">A buddy or mentor will be assigned to you soon.</p>
+                                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                                <i class="bi bi-clock me-1"></i> Pending Assignment
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                                 
                                 <div class="col-md-6">
@@ -486,6 +580,59 @@ function messageHR() {
     
     // Open Gmail compose in new tab
     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${hrEmail}&su=${subject}&body=${body}`, '_blank');
+}
+
+function updateTaskStatus(button) {
+    const taskId = button.dataset.taskId;
+    const newStatus = button.dataset.status;
+    
+    fetch(`/api/employee/tasks/${taskId}/status`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            status: newStatus
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Reload the page to show updated status
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update task status');
+    });
+}
+
+function messageBuddy() {
+    // Get buddy email from the template
+    const buddyEmail = '{{ buddy_user.email if buddy_mentor else "" }}';
+    const subject = encodeURIComponent('Check-in / Question');
+    const body = encodeURIComponent('Hi,\n\nI wanted to connect and check in. I have a few questions I\'d love to discuss when you have time.\n\nThanks!');
+    
+    // Open Gmail compose in new tab
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${buddyEmail}&su=${subject}&body=${body}`, '_blank');
+}
+
+function scheduleMeeting() {
+    // Get buddy email for calendar invite
+    const buddyEmail = '{{ buddy_user.email if buddy_mentor else "" }}';
+    const subject = encodeURIComponent('Buddy/Mentor Check-in Meeting');
+    const body = encodeURIComponent('Let\'s schedule a check-in meeting to discuss progress and any questions.');
+    
+    // Open Google Calendar to create event
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1); // Tomorrow
+    const dateStr = startDate.toISOString().split('T')[0];
+    
+    window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${subject}&details=${body}&add=${buddyEmail}&dates=${dateStr}T100000/${dateStr}T110000`, '_blank');
 }
 
 function sendWhatsAppMessage() {
