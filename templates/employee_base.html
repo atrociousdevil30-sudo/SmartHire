@@ -65,10 +65,10 @@
 
 {% block content %}
 <!-- Navigation -->
-<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #4e73df;">
+<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #1a1a1a; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
     <div class="container-fluid">
-        <a class="navbar-brand" href="{{ url_for('employee_dashboard') }}">
-            <i class="fas fa-user-tie me-2"></i>Employee Portal
+        <a class="navbar-brand text-light" href="{{ url_for('employee_dashboard') }}">
+            <i class="bi bi-person-workspace me-2"></i>Employee Portal
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#employeeNavbar" 
                 aria-controls="employeeNavbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,54 +76,91 @@
         </button>
         <div class="collapse navbar-collapse" id="employeeNavbar">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <!-- My Dashboard -->
                 <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'employee_dashboard' %}active{% endif %}" 
+                    <a class="nav-link {% if request.endpoint == 'employee_dashboard' %}active{% endif %} text-light" 
                        href="{{ url_for('employee_dashboard') }}">
-                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                        <i class="bi bi-speedometer2 me-1"></i> Dashboard
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'onboarding_tasks' %}active{% endif %}" 
-                       href="{{ url_for('onboarding_tasks') }}">
-                        <i class="fas fa-tasks me-1"></i> Onboarding Tasks
+                
+                <!-- My Journey -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if request.endpoint in ['onboarding_tasks', 'employee_pre_offboarding', 'employee_goal_setting', 'employee_performance', 'employee_mood_tracking'] %}active{% endif %} text-light" 
+                       href="#" id="journeyDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-signpost-2 me-1"></i> My Journey
                     </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="journeyDropdown">
+                        <li><a class="dropdown-item" href="{{ url_for('onboarding_tasks') }}">
+                            <i class="bi bi-list-task me-2"></i>Onboarding Tasks</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('employee_pre_offboarding') }}">
+                            <i class="bi bi-box-arrow-right me-2"></i>Pre-Offboarding</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('employee_goal_setting') }}">
+                            <i class="bi bi-trophy me-2"></i>Goal Setting</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('employee_performance') }}">
+                            <i class="bi bi-graph-up me-2"></i>Performance Reviews</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('employee_mood_tracking') }}">
+                            <i class="bi bi-heart-pulse me-2"></i>Mood & Wellness</a></li>
+                    </ul>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'employee_pre_offboarding' %}active{% endif %}" 
-                       href="{{ url_for('employee_pre_offboarding') }}">
-                        <i class="fas fa-sign-out-alt me-1"></i> Pre-Offboarding
+                
+                <!-- AI Tools -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if request.endpoint in ['employee_interview', 'onboarding_assistant'] %}active{% endif %} text-light" 
+                       href="#" id="aiToolsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-robot me-1"></i> AI Tools
                     </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="aiToolsDropdown">
+                        <li><a class="dropdown-item" href="{{ url_for('employee_interview') }}">
+                            <i class="bi bi-mic me-2"></i>AI Interview Practice</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('onboarding_assistant') }}">
+                            <i class="bi bi-robot me-2"></i>Onboarding Assistant</a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="bi bi-lightbulb me-2"></i>AI Learning Coach</a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="bi bi-bar-chart me-2"></i>Skills Assessment</a></li>
+                    </ul>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'employee_interview' %}active{% endif %}" 
-                       href="{{ url_for('employee_interview') }}">
-                        <i class="fas fa-microphone me-1"></i> AI Interview
+                
+                <!-- Resources -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-light" 
+                       href="#" id="resourcesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-book me-1"></i> Resources
                     </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="resourcesDropdown">
+                        <li><a class="dropdown-item" href="#">
+                            <i class="bi bi-file-pdf me-2"></i>Employee Handbook</a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="bi bi-shield-check me-2"></i>IT Security Policy</a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="bi bi-heart me-2"></i>Health & Wellness</a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="bi bi-building me-2"></i>Office Map</a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="bi bi-calendar me-2"></i>Company Calendar</a></li>
+                    </ul>
                 </li>
+                
+                <!-- Support -->
                 <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'onboarding_assistant' %}active{% endif %}" 
-                       href="{{ url_for('onboarding_assistant') }}">
-                        <i class="fas fa-robot me-1"></i> Onboarding Assistant
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'support' %}active{% endif %}" 
+                    <a class="nav-link {% if request.endpoint == 'support' %}active{% endif %} text-light" 
                        href="{{ url_for('support') }}">
-                        <i class="fas fa-headset me-1"></i> Support
+                        <i class="bi bi-headset me-1"></i> Support
                     </a>
                 </li>
             </ul>
             <div class="d-flex align-items-center ms-auto">
-                <!-- Quick Logout Button - Visible on all screen sizes -->
+                <!-- Quick Logout Button -->
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm me-2" title="Logout">
-                    <i class="fas fa-sign-out-alt"></i>
+                    <i class="bi bi-box-arrow-right"></i>
                     <span class="d-none d-md-inline ms-1">Logout</span>
                 </a>
                 
                 <!-- Notification Dropdown -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-bell"></i>
+                <div class="dropdown">
+                    <a class="nav-link dropdown-toggle text-light" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bell"></i>
                         <span id="notificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 0.6em;">0</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown">
@@ -131,21 +168,21 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" onclick="loadNotifications(); return false;">View All Notifications</a></li>
                     </ul>
-                </li>
+                </div>
                 
                 <!-- User Dropdown -->
                 <div class="dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
+                    <a class="nav-link dropdown-toggle d-flex align-items-center text-light" href="#" id="userDropdown" 
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-user-circle me-1"></i>
+                        <i class="bi bi-person-circle me-1"></i>
                         <span class="d-none d-lg-inline">{{ session.get('username', 'Employee') }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="loadProfileModal()"><i class="fas fa-user me-2"></i>My Profile</a></li>
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#documentsModal" onclick="loadDocumentsModal()"><i class="fas fa-file-alt me-2"></i>My Documents</a></li>
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal" onclick="loadSettingsModal()"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="loadProfileModal()"><i class="bi bi-person me-2"></i>My Profile</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#documentsModal" onclick="loadDocumentsModal()"><i class="bi bi-file-text me-2"></i>My Documents</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal" onclick="loadSettingsModal()"><i class="bi bi-gear me-2"></i>Settings</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
                     </ul>
                 </div>
             </div>

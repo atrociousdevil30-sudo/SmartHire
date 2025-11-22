@@ -1,0 +1,1424 @@
+{% extends "employee_base.html" %}
+
+{% block title %}Mood & Wellness - Employee Portal{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1 text-light">
+                        <i class="bi bi-heart-pulse me-2"></i>Mood & Wellness
+                    </h1>
+                    <p class="text-muted mb-0">Track your mood, wellness, and work-life balance</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#moodHelpModal">
+                        <i class="bi bi-question-circle me-1"></i> Help
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Check-in -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">Daily Check-in</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label text-light">How are you feeling today?</label>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted small">Very Bad</span>
+                                    <span class="text-muted small">Very Good</span>
+                                </div>
+                                <div class="d-flex justify-content-center gap-2 mb-3">
+                                    <button class="mood-btn btn btn-outline-danger btn-lg" data-mood="1" data-emoji="😢">😢</button>
+                                    <button class="mood-btn btn btn-outline-warning btn-lg" data-mood="2" data-emoji="😕">😕</button>
+                                    <button class="mood-btn btn btn-outline-info btn-lg" data-mood="3" data-emoji="😐">😐</button>
+                                    <button class="mood-btn btn btn-outline-success btn-lg" data-mood="4" data-emoji="🙂">🙂</button>
+                                    <button class="mood-btn btn btn-outline-primary btn-lg" data-mood="5" data-emoji="😊">😊</button>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label text-light">How confident do you feel about your work today?</label>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted small">Not Confident</span>
+                                    <span class="text-muted small">Very Confident</span>
+                                </div>
+                                <div class="d-flex justify-content-center gap-2 mb-3">
+                                    <button class="confidence-btn btn btn-outline-danger btn-lg" data-confidence="1">1</button>
+                                    <button class="confidence-btn btn btn-outline-warning btn-lg" data-confidence="2">2</button>
+                                    <button class="confidence-btn btn btn-outline-info btn-lg" data-confidence="3">3</button>
+                                    <button class="confidence-btn btn btn-outline-success btn-lg" data-confidence="4">4</button>
+                                    <button class="confidence-btn btn btn-outline-primary btn-lg" data-confidence="5">5</button>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="checkinNotes" class="form-label text-light">Optional Notes</label>
+                                <textarea class="form-control bg-dark text-light border-secondary" id="checkinNotes" rows="2" placeholder="Any thoughts about your day? (optional)"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="avatar-xl bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; line-height: 120px;">
+                                    <i class="bi bi-heart-pulse" style="font-size: 3rem;"></i>
+                                </div>
+                                <h6 class="text-light mb-2">Your Wellbeing Matters</h6>
+                                <p class="small text-muted mb-3">Daily check-ins help us support you better and track trends over time.</p>
+                                <button class="btn btn-primary" id="submitCheckin">
+                                    <i class="bi bi-send me-1"></i> Submit Check-in
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wellness Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="avatar-lg bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                        <i class="bi bi-smile" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h6 class="text-light mb-1">Current Mood</h6>
+                    <h4 class="text-success mb-0">{{ current_mood }}</h4>
+                    <p class="small text-muted mb-0">
+                        {% if current_mood >= 4.5 %}Excellent 😊
+                        {% elif current_mood >= 4.0 %}Good 🙂
+                        {% elif current_mood >= 3.5 %}Okay 😐
+                        {% elif current_mood >= 3.0 %}Low 😕
+                        {% else %}Struggling 😢{% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="avatar-lg bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                        <i class="bi bi-bullseye" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h6 class="text-light mb-1">Confidence Level</h6>
+                    <h4 class="text-info mb-0">{{ current_confidence }}</h4>
+                    <p class="small text-muted mb-0">
+                        {% if current_confidence >= 4.5 %}Very Confident
+                        {% elif current_confidence >= 4.0 %}Confident
+                        {% elif current_confidence >= 3.5 %}Moderate
+                        {% elif current_confidence >= 3.0 %}Some Doubt
+                        {% else %}Low Confidence{% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="avatar-lg bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                        <i class="bi bi-graph-up" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h6 class="text-light mb-1">7-Day Trend</h6>
+                    <h4 class="text-{{ 'success' if trend_percentage > 0 else 'danger' if trend_percentage < 0 else 'warning' }} mb-0">
+                        {% if trend_percentage > 0 %}+{% endif %}{{ trend_percentage }}%
+                    </h4>
+                    <p class="small text-muted mb-0">
+                        {% if trend_percentage > 5 %}Improving
+                        {% elif trend_percentage < -5 %}Declining
+                        {% else %}Stable{% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                        <i class="bi bi-calendar-check" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h6 class="text-light mb-1">Check-in Streak</h6>
+                    <h4 class="text-primary mb-0">{{ check_in_streak }}</h4>
+                    <p class="small text-muted mb-0">Days</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mood & Wellness Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <!-- Tab Navigation -->
+                <div class="card-header bg-transparent border-secondary">
+                    <ul class="nav nav-tabs card-header-tabs" id="moodTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button" role="tab">
+                                <i class="bi bi-graph-up me-1"></i> Trends
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
+                                <i class="bi bi-clock-history me-1"></i> History
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="wellness-tab" data-bs-toggle="tab" data-bs-target="#wellness" type="button" role="tab">
+                                <i class="bi bi-heart me-1"></i> Wellness
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="insights-tab" data-bs-toggle="tab" data-bs-target="#insights" type="button" role="tab">
+                                <i class="bi bi-lightbulb me-1"></i> Insights
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Tab Content -->
+                <div class="card-body">
+                    <div class="tab-content" id="moodTabsContent">
+                        <!-- Trends Tab -->
+                        <div class="tab-pane fade show active" id="trends" role="tabpanel">
+                            <div class="row mb-4">
+                                <div class="col-md-8">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Mood & Confidence Trends (Last 7 Days)</h6>
+                                            <canvas id="moodChart" height="100"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Pattern Analysis</h6>
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <small class="text-muted">Best Day</small>
+                                                    <small class="text-success">Wednesday</small>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <small class="text-muted">Most Common Mood</small>
+                                                    <small class="text-info">Good 🙂</small>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <small class="text-muted">Avg Confidence</small>
+                                                    <small class="text-warning">3.8/5</small>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <small class="text-muted">Improvement</small>
+                                                    <small class="text-success">+12%</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="alert alert-info bg-dark bg-opacity-25 border-info">
+                                                <p class="small text-muted mb-0">Your mood tends to be highest mid-week. Consider planning important tasks for Tuesday-Thursday.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Mood Distribution</h6>
+                                            <canvas id="moodDistribution" height="150"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Work-Life Balance</h6>
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Work Hours</small>
+                                                    <small class="text-light">8.2 hrs/day</small>
+                                                </div>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                                    <div class="progress-bar bg-success" style="width: 82%"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Break Time</small>
+                                                    <small class="text-light">1.5 hrs/day</small>
+                                                </div>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                                    <div class="progress-bar bg-info" style="width: 75%"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Personal Time</small>
+                                                    <small class="text-light">4.3 hrs/day</small>
+                                                </div>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                                    <div class="progress-bar bg-warning" style="width: 54%"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Sleep Quality</small>
+                                                    <small class="text-light">7.2 hrs/night</small>
+                                                </div>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                                    <div class="progress-bar bg-primary" style="width: 90%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- History Tab -->
+                        <div class="tab-pane fade" id="history" role="tabpanel">
+                            <div class="list-group">
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Today - June 15, 2024</h6>
+                                                <span class="badge bg-success bg-opacity-25 text-success ms-2">Good</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Feeling productive and motivated. Completed the API integration ahead of schedule.</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Mood:</small>
+                                                    <span class="text-light">4/5 😊</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Confidence:</small>
+                                                    <span class="text-light">4/5</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Time:</small>
+                                                    <span class="text-light">9:30 AM</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-pencil me-1"></i> Edit
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Yesterday - June 14, 2024</h6>
+                                                <span class="badge bg-info bg-opacity-25 text-info ms-2">Neutral</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Busy day with meetings. Feeling a bit tired but managed to complete all tasks.</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Mood:</small>
+                                                    <span class="text-light">3/5 😐</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Confidence:</small>
+                                                    <span class="text-light">3/5</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Time:</small>
+                                                    <span class="text-light">2:15 PM</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye me-1"></i> View
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">June 13, 2024</h6>
+                                                <span class="badge bg-success bg-opacity-25 text-success ms-2">Good</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Great progress on the project. Team collaboration went really well.</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Mood:</small>
+                                                    <span class="text-light">4/5 🙂</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Confidence:</small>
+                                                    <span class="text-light">4/5</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Time:</small>
+                                                    <span class="text-light">11:00 AM</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye me-1"></i> View
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">June 12, 2024</h6>
+                                                <span class="badge bg-primary bg-opacity-25 text-primary ms-2">Excellent</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Very productive day! Solved a complex bug and got positive feedback from the team.</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Mood:</small>
+                                                    <span class="text-light">5/5 😊</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Confidence:</small>
+                                                    <span class="text-light">5/5</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Time:</small>
+                                                    <span class="text-light">4:30 PM</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye me-1"></i> View
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">June 11, 2024</h6>
+                                                <span class="badge bg-warning bg-opacity-25 text-warning ms-2">Challenging</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Difficult morning with technical issues, but resolved them by afternoon.</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Mood:</small>
+                                                    <span class="text-light">2/5 😕</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Confidence:</small>
+                                                    <span class="text-light">2/5</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Time:</small>
+                                                    <span class="text-light">10:45 AM</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye me-1"></i> View
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Wellness Tab -->
+                        <div class="tab-pane fade" id="wellness" role="tabpanel">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Wellness Score</h6>
+                                            <div class="text-center mb-3">
+                                                <div class="avatar-xl bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-2" style="width: 100px; height: 100px; line-height: 100px;">
+                                                    <span style="font-size: 2rem; font-weight: bold;">78</span>
+                                                </div>
+                                                <p class="text-muted mb-0">Good Wellness</p>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Physical Health</small>
+                                                    <small class="text-success">85%</small>
+                                                </div>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                                    <div class="progress-bar bg-success" style="width: 85%"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Mental Health</small>
+                                                    <small class="text-info">72%</small>
+                                                </div>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                                    <div class="progress-bar bg-info" style="width: 72%"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Work-Life Balance</small>
+                                                    <small class="text-warning">68%</small>
+                                                </div>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                                    <div class="progress-bar bg-warning" style="width: 68%"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Social Connection</small>
+                                                    <small class="text-primary">80%</small>
+                                                </div>
+                                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                                    <div class="progress-bar bg-primary" style="width: 80%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Wellness Activities</h6>
+                                            <div class="list-group">
+                                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                                    <div class="d-flex align-items-center">
+                                                        <input class="form-check-input me-3" type="checkbox" id="wellness1" checked>
+                                                        <label class="form-check-label text-light" for="wellness1">
+                                                            <i class="bi bi-droplet text-info me-2"></i>Drank 8+ glasses of water
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                                    <div class="d-flex align-items-center">
+                                                        <input class="form-check-input me-3" type="checkbox" id="wellness2" checked>
+                                                        <label class="form-check-label text-light" for="wellness2">
+                                                            <i class="bi bi-person-walking text-success me-2"></i>Took a walk during break
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                                    <div class="d-flex align-items-center">
+                                                        <input class="form-check-input me-3" type="checkbox" id="wellness3">
+                                                        <label class="form-check-label text-light" for="wellness3">
+                                                            <i class="bi bi-moon text-primary me-2"></i>Got 7+ hours of sleep
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                                    <div class="d-flex align-items-center">
+                                                        <input class="form-check-input me-3" type="checkbox" id="wellness4" checked>
+                                                        <label class="form-check-label text-light" for="wellness4">
+                                                            <i class="bi bi-people text-warning me-2"></i>Connected with colleagues
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                                    <div class="d-flex align-items-center">
+                                                        <input class="form-check-input me-3" type="checkbox" id="wellness5">
+                                                        <label class="form-check-label text-light" for="wellness5">
+                                                            <i class="bi bi-heart-pulse text-danger me-2"></i>Took stretch breaks
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Wellness Tips for You</h6>
+                                            <div class="row">
+                                                <div class="col-md-4 mb-3">
+                                                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                                                        <div class="card-body text-center">
+                                                            <div class="avatar-lg bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-2" style="width: 50px; height: 50px; line-height: 50px;">
+                                                                <i class="bi bi-cup-hot"></i>
+                                                            </div>
+                                                            <h6 class="text-light small mb-2">Take Regular Breaks</h6>
+                                                            <p class="text-muted small mb-0">Step away from your screen every hour for 5 minutes</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-4 mb-3">
+                                                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                                                        <div class="card-body text-center">
+                                                            <div class="avatar-lg bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-2" style="width: 50px; height: 50px; line-height: 50px;">
+                                                                <i class="bi bi-lungs"></i>
+                                                            </div>
+                                                            <h6 class="text-light small mb-2">Practice Deep Breathing</h6>
+                                                            <p class="text-muted small mb-0">Try 4-7-8 breathing when feeling stressed</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-4 mb-3">
+                                                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                                                        <div class="card-body text-center">
+                                                            <div class="avatar-lg bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-2" style="width: 50px; height: 50px; line-height: 50px;">
+                                                                <i class="bi bi-sun"></i>
+                                                            </div>
+                                                            <h6 class="text-light small mb-2">Get Natural Light</h6>
+                                                            <p class="text-muted small mb-0">Spend time outdoors or near windows daily</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Insights Tab -->
+                        <div class="tab-pane fade" id="insights" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary mb-3">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Personal Insights</h6>
+                                            
+                                            <div class="alert alert-success bg-dark bg-opacity-25 border-success mb-3">
+                                                <h6 class="text-light mb-2"><i class="bi bi-trophy text-success me-2"></i>Strength</h6>
+                                                <p class="text-muted mb-0">Your confidence levels are consistently high, showing strong self-belief in your abilities.</p>
+                                            </div>
+                                            
+                                            <div class="alert alert-warning bg-dark bg-opacity-25 border-warning mb-3">
+                                                <h6 class="text-light mb-2"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Opportunity</h6>
+                                                <p class="text-muted mb-0">Consider taking more breaks during busy days to maintain energy levels throughout the day.</p>
+                                            </div>
+                                            
+                                            <div class="alert alert-info bg-dark bg-opacity-25 border-info mb-3">
+                                                <h6 class="text-light mb-2"><i class="bi bi-lightbulb text-info me-2"></i>Pattern</h6>
+                                                <p class="text-muted mb-0">Your mood tends to improve after physical activity. Consider scheduling short walks during challenging days.</p>
+                                            </div>
+                                            
+                                            <div class="alert alert-primary bg-dark bg-opacity-25 border-primary">
+                                                <h6 class="text-light mb-2"><i class="bi bi-graph-up text-primary me-2"></i>Trend</h6>
+                                                <p class="text-muted mb-0">Your overall wellness score has improved by 12% over the past month. Keep up the great work!</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Recommendations</h6>
+                                            
+                                            <div class="mb-3">
+                                                <h6 class="text-light small mb-2">This Week</h6>
+                                                <ul class="text-muted small">
+                                                    <li>Schedule 15-minute walks after lunch</li>
+                                                    <li>Try meditation app for 5 minutes daily</li>
+                                                    <li>Connect with a colleague for coffee</li>
+                                                </ul>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <h6 class="text-light small mb-2">This Month</h6>
+                                                <ul class="text-muted small">
+                                                    <li>Set consistent sleep schedule</li>
+                                                    <li>Join company wellness challenge</li>
+                                                    <li>Take a day off for mental health</li>
+                                                </ul>
+                                            </div>
+                                            
+                                            <div>
+                                                <h6 class="text-light small mb-2">Resources</h6>
+                                                <div class="d-grid gap-2">
+                                                    <button class="btn btn-outline-primary btn-sm">
+                                                        <i class="bi bi-book me-1"></i> Wellness Guide
+                                                    </button>
+                                                    <button class="btn btn-outline-success btn-sm">
+                                                        <i class="bi bi-headset me-1"></i> Talk to Counselor
+                                                    </button>
+                                                    <button class="btn btn-outline-info btn-sm">
+                                                        <i class="bi bi-people me-1"></i> Join Support Group
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#wellnessPlanModal">
+                            <i class="bi bi-clipboard-heart me-1"></i> Wellness Plan
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#stressCheckModal">
+                            <i class="bi bi-activity me-1"></i> Stress Check
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#resourcesModal">
+                            <i class="bi bi-book me-1"></i> Resources
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#supportModal">
+                            <i class="bi bi-headset me-1"></i> Get Support
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="moodHelpModal" tabindex="-1" aria-labelledby="moodHelpModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="moodHelpModalLabel">Mood & Wellness Help</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 class="text-light"><i class="bi bi-info-circle text-primary me-2"></i>About Mood Tracking</h6>
+                    <p class="text-muted">Daily mood and confidence tracking helps you understand patterns and improve your overall wellbeing.</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light"><i class="bi bi-star text-warning me-2"></i>Rating Scale</h6>
+                    <ul class="text-muted">
+                        <li><strong>1 - Very Poor:</strong> Feeling overwhelmed, stressed, or unwell</li>
+                        <li><strong>2 - Poor:</strong> Having difficulties but managing</li>
+                        <li><strong>3 - Neutral:</strong> Feeling okay, neither good nor bad</li>
+                        <li><strong>4 - Good:</strong> Feeling positive and capable</li>
+                        <li><strong>5 - Excellent:</strong> Feeling great, energized, and confident</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light"><i class="bi bi-shield-check text-success me-2"></i>Privacy</h6>
+                    <p class="text-muted">Your mood data is private and confidential. It's used to provide you with insights and support, not for performance evaluation.</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light"><i class="bi bi-lightbulb text-info me-2"></i>Tips for Better Tracking</h6>
+                    <ul class="text-muted">
+                        <li>Check in at the same time each day for consistency</li>
+                        <li>Be honest with your ratings - there are no wrong answers</li>
+                        <li>Add notes to remember context for your mood</li>
+                        <li>Review trends weekly to identify patterns</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Wellness Plan Modal -->
+<div class="modal fade" id="wellnessPlanModal" tabindex="-1" aria-labelledby="wellnessPlanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="wellnessPlanModalLabel">Personal Wellness Plan</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-dark bg-opacity-50 border-secondary">
+                            <div class="card-body">
+                                <h6 class="text-light mb-3">Daily Habits</h6>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="habit1" checked>
+                                    <label class="form-check-label text-light" for="habit1">
+                                        Morning meditation (5 min)
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="habit2" checked>
+                                    <label class="form-check-label text-light" for="habit2">
+                                        Drink 8 glasses of water
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="habit3">
+                                    <label class="form-check-label text-light" for="habit3">
+                                        Take stretch breaks every hour
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="habit4" checked>
+                                    <label class="form-check-label text-light" for="habit4">
+                                        Walk during lunch break
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="habit5">
+                                    <label class="form-check-label text-light" for="habit5">
+                                        No screens 1 hour before bed
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card bg-dark bg-opacity-50 border-secondary">
+                            <div class="card-body">
+                                <h6 class="text-light mb-3">Weekly Goals</h6>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="goal1" checked>
+                                    <label class="form-check-label text-light" for="goal1">
+                                        Exercise 3+ times per week
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="goal2">
+                                    <label class="form-check-label text-light" for="goal2">
+                                        Social activity with friends/colleagues
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="goal3" checked>
+                                    <label class="form-check-label text-light" for="goal3">
+                                        Hobby or creative activity
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="goal4">
+                                    <label class="form-check-label text-light" for="goal4">
+                                        Nature time (park, walk, etc.)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="goal5" checked>
+                                    <label class="form-check-label text-light" for="goal5">
+                                        Digital detox day (Sunday)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Stress Management Techniques</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <div class="card bg-dark bg-opacity-25 border-secondary">
+                                <div class="card-body text-center">
+                                    <div class="avatar-sm bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-2" style="width: 40px; height: 40px; line-height: 40px;">
+                                        <i class="bi bi-wind"></i>
+                                    </div>
+                                    <h6 class="text-light small mb-1">Deep Breathing</h6>
+                                    <p class="text-muted small mb-0">4-7-8 technique</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <div class="card bg-dark bg-opacity-25 border-secondary">
+                                <div class="card-body text-center">
+                                    <div class="avatar-sm bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-2" style="width: 40px; height: 40px; line-height: 40px;">
+                                        <i class="bi bi-person-arms-up"></i>
+                                    </div>
+                                    <h6 class="text-light small mb-1">Progressive Relaxation</h6>
+                                    <p class="text-muted small mb-0">Muscle tension release</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <div class="card bg-dark bg-opacity-25 border-secondary">
+                                <div class="card-body text-center">
+                                    <div class="avatar-sm bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-2" style="width: 40px; height: 40px; line-height: 40px;">
+                                        <i class="bi bi-image"></i>
+                                    </div>
+                                    <h6 class="text-light small mb-1">Visualization</h6>
+                                    <p class="text-muted small mb-0">Mental imagery</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Emergency Support</h6>
+                    <div class="alert alert-danger bg-dark bg-opacity-25 border-danger">
+                        <p class="text-muted mb-2"><strong>If you're in crisis:</strong></p>
+                        <ul class="text-muted mb-0">
+                            <li>Call emergency services: 911</li>
+                            <li>Crisis hotline: 1-800-273-8255</li>
+                            <li>Text HOME to 741741 for crisis support</li>
+                            <li>Contact HR for immediate assistance</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save Plan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stress Check Modal -->
+<div class="modal fade" id="stressCheckModal" tabindex="-1" aria-labelledby="stressCheckModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="stressCheckModalLabel">Stress Level Check</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">How stressed are you feeling right now?</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small">Not Stressed</span>
+                        <span class="text-muted small">Very Stressed</span>
+                    </div>
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        <button class="stress-btn btn btn-outline-success btn-lg" data-stress="1">1</button>
+                        <button class="stress-btn btn btn-outline-success btn-lg" data-stress="2">2</button>
+                        <button class="stress-btn btn btn-outline-warning btn-lg" data-stress="3">3</button>
+                        <button class="stress-btn btn btn-outline-warning btn-lg" data-stress="4">4</button>
+                        <button class="stress-btn btn btn-outline-danger btn-lg" data-stress="5">5</button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">What are your main stressors? (Select all that apply)</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="stressor1">
+                        <label class="form-check-label text-light" for="stressor1">
+                            Work deadlines/pressure
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="stressor2">
+                        <label class="form-check-label text-light" for="stressor2">
+                            Team dynamics/conflicts
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="stressor3">
+                        <label class="form-check-label text-light" for="stressor3">
+                            Work-life balance
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="stressor4">
+                        <label class="form-check-label text-light" for="stressor4">
+                            Personal life issues
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="stressor5">
+                        <label class="form-check-label text-light" for="stressor5">
+                            Health concerns
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">How are you managing stress?</h6>
+                    <textarea class="form-control bg-dark text-light border-secondary" rows="3" placeholder="What coping strategies are you using?"></textarea>
+                </div>
+                
+                <div id="stressResults" class="alert alert-info bg-dark bg-opacity-25 border-info" style="display: none;">
+                    <h6 class="text-light mb-2">Stress Management Recommendations</h6>
+                    <p class="text-muted mb-0">Based on your responses, here are some strategies that might help...</p>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="getRecommendations">Get Recommendations</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resources Modal -->
+<div class="modal fade" id="resourcesModal" tabindex="-1" aria-labelledby="resourcesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="resourcesModalLabel">Wellness Resources</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark bg-opacity-50 border-secondary">
+                            <div class="card-body">
+                                <h6 class="text-light mb-3"><i class="bi bi-book text-info me-2"></i>Learning Resources</h6>
+                                <div class="list-group">
+                                    <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary text-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Mindfulness Guide</span>
+                                            <i class="bi bi-arrow-right"></i>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary text-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Stress Management Workbook</span>
+                                            <i class="bi bi-arrow-right"></i>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary text-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Sleep Hygiene Tips</span>
+                                            <i class="bi bi-arrow-right"></i>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark bg-opacity-50 border-secondary">
+                            <div class="card-body">
+                                <h6 class="text-light mb-3"><i class="bi bi-headset text-success me-2"></i>Support Services</h6>
+                                <div class="list-group">
+                                    <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary text-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Employee Assistance Program</span>
+                                            <i class="bi bi-arrow-right"></i>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary text-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Mental Health Counseling</span>
+                                            <i class="bi bi-arrow-right"></i>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary text-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Peer Support Network</span>
+                                            <i class="bi bi-arrow-right"></i>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark bg-opacity-50 border-secondary">
+                            <div class="card-body">
+                                <h6 class="text-light mb-3"><i class="bi bi-phone text-warning me-2"></i>Hotlines</h6>
+                                <div class="list-group">
+                                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                        <div>
+                                            <small class="text-light">Crisis Hotline</small>
+                                            <p class="text-muted mb-0">1-800-273-8255</p>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                        <div>
+                                            <small class="text-light">Text Support</small>
+                                            <p class="text-muted mb-0">Text HOME to 741741</p>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                        <div>
+                                            <small class="text-light">Company HR</small>
+                                            <p class="text-muted mb-0">Ext. 2000</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark bg-opacity-50 border-secondary">
+                            <div class="card-body">
+                                <h6 class="text-light mb-3"><i class="bi bi-app text-primary me-2"></i>Recommended Apps</h6>
+                                <div class="list-group">
+                                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle me-2" style="width: 30px; height: 30px; line-height: 30px;">
+                                                <i class="bi bi-emoji-smile" style="font-size: 0.8rem;"></i>
+                                            </div>
+                                            <div>
+                                                <small class="text-light">Calm</small>
+                                                <p class="text-muted mb-0 small">Meditation & Sleep</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-success bg-opacity-10 text-success rounded-circle me-2" style="width: 30px; height: 30px; line-height: 30px;">
+                                                <i class="bi bi-activity" style="font-size: 0.8rem;"></i>
+                                            </div>
+                                            <div>
+                                                <small class="text-light">Headspace</small>
+                                                <p class="text-muted mb-0 small">Mindfulness Training</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-info bg-opacity-10 text-info rounded-circle me-2" style="width: 30px; height: 30px; line-height: 30px;">
+                                                <i class="bi bi-heart-pulse" style="font-size: 0.8rem;"></i>
+                                            </div>
+                                            <div>
+                                                <small class="text-light">Moodpath</small>
+                                                <p class="text-muted mb-0 small">Mood Tracking</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Support Modal -->
+<div class="modal fade" id="supportModal" tabindex="-1" aria-labelledby="supportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="supportModalLabel">Get Support</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">What type of support do you need?</h6>
+                    <select class="form-select bg-dark text-light border-secondary">
+                        <option value="">Select type...</option>
+                        <option value="counseling">Mental Health Counseling</option>
+                        <option value="coaching">Life Coaching</option>
+                        <option value="peer">Peer Support</option>
+                        <option value="medical">Medical Support</option>
+                        <option value="financial">Financial Counseling</option>
+                        <option value="career">Career Guidance</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Preferred contact method</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="contact" id="contact1" checked>
+                        <label class="form-check-label text-light" for="contact1">
+                            Phone call
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="contact" id="contact2">
+                        <label class="form-check-label text-light" for="contact2">
+                            Video call
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="contact" id="contact3">
+                        <label class="form-check-label text-light" for="contact3">
+                            In-person meeting
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="contact" id="contact4">
+                        <label class="form-check-label text-light" for="contact4">
+                            Text/chat
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Urgency level</h6>
+                    <select class="form-select bg-dark text-light border-secondary">
+                        <option value="low">Low - General wellness check</option>
+                        <option value="medium">Medium - Need support soon</option>
+                        <option value="high">High - Need urgent support</option>
+                        <option value="emergency">Emergency - Crisis situation</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Additional notes</h6>
+                    <textarea class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Any additional information you'd like to share..."></textarea>
+                </div>
+                
+                <div class="alert alert-info bg-dark bg-opacity-25 border-info">
+                    <p class="text-muted mb-0"><strong>Confidentiality:</strong> All support requests are completely confidential and will not affect your employment status.</p>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Request Support</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mood selection
+    const moodButtons = document.querySelectorAll('.mood-btn');
+    let selectedMood = null;
+    
+    moodButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active state from all buttons
+            moodButtons.forEach(btn => {
+                btn.classList.remove('active', 'btn-success', 'btn-warning', 'btn-info', 'btn-danger', 'btn-primary');
+                btn.classList.add('btn-outline-secondary');
+            });
+            
+            // Add active state to selected button
+            this.classList.remove('btn-outline-secondary');
+            this.classList.add('active');
+            
+            const mood = this.getAttribute('data-mood');
+            selectedMood = mood;
+            
+            // Update button color based on mood
+            if (mood === '1') this.classList.add('btn-danger');
+            else if (mood === '2') this.classList.add('btn-warning');
+            else if (mood === '3') this.classList.add('btn-info');
+            else if (mood === '4') this.classList.add('btn-success');
+            else if (mood === '5') this.classList.add('btn-primary');
+        });
+    });
+    
+    // Confidence selection
+    const confidenceButtons = document.querySelectorAll('.confidence-btn');
+    let selectedConfidence = null;
+    
+    confidenceButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active state from all buttons
+            confidenceButtons.forEach(btn => {
+                btn.classList.remove('active', 'btn-success', 'btn-warning', 'btn-info', 'btn-danger', 'btn-primary');
+                btn.classList.add('btn-outline-secondary');
+            });
+            
+            // Add active state to selected button
+            this.classList.remove('btn-outline-secondary');
+            this.classList.add('active');
+            
+            const confidence = this.getAttribute('data-confidence');
+            selectedConfidence = confidence;
+            
+            // Update button color based on confidence
+            if (confidence === '1') this.classList.add('btn-danger');
+            else if (confidence === '2') this.classList.add('btn-warning');
+            else if (confidence === '3') this.classList.add('btn-info');
+            else if (confidence === '4') this.classList.add('btn-success');
+            else if (confidence === '5') this.classList.add('btn-primary');
+        });
+    });
+    
+    // Submit check-in
+    const submitBtn = document.getElementById('submitCheckin');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function() {
+            if (!selectedMood || !selectedConfidence) {
+                alert('Please select both mood and confidence levels');
+                return;
+            }
+            
+            const notes = document.getElementById('checkinNotes').value;
+            
+            // Simulate submission
+            this.innerHTML = '<i class="bi bi-check me-1"></i> Submitted!';
+            this.classList.remove('btn-primary');
+            this.classList.add('btn-success');
+            this.disabled = true;
+            
+            // Reset after 3 seconds
+            setTimeout(() => {
+                this.innerHTML = '<i class="bi bi-send me-1"></i> Submit Check-in';
+                this.classList.remove('btn-success');
+                this.classList.add('btn-primary');
+                this.disabled = false;
+                
+                // Reset selections
+                moodButtons.forEach(btn => {
+                    btn.classList.remove('active', 'btn-success', 'btn-warning', 'btn-info', 'btn-danger', 'btn-primary');
+                    btn.classList.add('btn-outline-secondary');
+                });
+                confidenceButtons.forEach(btn => {
+                    btn.classList.remove('active', 'btn-success', 'btn-warning', 'btn-info', 'btn-danger', 'btn-primary');
+                    btn.classList.add('btn-outline-secondary');
+                });
+                document.getElementById('checkinNotes').value = '';
+                selectedMood = null;
+                selectedConfidence = null;
+            }, 3000);
+            
+            console.log('Check-in submitted:', { mood: selectedMood, confidence: selectedConfidence, notes: notes });
+        });
+    }
+    
+    // Stress check buttons
+    const stressButtons = document.querySelectorAll('.stress-btn');
+    let selectedStress = null;
+    
+    stressButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active state from all buttons
+            stressButtons.forEach(btn => {
+                btn.classList.remove('active', 'btn-success', 'btn-warning', 'btn-info', 'btn-danger', 'btn-primary');
+                btn.classList.add('btn-outline-secondary');
+            });
+            
+            // Add active state to selected button
+            this.classList.remove('btn-outline-secondary');
+            this.classList.add('active');
+            
+            const stress = this.getAttribute('data-stress');
+            selectedStress = stress;
+            
+            // Update button color based on stress
+            if (stress === '1' || stress === '2') this.classList.add('btn-success');
+            else if (stress === '3') this.classList.add('btn-warning');
+            else if (stress === '4') this.classList.add('btn-warning');
+            else if (stress === '5') this.classList.add('btn-danger');
+        });
+    });
+    
+    // Get stress recommendations
+    const getRecommendationsBtn = document.getElementById('getRecommendations');
+    if (getRecommendationsBtn) {
+        getRecommendationsBtn.addEventListener('click', function() {
+            const resultsDiv = document.getElementById('stressResults');
+            if (resultsDiv) {
+                resultsDiv.style.display = 'block';
+                
+                let recommendations = '';
+                if (selectedStress <= 2) {
+                    recommendations = 'Your stress level is low. Keep up your current stress management practices!';
+                } else if (selectedStress === 3) {
+                    recommendations = 'Moderate stress detected. Try deep breathing exercises and taking regular breaks.';
+                } else if (selectedStress >= 4) {
+                    recommendations = 'High stress detected. Consider talking to a counselor, practicing relaxation techniques, and taking time off if needed.';
+                }
+                
+                resultsDiv.querySelector('p').textContent = recommendations;
+            }
+        });
+    }
+    
+    // Initialize charts (simplified for demo)
+    const moodChart = document.getElementById('moodChart');
+    if (moodChart) {
+        // Simple chart placeholder
+        moodChart.getContext('2d').fillText('Mood & Confidence Trends Chart', 150, 50);
+    }
+    
+    const moodDistribution = document.getElementById('moodDistribution');
+    if (moodDistribution) {
+        // Simple chart placeholder
+        moodDistribution.getContext('2d').fillText('Mood Distribution Chart', 150, 50);
+    }
+    
+    // Modal form handlers
+    const modalButtons = document.querySelectorAll('.modal-footer .btn-primary');
+    modalButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            const modalId = modal.id;
+            
+            // Different messages based on modal
+            let message = 'Action completed successfully!';
+            if (modalId === 'wellnessPlanModal') {
+                message = 'Wellness plan saved successfully!';
+            } else if (modalId === 'stressCheckModal') {
+                message = 'Stress check completed!';
+            } else if (modalId === 'supportModal') {
+                message = 'Support request submitted! We\'ll contact you soon.';
+            }
+            
+            alert(message + ' (This would save to database in production)');
+            bootstrap.Modal.getInstance(modal).hide();
+        });
+    });
+    
+    // Wellness checkbox handlers
+    const wellnessCheckboxes = document.querySelectorAll('#wellness-tab input[type="checkbox"]');
+    wellnessCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Update wellness score based on checked items
+            const checked = document.querySelectorAll('#wellness-tab input[type="checkbox"]:checked').length;
+            const total = wellnessCheckboxes.length;
+            const percentage = Math.round((checked / total) * 100);
+            
+            // Update wellness score display (if element exists)
+            const wellnessScore = document.querySelector('.avatar-xl span');
+            if (wellnessScore) {
+                const newScore = Math.round(50 + (percentage * 0.4)); // Scale from 50-90
+                wellnessScore.textContent = newScore;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

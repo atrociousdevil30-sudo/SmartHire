@@ -1,0 +1,1261 @@
+{% extends "employee_base.html" %}
+
+{% block title %}Performance Reviews - Employee Portal{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1 text-light">
+                        <i class="bi bi-graph-up me-2"></i>Performance Reviews
+                    </h1>
+                    <p class="text-muted mb-0">Track your performance reviews and career development</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#performanceHelpModal">
+                        <i class="bi bi-question-circle me-1"></i> Help
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="avatar-lg bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                        <i class="bi bi-star-fill" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h6 class="text-light mb-1">Current Rating</h6>
+                    <h4 class="text-success mb-0">{{ current_rating }}</h4>
+                    <p class="small text-muted mb-0">
+                        {% if current_rating >= 4.5 %}Outstanding
+                        {% elif current_rating >= 4.0 %}Exceeds Expectations
+                        {% elif current_rating >= 3.5 %}Meets Expectations
+                        {% elif current_rating >= 3.0 %}Needs Improvement
+                        {% else %}Significant Improvement Needed{% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                        <i class="bi bi-calendar-check" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h6 class="text-light mb-1">Next Review</h6>
+                    {% set next_review = performance_reviews | selectattr('status', 'equalto', 'upcoming') | first %}
+                    {% if next_review %}
+                        {% set days_until = (next_review.date - today).days %}
+                        <h4 class="text-primary mb-0">{{ days_until }}</h4>
+                        <p class="small text-muted mb-0">Days Remaining</p>
+                    {% else %}
+                        <h4 class="text-secondary mb-0">N/A</h4>
+                        <p class="small text-muted mb-0">No Upcoming Reviews</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="avatar-lg bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                        <i class="bi bi-trophy" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h6 class="text-light mb-1">Achievements</h6>
+                    <h4 class="text-info mb-0">{{ achievements_count }}</h4>
+                    <p class="small text-muted mb-0">Goals Completed</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-body text-center">
+                    <div class="avatar-lg bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                        <i class="bi bi-graph-up-arrow" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h6 class="text-light mb-1">Growth Score</h6>
+                    <h4 class="text-{{ 'success' if growth_score > 0 else 'danger' if growth_score < 0 else 'warning' }} mb-0">
+                        {% if growth_score > 0 %}+{% endif %}{{ growth_score }}%
+                    </h4>
+                    <p class="small text-muted mb-0">Trend Analysis</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <!-- Tab Navigation -->
+                <div class="card-header bg-transparent border-secondary">
+                    <ul class="nav nav-tabs card-header-tabs" id="performanceTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">
+                                <i class="bi bi-clipboard-check me-1"></i> Review History
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab">
+                                <i class="bi bi-calendar-event me-1"></i> Upcoming Reviews
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals" type="button" role="tab">
+                                <i class="bi bi-flag me-1"></i> Performance Goals
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
+                                <i class="bi bi-chat-dots me-1"></i> Feedback
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Tab Content -->
+                <div class="card-body">
+                    <div class="tab-content" id="performanceTabsContent">
+                        <!-- Review History Tab -->
+                        <div class="tab-pane fade show active" id="reviews" role="tabpanel">
+                            <div class="list-group">
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Annual Performance Review 2024</h6>
+                                                <span class="badge bg-success bg-opacity-25 text-success ms-2">Completed</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Comprehensive annual evaluation with manager and team lead</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Rating:</small>
+                                                    <div class="d-flex">
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star text-secondary"></i>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Date:</small>
+                                                    <span class="text-light">March 15, 2024</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#reviewDetailModal">
+                                                <i class="bi bi-eye me-1"></i> View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Mid-Year Review 2023</h6>
+                                                <span class="badge bg-success bg-opacity-25 text-success ms-2">Completed</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Progress check on annual goals and development plan</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Rating:</small>
+                                                    <div class="d-flex">
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-half text-warning"></i>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Date:</small>
+                                                    <span class="text-light">September 20, 2023</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye me-1"></i> View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">90-Day Review</h6>
+                                                <span class="badge bg-success bg-opacity-25 text-success ms-2">Completed</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">End of probation period evaluation</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Rating:</small>
+                                                    <div class="d-flex">
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star text-secondary"></i>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Date:</small>
+                                                    <span class="text-light">June 10, 2023</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye me-1"></i> View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">30-Day Check-in</h6>
+                                                <span class="badge bg-success bg-opacity-25 text-success ms-2">Completed</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Initial onboarding progress review</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Rating:</small>
+                                                    <div class="d-flex">
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                        <i class="bi bi-star text-secondary"></i>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Date:</small>
+                                                    <span class="text-light">April 15, 2023</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye me-1"></i> View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Upcoming Reviews Tab -->
+                        <div class="tab-pane fade" id="upcoming" role="tabpanel">
+                            <div class="list-group">
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Q2 2024 Performance Check-in</h6>
+                                                <span class="badge bg-warning bg-opacity-25 text-warning ms-2">Scheduled</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Quarterly progress review and goal adjustment</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Date:</small>
+                                                    <span class="text-light">June 30, 2024</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Reviewer:</small>
+                                                    <span class="text-light">Sarah Johnson (Manager)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#prepareModal">
+                                                <i class="bi bi-pencil me-1"></i> Prepare
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Annual Performance Review 2025</h6>
+                                                <span class="badge bg-info bg-opacity-25 text-info ms-2">Upcoming</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Comprehensive annual evaluation for 2025</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Date:</small>
+                                                    <span class="text-light">March 15, 2025</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Reviewer:</small>
+                                                    <span class="text-light">Sarah Johnson (Manager)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-info btn-sm">
+                                                <i class="bi bi-calendar me-1"></i> Set Reminder
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">360-Degree Feedback</h6>
+                                                <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2">Planned</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Peer review and stakeholder feedback collection</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Date:</small>
+                                                    <span class="text-light">August 2024</span>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Participants:</small>
+                                                    <span class="text-light">5-7 team members</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-people me-1"></i> Select Reviewers
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Performance Goals Tab -->
+                        <div class="tab-pane fade" id="goals" role="tabpanel">
+                            <div class="list-group">
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Improve Technical Skills</h6>
+                                                <span class="badge bg-success bg-opacity-25 text-success ms-2">On Track</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Complete advanced certification in React and Node.js</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Progress:</small>
+                                                    <div class="progress bg-dark bg-opacity-50" style="width: 100px; height: 8px;">
+                                                        <div class="progress-bar bg-success" style="width: 65%"></div>
+                                                    </div>
+                                                    <small class="text-light ms-2">65%</small>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Due:</small>
+                                                    <span class="text-light">Q3 2024</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-pencil me-1"></i> Update
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Leadership Development</h6>
+                                                <span class="badge bg-warning bg-opacity-25 text-warning ms-2">Needs Attention</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Lead a cross-functional project and mentor junior developers</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Progress:</small>
+                                                    <div class="progress bg-dark bg-opacity-50" style="width: 100px; height: 8px;">
+                                                        <div class="progress-bar bg-warning" style="width: 30%"></div>
+                                                    </div>
+                                                    <small class="text-light ms-2">30%</small>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Due:</small>
+                                                    <span class="text-light">Q4 2024</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-warning btn-sm">
+                                                <i class="bi bi-exclamation-triangle me-1"></i> Action Plan
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Process Improvement</h6>
+                                                <span class="badge bg-success bg-opacity-25 text-success ms-2">Exceeded</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Implement CI/CD pipeline improvements reducing deployment time by 40%</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Progress:</small>
+                                                    <div class="progress bg-dark bg-opacity-50" style="width: 100px; height: 8px;">
+                                                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                                                    </div>
+                                                    <small class="text-light ms-2">100%</small>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Completed:</small>
+                                                    <span class="text-light">May 2024</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-check-circle me-1"></i> Completed
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <h6 class="mb-0 text-light">Communication Skills</h6>
+                                                <span class="badge bg-info bg-opacity-25 text-info ms-2">In Progress</span>
+                                            </div>
+                                            <p class="small text-muted mb-2">Present at team meetings and document technical processes</p>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div>
+                                                    <small class="text-muted">Progress:</small>
+                                                    <div class="progress bg-dark bg-opacity-50" style="width: 100px; height: 8px;">
+                                                        <div class="progress-bar bg-info" style="width: 45%"></div>
+                                                    </div>
+                                                    <small class="text-light ms-2">45%</small>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">Due:</small>
+                                                    <span class="text-light">Q2 2024</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-pencil me-1"></i> Update
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Feedback Tab -->
+                        <div class="tab-pane fade" id="feedback" role="tabpanel">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Recent Feedback</h6>
+                                            <div class="mb-3">
+                                                <div class="d-flex align-items-start mb-2">
+                                                    <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle me-2" style="width: 30px; height: 30px; line-height: 30px;">
+                                                        <i class="bi bi-person-fill" style="font-size: 0.8rem;"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex justify-content-between">
+                                                            <small class="text-light">Sarah Johnson (Manager)</small>
+                                                            <small class="text-muted">2 days ago</small>
+                                                        </div>
+                                                        <p class="small text-muted mb-0">Excellent work on the recent project delivery. Your attention to detail and proactive communication really made a difference.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="d-flex align-items-start mb-2">
+                                                    <div class="avatar-sm bg-success bg-opacity-10 text-success rounded-circle me-2" style="width: 30px; height: 30px; line-height: 30px;">
+                                                        <i class="bi bi-person-fill" style="font-size: 0.8rem;"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex justify-content-between">
+                                                            <small class="text-light">Michael Chen (Team Lead)</small>
+                                                            <small class="text-muted">1 week ago</small>
+                                                        </div>
+                                                        <p class="small text-muted mb-0">Great collaboration on the API integration. Your code quality and documentation are exemplary.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="d-flex align-items-start mb-2">
+                                                    <div class="avatar-sm bg-info bg-opacity-10 text-info rounded-circle me-2" style="width: 30px; height: 30px; line-height: 30px;">
+                                                        <i class="bi bi-person-fill" style="font-size: 0.8rem;"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex justify-content-between">
+                                                            <small class="text-light">Emily Rodriguez (Peer)</small>
+                                                            <small class="text-muted">2 weeks ago</small>
+                                                        </div>
+                                                        <p class="small text-muted mb-0">Thanks for helping me debug the authentication issue. Your patience and clear explanations were really helpful!</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                                        <div class="card-body">
+                                            <h6 class="text-light mb-3">Request Feedback</h6>
+                                            <form>
+                                                <div class="mb-3">
+                                                    <label for="feedbackFrom" class="form-label text-light small">From</label>
+                                                    <select class="form-select form-select-sm bg-dark text-light border-secondary" id="feedbackFrom">
+                                                        <option value="">Select person...</option>
+                                                        <option value="manager">Manager</option>
+                                                        <option value="team">Team Members</option>
+                                                        <option value="peer">Specific Peer</option>
+                                                        <option value="stakeholder">Stakeholder</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="feedbackType" class="form-label text-light small">Type</label>
+                                                    <select class="form-select form-select-sm bg-dark text-light border-secondary" id="feedbackType">
+                                                        <option value="general">General Performance</option>
+                                                        <option value="project">Project-Specific</option>
+                                                        <option value="skill">Skill Development</option>
+                                                        <option value="leadership">Leadership</option>
+                                                        <option value="collaboration">Team Collaboration</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="feedbackMessage" class="form-label text-light small">Message</label>
+                                                    <textarea class="form-control form-control-sm bg-dark text-light border-secondary" id="feedbackMessage" rows="3" placeholder="What specific feedback would you like?"></textarea>
+                                                </div>
+                                                
+                                                <button type="button" class="btn btn-primary btn-sm w-100">
+                                                    <i class="bi bi-send me-1"></i> Send Request
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#selfAssessmentModal">
+                            <i class="bi bi-clipboard-data me-1"></i> Self Assessment
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#goalUpdateModal">
+                            <i class="bi bi-flag me-1"></i> Update Goals
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#developmentModal">
+                            <i class="bi bi-graph-up-arrow me-1"></i> Development Plan
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#achievementModal">
+                            <i class="bi bi-trophy me-1"></i> Log Achievement
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="performanceHelpModal" tabindex="-1" aria-labelledby="performanceHelpModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="performanceHelpModalLabel">Performance Reviews Help</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 class="text-light"><i class="bi bi-info-circle text-primary me-2"></i>About Performance Reviews</h6>
+                    <p class="text-muted">Performance reviews help track your progress, set goals, and identify areas for development.</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light"><i class="bi bi-calendar-check text-success me-2"></i>Review Types</h6>
+                    <ul class="text-muted">
+                        <li><strong>Annual Reviews:</strong> Comprehensive yearly evaluation</li>
+                        <li><strong>Quarterly Check-ins:</strong> Progress monitoring and goal adjustment</li>
+                        <li><strong>30/60/90 Day Reviews:</strong> Onboarding and probation evaluations</li>
+                        <li><strong>360-Degree Feedback:</strong> Peer and stakeholder perspectives</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light"><i class="bi bi-star text-warning me-2"></i>Rating System</h6>
+                    <ul class="text-muted">
+                        <li><strong>5 Stars:</strong> Exceptional performance, exceeds all expectations</li>
+                        <li><strong>4 Stars:</strong> Exceeds expectations, strong performance</li>
+                        <li><strong>3 Stars:</strong> Meets expectations, solid performance</li>
+                        <li><strong>2 Stars:</strong> Needs improvement, below expectations</li>
+                        <li><strong>1 Star:</strong> Unsatisfactory performance</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light"><i class="bi bi-lightbulb text-info me-2"></i>Tips for Success</h6>
+                    <ul class="text-muted">
+                        <li>Keep a running list of accomplishments throughout the year</li>
+                        <li>Request feedback regularly, not just during reviews</li>
+                        <li>Set SMART goals with your manager</li>
+                        <li>Be prepared with specific examples and metrics</li>
+                        <li>View feedback as an opportunity for growth</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Review Detail Modal -->
+<div class="modal fade" id="reviewDetailModal" tabindex="-1" aria-labelledby="reviewDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="reviewDetailModalLabel">Annual Performance Review 2024</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-light mb-2">Review Details</h6>
+                        <p class="text-muted mb-1"><strong>Date:</strong> March 15, 2024</p>
+                        <p class="text-muted mb-1"><strong>Reviewer:</strong> Sarah Johnson (Manager)</p>
+                        <p class="text-muted mb-1"><strong>Period:</strong> April 2023 - March 2024</p>
+                        <p class="text-muted mb-1"><strong>Type:</strong> Annual Performance Review</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-light mb-2">Overall Rating</h6>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="d-flex me-2">
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <i class="bi bi-star text-secondary"></i>
+                            </div>
+                            <span class="text-light">4.0 - Exceeds Expectations</span>
+                        </div>
+                        <p class="text-muted mb-1"><strong>Technical Skills:</strong> 4.5</p>
+                        <p class="text-muted mb-1"><strong>Communication:</strong> 4.0</p>
+                        <p class="text-muted mb-1"><strong>Teamwork:</strong> 4.2</p>
+                        <p class="text-muted mb-1"><strong>Leadership:</strong> 3.5</p>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Strengths</h6>
+                    <ul class="text-muted">
+                        <li>Excellent technical problem-solving skills</li>
+                        <li>Strong attention to detail and code quality</li>
+                        <li>Proactive communication with stakeholders</li>
+                        <li>Willingness to mentor junior team members</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Areas for Development</h6>
+                    <ul class="text-muted">
+                        <li>Take more initiative in project leadership</li>
+                        <li>Develop presentation skills for larger audiences</li>
+                        <li>Expand knowledge of business domain</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Key Achievements</h6>
+                    <ul class="text-muted">
+                        <li>Led implementation of CI/CD pipeline improvements</li>
+                        <li>Reduced deployment time by 40%</li>
+                        <li>Successfully mentored 2 junior developers</li>
+                        <li>Completed React certification with distinction</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Goals for Next Period</h6>
+                    <ul class="text-muted">
+                        <li>Lead a cross-functional project by Q3 2024</li>
+                        <li>Complete advanced Node.js certification</li>
+                        <li>Present at company tech meetup</li>
+                        <li>Develop and document 3 best practices</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-info bg-dark bg-opacity-25 border-info">
+                    <h6 class="text-light mb-2">Manager Comments</h6>
+                    <p class="text-muted mb-0">"You've had an outstanding year! Your technical contributions have been invaluable to the team. I'm particularly impressed with your growth in mentoring others. Looking forward to seeing you take on more leadership responsibilities in the coming year."</p>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Download PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Prepare for Review Modal -->
+<div class="modal fade" id="prepareModal" tabindex="-1" aria-labelledby="prepareModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="prepareModalLabel">Prepare for Review</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info bg-dark bg-opacity-25 border-info">
+                    <h6 class="text-light mb-2">Review Preparation Checklist</h6>
+                    <p class="text-muted mb-0">Use this checklist to prepare for your upcoming performance review.</p>
+                </div>
+                
+                <div class="list-group">
+                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-3" type="checkbox" id="prep1">
+                            <label class="form-check-label text-light" for="prep1">
+                                List your key accomplishments since last review
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-3" type="checkbox" id="prep2">
+                            <label class="form-check-label text-light" for="prep2">
+                                Gather metrics and data for your achievements
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-3" type="checkbox" id="prep3">
+                            <label class="form-check-label text-light" for="prep3">
+                                Review progress on previous goals
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-3" type="checkbox" id="prep4">
+                            <label class="form-check-label text-light" for="prep4">
+                                Identify challenges and how you overcame them
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-3" type="checkbox" id="prep5">
+                            <label class="form-check-label text-light" for="prep5">
+                                Prepare questions for your manager
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-3" type="checkbox" id="prep6">
+                            <label class="form-check-label text-light" for="prep6">
+                                Think about your career goals and development needs
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6 class="text-light mb-2">Self-Assessment Notes</h6>
+                    <textarea class="form-control bg-dark text-light border-secondary" rows="4" placeholder="Add your thoughts and preparation notes here..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Save Draft</button>
+                <button type="button" class="btn btn-primary">Mark as Prepared</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Self Assessment Modal -->
+<div class="modal fade" id="selfAssessmentModal" tabindex="-1" aria-labelledby="selfAssessmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="selfAssessmentModalLabel">Self Assessment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-light">Technical Skills</label>
+                            <select class="form-select bg-dark text-light border-secondary">
+                                <option value="5">5 - Exceptional</option>
+                                <option value="4" selected>4 - Exceeds Expectations</option>
+                                <option value="3">3 - Meets Expectations</option>
+                                <option value="2">2 - Needs Improvement</option>
+                                <option value="1">1 - Unsatisfactory</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-light">Communication</label>
+                            <select class="form-select bg-dark text-light border-secondary">
+                                <option value="5">5 - Exceptional</option>
+                                <option value="4" selected>4 - Exceeds Expectations</option>
+                                <option value="3">3 - Meets Expectations</option>
+                                <option value="2">2 - Needs Improvement</option>
+                                <option value="1">1 - Unsatisfactory</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-light">Teamwork</label>
+                            <select class="form-select bg-dark text-light border-secondary">
+                                <option value="5">5 - Exceptional</option>
+                                <option value="4" selected>4 - Exceeds Expectations</option>
+                                <option value="3">3 - Meets Expectations</option>
+                                <option value="2">2 - Needs Improvement</option>
+                                <option value="1">1 - Unsatisfactory</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-light">Leadership</label>
+                            <select class="form-select bg-dark text-light border-secondary">
+                                <option value="5">5 - Exceptional</option>
+                                <option value="4">4 - Exceeds Expectations</option>
+                                <option value="3" selected>3 - Meets Expectations</option>
+                                <option value="2">2 - Needs Improvement</option>
+                                <option value="1">1 - Unsatisfactory</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Key Accomplishments</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" rows="4" placeholder="List your major achievements since last review..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Challenges Faced</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Describe challenges and how you overcame them..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Areas for Improvement</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" rows="3" placeholder="What areas would you like to develop?"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Career Goals</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" rows="3" placeholder="What are your short-term and long-term career goals?"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Save Draft</button>
+                <button type="button" class="btn btn-primary">Submit Assessment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Goal Update Modal -->
+<div class="modal fade" id="goalUpdateModal" tabindex="-1" aria-labelledby="goalUpdateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="goalUpdateModalLabel">Update Performance Goals</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label text-light">Select Goal to Update</label>
+                        <select class="form-select bg-dark text-light border-secondary">
+                            <option value="">Choose a goal...</option>
+                            <option value="technical">Improve Technical Skills</option>
+                            <option value="leadership">Leadership Development</option>
+                            <option value="communication">Communication Skills</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Progress Update</label>
+                        <select class="form-select bg-dark text-light border-secondary">
+                            <option value="on-track">On Track</option>
+                            <option value="ahead">Ahead of Schedule</option>
+                            <option value="behind">Behind Schedule</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Progress Percentage</label>
+                        <input type="range" class="form-range" min="0" max="100" value="50">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">0%</small>
+                            <small class="text-light">50%</small>
+                            <small class="text-muted">100%</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Update Notes</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Describe your progress and any challenges..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Support Needed</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" rows="2" placeholder="What support do you need to achieve this goal?"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Update Goal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Development Plan Modal -->
+<div class="modal fade" id="developmentModal" tabindex="-1" aria-labelledby="developmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="developmentModalLabel">Development Plan</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info bg-dark bg-opacity-25 border-info">
+                    <h6 class="text-light mb-2">Your Development Focus Areas</h6>
+                    <p class="text-muted mb-0">Based on your performance reviews and career goals</p>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                            <div class="card-body">
+                                <h6 class="text-light mb-2">Technical Skills</h6>
+                                <p class="small text-muted mb-2">Advanced React and Node.js development</p>
+                                <div class="mb-2">
+                                    <small class="text-muted">Current Level:</small>
+                                    <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
+                                        <div class="progress-bar bg-info" style="width: 65%"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">Target Level:</small>
+                                    <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 90%"></div>
+                                    </div>
+                                </div>
+                                <small class="text-info">Timeline: Q3 2024</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                            <div class="card-body">
+                                <h6 class="text-light mb-2">Leadership Skills</h6>
+                                <p class="small text-muted mb-2">Project management and team leadership</p>
+                                <div class="mb-2">
+                                    <small class="text-muted">Current Level:</small>
+                                    <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
+                                        <div class="progress-bar bg-warning" style="width: 30%"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">Target Level:</small>
+                                    <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 80%"></div>
+                                    </div>
+                                </div>
+                                <small class="text-info">Timeline: Q4 2024</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Recommended Actions</h6>
+                    <div class="list-group">
+                        <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                            <div class="d-flex align-items-center">
+                                <input class="form-check-input me-3" type="checkbox" id="dev1">
+                                <label class="form-check-label text-light" for="dev1">
+                                    Complete Advanced React Certification
+                                </label>
+                                <span class="badge bg-primary bg-opacity-25 text-primary ms-auto">Technical</span>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                            <div class="d-flex align-items-center">
+                                <input class="form-check-input me-3" type="checkbox" id="dev2">
+                                <label class="form-check-label text-light" for="dev2">
+                                    Lead Cross-Functional Project
+                                </label>
+                                <span class="badge bg-success bg-opacity-25 text-success ms-auto">Leadership</span>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                            <div class="d-flex align-items-center">
+                                <input class="form-check-input me-3" type="checkbox" id="dev3">
+                                <label class="form-check-label text-light" for="dev3">
+                                    Present at Team Meetings
+                                </label>
+                                <span class="badge bg-info bg-opacity-25 text-info ms-auto">Communication</span>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                            <div class="d-flex align-items-center">
+                                <input class="form-check-input me-3" type="checkbox" id="dev4">
+                                <label class="form-check-label text-light" for="dev4">
+                                    Mentor Junior Developer
+                                </label>
+                                <span class="badge bg-warning bg-opacity-25 text-warning ms-auto">Mentorship</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-light mb-2">Learning Resources</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-dark bg-opacity-50 border-secondary mb-2">
+                                <div class="card-body">
+                                    <h6 class="text-light small mb-1">React Advanced Course</h6>
+                                    <p class="text-muted mb-1 small">Udemy - 40 hours</p>
+                                    <button class="btn btn-outline-primary btn-sm">Enroll</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-dark bg-opacity-50 border-secondary mb-2">
+                                <div class="card-body">
+                                    <h6 class="text-light small mb-1">Leadership Workshop</h6>
+                                    <p class="text-muted mb-1 small">Internal - 2 days</p>
+                                    <button class="btn btn-outline-primary btn-sm">Register</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save Development Plan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Achievement Modal -->
+<div class="modal fade" id="achievementModal" tabindex="-1" aria-labelledby="achievementModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark bg-opacity-90 border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light" id="achievementModalLabel">Log Achievement</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label text-light">Achievement Title</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" placeholder="Brief title of your achievement">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Category</label>
+                        <select class="form-select bg-dark text-light border-secondary">
+                            <option value="technical">Technical Achievement</option>
+                            <option value="leadership">Leadership Initiative</option>
+                            <option value="teamwork">Team Collaboration</option>
+                            <option value="innovation">Innovation</option>
+                            <option value="process">Process Improvement</option>
+                            <option value="learning">Learning & Development</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Description</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Describe what you accomplished and the impact..."></textarea>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-light">Date Achieved</label>
+                            <input type="date" class="form-control bg-dark text-light border-secondary">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-light">Impact Level</label>
+                            <select class="form-select bg-dark text-light border-secondary">
+                                <option value="team">Team Level</option>
+                                <option value="department">Department Level</option>
+                                <option value="company">Company Level</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Metrics/Results</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" rows="2" placeholder="Quantify the impact (e.g., reduced time by 30%, saved $5k, etc.)"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light">Recognition</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="recognition1">
+                            <label class="form-check-label text-light" for="recognition1">
+                                Share with manager
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="recognition2">
+                            <label class="form-check-label text-light" for="recognition2">
+                                Include in performance review
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="recognition3">
+                            <label class="form-check-label text-light" for="recognition3">
+                                Share with team
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Log Achievement</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle checkbox interactions in modals
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Visual feedback for checkbox changes
+            if (this.checked) {
+                this.classList.add('checked');
+            } else {
+                this.classList.remove('checked');
+            }
+        });
+    });
+
+    // Handle range slider
+    const rangeSlider = document.querySelector('input[type="range"]');
+    if (rangeSlider) {
+        rangeSlider.addEventListener('input', function() {
+            const value = this.value;
+            const display = this.parentElement.querySelector('.text-light');
+            if (display) {
+                display.textContent = value + '%';
+            }
+        });
+    }
+
+    // Modal form handlers (simplified for demo)
+    const modalButtons = document.querySelectorAll('.modal-footer .btn-primary');
+    modalButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            const modalId = modal.id;
+            
+            // Different messages based on modal
+            let message = 'Action completed successfully!';
+            if (modalId === 'selfAssessmentModal') {
+                message = 'Self assessment submitted successfully!';
+            } else if (modalId === 'goalUpdateModal') {
+                message = 'Goal updated successfully!';
+            } else if (modalId === 'developmentModal') {
+                message = 'Development plan saved successfully!';
+            } else if (modalId === 'achievementModal') {
+                message = 'Achievement logged successfully!';
+            } else if (modalId === 'prepareModal') {
+                message = 'Marked as prepared for review!';
+            }
+            
+            alert(message + ' (This would save to database in production)');
+            bootstrap.Modal.getInstance(modal).hide();
+        });
+    });
+
+    // Feedback request handler
+    const feedbackForm = document.querySelector('#feedback-tab form');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Feedback request sent! (This would email the recipient in production)');
+            this.reset();
+        });
+    }
+});
+</script>
+{% endblock %}

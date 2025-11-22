@@ -3,256 +3,169 @@
 {% block title %}Employee Dashboard{% endblock %}
 
 {% block page_content %}
-<!-- Begin Page Content -->
-<div class="container-fluid">
-    <!-- Welcome Message -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-user-circle me-2"></i>Welcome, {{ user.full_name or user.username }}!
-        </h1>
-        <div class="d-flex">
-            <span class="me-2">
-                <span class="badge bg-primary">{{ user.role or 'Employee' }}</span>
-            </span>
-            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#helpModal">
-                <i class="fas fa-question-circle me-1"></i> Help
-            </button>
-        </div>
-    </div>
-
-    <!-- Quick Access Buttons -->
+<div class="container-fluid py-4">
+    <!-- Page Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold">Quick Access</h6>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1 text-light">
+                        <i class="bi bi-person-circle me-2"></i>Welcome, {{ user.full_name or user.username }}!
+                    </h1>
+                    <p class="text-muted mb-0">Your employee dashboard and quick actions</p>
                 </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <button class="btn btn-primary btn-lg w-100" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="loadProfileModal()">
-                                <i class="fas fa-user me-2"></i>My Profile
-                            </button>
-                        </div>
-                        <div class="col-md-4">
-                            <button class="btn btn-info btn-lg w-100" data-bs-toggle="modal" data-bs-target="#documentsModal" onclick="loadDocumentsModal()">
-                                <i class="fas fa-file-alt me-2"></i>My Documents
-                                {% if documents_count is defined and documents_count > 0 %}<span class="badge bg-light text-dark ms-1">{{ documents_count }}</span>{% endif %}
-                            </button>
-                        </div>
-                        <div class="col-md-4">
-                            <button class="btn btn-success btn-lg w-100" data-bs-toggle="modal" data-bs-target="#settingsModal" onclick="loadSettingsModal()">
-                                <i class="fas fa-cog me-2"></i>My Settings
-                            </button>
-                        </div>
-                    </div>
+                <div class="d-flex">
+                    <span class="me-2">
+                        <span class="badge bg-primary bg-opacity-25 text-primary">{{ user.role or 'Employee' }}</span>
+                    </span>
+                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#helpModal">
+                        <i class="bi bi-question-circle me-1"></i> Help
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Onboarding Progress -->
+    <!-- Progress Section -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold">Onboarding Progress</h6>
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                    <h6 class="text-light mb-0">Onboarding Progress</h6>
                     <span class="text-primary">Day {{ employee['onboarding_progress']['current_day'] }} of {{ employee['onboarding_progress']['total_days'] }}</span>
                 </div>
                 <div class="card-body">
                     <div class="progress mb-3" style="height: 20px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
-                             style="width: {{ onboarding_progress }}%;" aria-valuenow="{{ onboarding_progress }}" aria-valuemin="0" aria-valuemax="100">{{ onboarding_progress }}%</div>
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" 
+                             data-progress="{{ onboarding_progress }}" aria-valuenow="{{ onboarding_progress }}" aria-valuemin="0" aria-valuemax="100">{{ onboarding_progress }}%</div>
                     </div>
                     <div class="text-center small">
-                        <span class="me-3"><i class="fas fa-check-circle text-success me-1"></i> Account Setup</span>
-                        <span class="me-3"><i class="fas fa-{% if onboarding_progress >= 40 %}check-circle text-success{% else %}hourglass-half text-warning{% endif %} me-1"></i> Documentation</span>
-                        <span class="me-3"><i class="fas fa-{% if onboarding_progress >= 60 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Training</span>
-                        <span class="me-3"><i class="fas fa-{% if onboarding_progress >= 80 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Equipment</span>
-                        <span class="me-3"><i class="fas fa-{% if onboarding_progress >= 100 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Final Review</span>
+                        <span class="me-3"><i class="bi bi-check-circle text-success me-1"></i> Account Setup</span>
+                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 40 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Documentation</span>
+                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 60 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Training</span>
+                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 80 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Equipment</span>
+                        <span class="me-3"><i class="bi bi-{% if onboarding_progress >= 100 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Final Review</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Main Content Tabs -->
     <div class="row">
-        <!-- Pending Tasks -->
-        <div class="col-xl-6 mb-4">
-            <div class="card shadow h-100">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold">Pending Tasks</h6>
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <!-- Tab Navigation -->
+                <div class="card-header bg-transparent border-secondary">
+                    <ul class="nav nav-tabs card-header-tabs" id="dashboardTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab">
+                                <i class="bi bi-list-task me-1"></i> Pending Tasks
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="journey-tab" data-bs-toggle="tab" data-bs-target="#journey" type="button" role="tab">
+                                <i class="bi bi-signpost-2 me-1"></i> My Journey
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="resources-tab" data-bs-toggle="tab" data-bs-target="#resources" type="button" role="tab">
+                                <i class="bi bi-book me-1"></i> Resources
+                            </button>
+                        </li>
+                    </ul>
                 </div>
+                
+                <!-- Tab Content -->
                 <div class="card-body">
-                    <div class="list-group">
-                        {% for task in employee['pending_tasks'] %}
-                        <a href="{{ url_for('onboarding_tasks') }}" class="list-group-item list-group-item-action">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">{{ task['title'] }}</h6>
-                                <small class="{% if task['priority'] == 'high' %}text-danger{% elif task['priority'] == 'medium' %}text-warning{% else %}text-info{% endif %}">{{ task['due'] }}</small>
-                            </div>
-                            <p class="mb-1">{% if task['title'] == 'Submit timesheet' %}Complete your weekly timesheet in the employee portal.{% elif task['title'] == 'Complete training module' %}Mandatory training module for new employees.{% else %}Update project documentation as assigned.{% endif %}</p>
-                            <small>{% if task['priority'] == 'high' %}HR Department{% elif task['priority'] == 'medium' %}IT Department{% else %}Operations{% endif %}</small>
-                        </a>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Employee Journey Timeline -->
-        <div class="col-xl-6 mb-4">
-            <div class="card bg-dark bg-opacity-25 border-secondary shadow h-100">
-                <div class="card-header bg-transparent border-0 py-3">
-                    <h6 class="m-0 font-weight-bold text-light">Employee Journey Timeline</h6>
-                </div>
-                <div class="card-body">
-                    <div class="timeline-vertical">
-                        <!-- Offer Accepted -->
-                        <div class="timeline-item-vertical {% if employee_journey.offer_accepted.completed %}completed{% endif %}">
-                            <div class="timeline-marker-vertical {% if employee_journey.offer_accepted.completed %}bg-success{% else %}bg-warning{% endif %}">
-                                <i class="fas {% if employee_journey.offer_accepted.completed %}check{% else %}hourglass-half{% endif %}"></i>
-                            </div>
-                            <div class="timeline-content-vertical">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h6 class="mb-1">Offer Accepted</h6>
-                                        <p class="mb-1 small text-muted">{{ employee_journey.offer_accepted.date or 'Pending' }}</p>
-                                        <p class="mb-1 small">Contract signed and returned</p>
+                    <div class="tab-content" id="dashboardTabsContent">
+                        <!-- Pending Tasks Tab -->
+                        <div class="tab-pane fade show active" id="tasks" role="tabpanel">
+                            <div class="list-group">
+                                {% for task in employee['pending_tasks'] %}
+                                <a href="{{ url_for('onboarding_tasks') }}" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1 text-light">{{ task['title'] }}</h6>
+                                        <small class="{% if task['priority'] == 'high' %}text-danger{% elif task['priority'] == 'medium' %}text-warning{% else %}text-info{% endif %}">{{ task['due'] }}</small>
                                     </div>
-                                    {% if employee_journey.offer_accepted.completed %}
-                                    <span class="badge bg-success">Completed</span>
-                                    {% else %}
-                                    <span class="badge bg-warning">Pending</span>
-                                    {% endif %}
-                                </div>
+                                    <p class="mb-1 text-muted">{% if task['title'] == 'Submit timesheet' %}Complete your weekly timesheet in the employee portal.{% elif task['title'] == 'Complete training module' %}Mandatory training module for new employees.{% else %}Update project documentation as assigned.{% endif %}</p>
+                                    <small class="text-muted">{% if task['priority'] == 'high' %}HR Department{% elif task['priority'] == 'medium' %}IT Department{% else %}Operations{% endif %}</small>
+                                </a>
+                                {% endfor %}
                             </div>
                         </div>
-
-                        <!-- Documents Submitted -->
-                        <div class="timeline-item-vertical {% if employee_journey.documents_submitted.completed %}completed{% endif %}">
-                            <div class="timeline-marker-vertical {% if employee_journey.documents_submitted.completed %}bg-success{% else %}bg-warning{% endif %}">
-                                <i class="fas {% if employee_journey.documents_submitted.completed %}check{% else %}file-alt{% endif %}"></i>
-                            </div>
-                            <div class="timeline-content-vertical">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h6 class="mb-1">Documents Submitted</h6>
-                                        <p class="mb-1 small text-muted">{{ employee_journey.documents_submitted.date or 'Pending' }}</p>
-                                        <p class="mb-1 small">ID, tax forms, emergency contacts</p>
+                        
+                        <!-- Employee Journey Tab -->
+                        <div class="tab-pane fade" id="journey" role="tabpanel">
+                            <div class="timeline-vertical">
+                                <!-- Journey Items -->
+                                {% for step_name, step_data in employee_journey.items() %}
+                                <div class="timeline-item-vertical {% if step_data.completed %}completed{% endif %}">
+                                    <div class="timeline-marker-vertical {% if step_data.completed %}bg-success{% else %}bg-warning{% endif %}">
+                                        <i class="bi bi-{% if step_data.completed %}check{% else %}clock{% endif %}"></i>
                                     </div>
-                                    {% if employee_journey.documents_submitted.completed %}
-                                    <span class="badge bg-success">Completed</span>
-                                    {% else %}
-                                    <span class="badge bg-warning">In Progress</span>
-                                    {% endif %}
+                                    <div class="timeline-content-vertical">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1 text-light">{{ step_name.replace('_', ' ').title() }}</h6>
+                                                <p class="mb-1 small text-muted">{{ step_data.date or 'Pending' }}</p>
+                                                <p class="mb-1 small text-muted">{{ step_data.description or 'Step in your journey' }}</p>
+                                            </div>
+                                            {% if step_data.completed %}
+                                            <span class="badge bg-success">Completed</span>
+                                            {% else %}
+                                            <span class="badge bg-warning">Pending</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
                                 </div>
+                                {% endfor %}
                             </div>
                         </div>
-
-                        <!-- Systems Created -->
-                        <div class="timeline-item-vertical {% if employee_journey.systems_created.completed %}completed{% endif %}">
-                            <div class="timeline-marker-vertical {% if employee_journey.systems_created.completed %}bg-success{% else %}bg-info{% endif %}">
-                                <i class="fas {% if employee_journey.systems_created.completed %}check{% else %}laptop{% endif %}"></i>
-                            </div>
-                            <div class="timeline-content-vertical">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h6 class="mb-1">Systems Created</h6>
-                                        <p class="mb-1 small text-muted">{{ employee_journey.systems_created.date or 'Pending' }}</p>
-                                        <p class="mb-1 small">Email, accounts, access permissions</p>
+                        
+                        <!-- Resources Tab -->
+                        <div class="tab-pane fade" id="resources" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">HR Contact</h6>
+                                    <div class="card bg-dark bg-opacity-50 border-secondary mb-3">
+                                        <div class="card-body text-center">
+                                            <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
+                                                <i class="bi bi-person"></i>
+                                            </div>
+                                            <h6 class="text-light">{{ hr_contact.full_name if hr_contact else 'HR Department' }}</h6>
+                                            <p class="text-muted small">{{ hr_contact.position if hr_contact and hr_contact.position else 'HR Business Partner' }}</p>
+                                            <p class="mb-2">
+                                                <a href="mailto:{{ hr_contact.email if hr_contact else 'hr@company.com' }}" class="text-primary">
+                                                    <i class="bi bi-envelope me-1"></i>{{ hr_contact.email if hr_contact else 'hr@company.com' }}
+                                                </a>
+                                            </p>
+                                            <button class="btn btn-outline-primary btn-sm me-2" onclick="messageHR()">
+                                                <i class="bi bi-envelope me-1"></i> Message
+                                            </button>
+                                        </div>
                                     </div>
-                                    {% if employee_journey.systems_created.completed %}
-                                    <span class="badge bg-success">Completed</span>
-                                    {% else %}
-                                    <span class="badge bg-info">Pending</span>
-                                    {% endif %}
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- First Day -->
-                        <div class="timeline-item-vertical {% if employee_journey.first_day.completed %}completed{% endif %}">
-                            <div class="timeline-marker-vertical {% if employee_journey.first_day.completed %}bg-success{% else %}bg-primary{% endif %}">
-                                <i class="fas {% if employee_journey.first_day.completed %}check{% else %}calendar-day{% endif %}"></i>
-                            </div>
-                            <div class="timeline-content-vertical">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h6 class="mb-1">First Day</h6>
-                                        <p class="mb-1 small text-muted">{{ employee_journey.first_day.date or employee.hire_date or 'Scheduled' }}</p>
-                                        <p class="mb-1 small">Welcome session & team introductions</p>
+                                
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">Company Resources</h6>
+                                    <div class="list-group">
+                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
+                                            <i class="bi bi-file-pdf me-2 text-danger"></i> Employee Handbook
+                                        </a>
+                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
+                                            <i class="bi bi-shield-check me-2 text-success"></i> IT Security Policy
+                                        </a>
+                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
+                                            <i class="bi bi-heart me-2 text-info"></i> Health & Wellness
+                                        </a>
+                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
+                                            <i class="bi bi-building me-2 text-warning"></i> Office Map
+                                        </a>
+                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
+                                            <i class="bi bi-headset me-2 text-primary"></i> IT Support
+                                        </a>
                                     </div>
-                                    {% if employee_journey.first_day.completed %}
-                                    <span class="badge bg-success">Completed</span>
-                                    {% else %}
-                                    <span class="badge bg-primary">Upcoming</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Orientation -->
-                        <div class="timeline-item-vertical {% if employee_journey.orientation.completed %}completed{% endif %}">
-                            <div class="timeline-marker-vertical {% if employee_journey.orientation.completed %}bg-success{% else %}bg-secondary{% endif %}">
-                                <i class="fas {% if employee_journey.orientation.completed %}check{% else %}users{% endif %}"></i>
-                            </div>
-                            <div class="timeline-content-vertical">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h6 class="mb-1">Orientation</h6>
-                                        <p class="mb-1 small text-muted">{{ employee_journey.orientation.date or 'Scheduled' }}</p>
-                                        <p class="mb-1 small">Company policies & culture overview</p>
-                                    </div>
-                                    {% if employee_journey.orientation.completed %}
-                                    <span class="badge bg-success">Completed</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">Scheduled</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Training Modules -->
-                        <div class="timeline-item-vertical {% if employee_journey.training_modules.completed %}completed{% endif %}">
-                            <div class="timeline-marker-vertical {% if employee_journey.training_modules.completed %}bg-success{% else %}bg-secondary{% endif %}">
-                                <i class="fas {% if employee_journey.training_modules.completed %}check{% else %}graduation-cap{% endif %}"></i>
-                            </div>
-                            <div class="timeline-content-vertical">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h6 class="mb-1">Training Modules</h6>
-                                        <p class="mb-1 small text-muted">{{ employee_journey.training_modules.date or 'In Progress' }}</p>
-                                        <p class="mb-1 small">Role-specific & compliance training</p>
-                                    </div>
-                                    {% if employee_journey.training_modules.completed %}
-                                    <span class="badge bg-success">Completed</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">
-                                        {{ employee_journey.training_modules.progress or '0' }}% Complete
-                                    </span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Confirmation Letter -->
-                        <div class="timeline-item-vertical {% if employee_journey.confirmation_letter.completed %}completed{% endif %}">
-                            <div class="timeline-marker-vertical {% if employee_journey.confirmation_letter.completed %}bg-success{% else %}bg-light{% endif %}">
-                                <i class="fas {% if employee_journey.confirmation_letter.completed %}check{% else %}certificate{% endif %}"></i>
-                            </div>
-                            <div class="timeline-content-vertical">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h6 class="mb-1">Confirmation Letter</h6>
-                                        <p class="mb-1 small text-muted">{{ employee_journey.confirmation_letter.date or 'Pending' }}</p>
-                                        <p class="mb-1 small">Successful completion of probation</p>
-                                    </div>
-                                    {% if employee_journey.confirmation_letter.completed %}
-                                    <span class="badge bg-success">Completed</span>
-                                    {% else %}
-                                    <span class="badge bg-light text-dark">Pending</span>
-                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -262,76 +175,13 @@
         </div>
     </div>
 
-    <div class="row">
-        <!-- HR/Mentor Contact -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow h-100">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold">Your HR Contact</h6>
-                </div>
-                <div class="card-body text-center">
-                    <div class="avatar-xl mb-3">
-                        <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle">
-                            <i class="fas fa-user"></i>
-                        </div>
-                    </div>
-                    <h5 class="mb-1">{{ hr_contact.full_name if hr_contact else 'HR Department' }}</h5>
-                    <p class="text-muted mb-1">{{ hr_contact.position if hr_contact and hr_contact.position else 'HR Business Partner' }}</p>
-                    <p class="mb-3">
-                        <a href="mailto:{{ hr_contact.email if hr_contact else 'hr@company.com' }}" class="text-primary">
-                            <i class="fas fa-envelope me-2"></i>{{ hr_contact.email if hr_contact else 'hr@company.com' }}
-                        </a>
-                    </p>
-                    <button class="btn btn-primary btn-sm me-2" onclick="messageHR()">
-                        <i class="fas fa-envelope me-1"></i> Message
-                    </button>
-                    {% if hr_contact and hr_contact.phone %}
-                    <a href="tel:{{ hr_contact.phone }}" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-phone me-1"></i> Call
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Company Resources -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow h-100">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold">Company Resources</h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-file-pdf me-2 text-danger"></i> Employee Handbook</span>
-                            <span class="badge bg-primary rounded-pill">New</span>
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <i class="fas fa-shield-alt me-2 text-success"></i> IT Security Policy
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <i class="fas fa-heartbeat me-2 text-info"></i> Health & Wellness Benefits
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <i class="fas fa-building me-2 text-warning"></i> Office Map & Facilities
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <i class="fas fa-headset me-2 text-primary"></i> IT Support Portal
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Mood & Confidence Feedback -->
-    <div class="row">
+    <!-- Mood Feedback -->
+    <div class="row mt-4">
         <div class="col-12">
             {% include 'includes/mood_feedback.html' %}
         </div>
     </div>
 </div>
-<!-- /.container-fluid -->
 
 <style>
 /* Vertical Timeline Styles - Dark Theme */
@@ -614,5 +464,16 @@ function sendWhatsAppMessage() {
     // Open WhatsApp with the HR contact's phone number
     window.open(`https://wa.me/${hrPhone}?text=${message}`, '_blank');
 }
+
+// Set progress bar widths from data attributes
+document.addEventListener('DOMContentLoaded', function() {
+    const progressBars = document.querySelectorAll('[data-progress]');
+    progressBars.forEach(bar => {
+        const progress = bar.getAttribute('data-progress');
+        if (progress) {
+            bar.style.width = progress + '%';
+        }
+    });
+});
 </script>
 {% endblock %}

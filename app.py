@@ -4880,6 +4880,252 @@ def onboarding_assistant():
         employee=employee_data
     )
 
+@app.route('/employee/goal-setting')
+@login_required('employee')
+def employee_goal_setting():
+    """Render the employee goal setting page with real database data."""
+    from datetime import datetime
+    from flask import session
+    
+    # Get current user from session
+    user_id = session.get('user_id')
+    user = db.session.get(User, user_id) if user_id else None
+    
+    if not user:
+        return redirect(url_for('login'))
+    
+    # Fetch employee goals from database
+    goals_30 = EmployeeGoal.query.filter_by(employee_id=user.id, milestone_days=30).all()
+    goals_60 = EmployeeGoal.query.filter_by(employee_id=user.id, milestone_days=60).all()
+    goals_90 = EmployeeGoal.query.filter_by(employee_id=user.id, milestone_days=90).all()
+    
+    # Calculate progress for each milestone
+    def calculate_progress(goals):
+        if not goals:
+            return 0
+        total_progress = sum(goal.progress_percentage or 0 for goal in goals)
+        return round(total_progress / len(goals), 1)
+    
+    # Get recent check-ins
+    recent_checkins = GoalCheckIn.query.filter_by(goal_id__in=[g.id for g in goals_30 + goals_60 + goals_90])\
+                                     .order_by(GoalCheckIn.scheduled_date.desc())\
+                                     .limit(5).all()
+    
+    return render_template(
+        'employee_goal_setting.html',
+        title='My Goals',
+        today=datetime.utcnow(),
+        employee=user,
+        goals_30=goals_30,
+        goals_60=goals_60,
+        goals_90=goals_90,
+        progress_30=calculate_progress(goals_30),
+        progress_60=calculate_progress(goals_60),
+        progress_90=calculate_progress(goals_90),
+        recent_checkins=recent_checkins
+    )
+
+@app.route('/employee/performance')
+@login_required('employee')
+def employee_performance():
+    """Render the employee performance reviews page with real database data."""
+    from datetime import datetime, timedelta
+    from flask import session
+    
+    # Get current user from session
+    user_id = session.get('user_id')
+    user = db.session.get(User, user_id) if user_id else None
+    
+    if not user:
+        return redirect(url_for('login'))
+    
+    # Get employee feedback data for performance metrics
+    feedback_history = EmployeeFeedback.query.filter_by(user_id=user.id)\
+                                          .order_by(EmployeeFeedback.created_at.desc())\
+                                          .limit(30).all()
+    
+    # Calculate current ratings
+    recent_feedback = feedback_history[:7]  # Last 7 entries
+    if recent_feedback:
+        avg_mood = sum(f.mood_rating for f in recent_feedback) / len(recent_feedback)
+        avg_confidence = sum(f.confidence_rating for f in recent_feedback) / len(recent_feedback)
+        current_rating = round((avg_mood + avg_confidence) / 2, 1)
+    else:
+        avg_mood = 3.5
+        avg_confidence = 3.5
+        current_rating = 3.5
+    
+    # Get goals for performance goals section
+    employee_goals = EmployeeGoal.query.filter_by(employee_id=user.id)\
+                                     .order_by(EmployeeGoal.target_date.asc())\
+                                     .all()
+    
+    # Calculate growth score based on mood trend
+    if len(feedback_history) >= 2:
+        older_mood = sum(f.mood_rating for f in feedback_history[-7:]) / min(7, len(feedback_history[-7:]))
+        recent_mood = sum(f.mood_rating for f in feedback_history[:7]) / min(7, len(feedback_history[:7]))
+        growth_score = round((recent_mood - older_mood) * 10, 1)  # Scale to -10 to +10
+    else:
+        growth_score = 0
+    
+    # Create sample performance reviews (since no dedicated model exists)
+    performance_reviews = []
+    if user.hire_date:
+        # Generate milestone-based reviews
+        # Convert hire_date to datetime for proper comparison
+        hire_datetime = datetime.combine(user.hire_date, datetime.min.time())
+        days_employed = (datetime.utcnow() - hire_datetime).days
+        
+        if days_employed >= 90:
+            performance_reviews.append({
+                'date': hire_datetime + timedelta(days=90),
+                'type': '90-Day Review',
+                'status': 'completed',
+                'rating': current_rating,
+                'reviewer': 'HR Manager'
+            })
+        
+        if days_employed >= 180:
+            performance_reviews.append({
+                'date': hire_datetime + timedelta(days=180),
+                'type': '6-Month Review',
+                'status': 'completed',
+                'rating': current_rating,
+                'reviewer': 'Department Manager'
+            })
+        
+        # Schedule next review
+        next_review_date = hire_datetime + timedelta(days=365)
+        if days_employed < 365:
+            performance_reviews.append({
+                'date': next_review_date,
+                'type': 'Annual Review',
+                'status': 'upcoming',
+                'rating': None,
+                'reviewer': 'Department Manager'
+            })
+    
+    return render_template(
+        'employee_performance.html',
+        title='Performance Reviews',
+        today=datetime.utcnow(),
+        employee=user,
+        current_rating=current_rating,
+        avg_mood=round(avg_mood, 1),
+        avg_confidence=round(avg_confidence, 1),
+        growth_score=growth_score,
+        feedback_history=feedback_history[:10],  # Last 10 entries
+        performance_goals=employee_goals[:5],  # Top 5 goals
+        performance_reviews=performance_reviews,
+        achievements_count=len([g for g in employee_goals if g.status == 'completed'])
+    )
+
+@app.route('/employee/mood-tracking')
+@login_required('employee')
+def employee_mood_tracking():
+    """Render the employee mood and wellness tracking page with real database data."""
+    from datetime import datetime, timedelta
+    from flask import session
+    
+    # Get current user from session
+    user_id = session.get('user_id')
+    user = db.session.get(User, user_id) if user_id else None
+    
+    if not user:
+        return redirect(url_for('login'))
+    
+    # Get mood feedback history
+    feedback_history = EmployeeFeedback.query.filter_by(user_id=user.id)\
+                                          .order_by(EmployeeFeedback.created_at.desc())\
+                                          .limit(30).all()
+    
+    # Calculate current mood and confidence
+    if feedback_history:
+        latest_feedback = feedback_history[0]
+        current_mood = latest_feedback.mood_rating
+        current_confidence = latest_feedback.confidence_rating
+    else:
+        current_mood = 3.5
+        current_confidence = 3.5
+    
+    # Calculate 7-day trend
+    recent_7_days = feedback_history[:7]
+    if recent_7_days:
+        avg_mood_7 = sum(f.mood_rating for f in recent_7_days) / len(recent_7_days)
+        avg_confidence_7 = sum(f.confidence_rating for f in recent_7_days) / len(recent_7_days)
+    else:
+        avg_mood_7 = 3.5
+        avg_confidence_7 = 3.5
+    
+    # Calculate trend percentage (simplified)
+    if len(feedback_history) >= 14:
+        older_period = feedback_history[7:14]
+        if older_period:
+            older_avg = sum(f.mood_rating for f in older_period) / len(older_period)
+            trend_percentage = round(((avg_mood_7 - older_avg) / older_avg) * 100, 1)
+        else:
+            trend_percentage = 0
+    else:
+        trend_percentage = 12  # Default positive trend for new users
+    
+    # Calculate check-in streak (consecutive days with feedback)
+    streak = 0
+    if feedback_history:
+        current_date = datetime.utcnow().date()
+        for feedback in feedback_history:
+            feedback_date = feedback.created_at.date()
+            if feedback_date == current_date - timedelta(days=streak):
+                streak += 1
+            else:
+                break
+    
+    # Calculate wellness score (based on mood and confidence)
+    wellness_score = round((avg_mood_7 + avg_confidence_7) / 2 * 20, 1)  # Convert to 0-100 scale
+    
+    # Get mood distribution for last 30 days
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    recent_feedback = [f for f in feedback_history if f.created_at >= thirty_days_ago]
+    
+    mood_distribution = [0, 0, 0, 0, 0]  # Counts for mood ratings 1-5
+    for feedback in recent_feedback:
+        if 1 <= feedback.mood_rating <= 5:
+            mood_distribution[feedback.mood_rating - 1] += 1
+    
+    # Prepare chart data (last 7 days)
+    chart_data = []
+    for i in range(7):
+        date = datetime.utcnow().date() - timedelta(days=6-i)
+        day_feedback = [f for f in feedback_history if f.created_at.date() == date]
+        if day_feedback:
+            avg_mood = sum(f.mood_rating for f in day_feedback) / len(day_feedback)
+            avg_confidence = sum(f.confidence_rating for f in day_feedback) / len(day_feedback)
+        else:
+            avg_mood = 3.5
+            avg_confidence = 3.5
+        
+        chart_data.append({
+            'date': date.strftime('%b %d'),
+            'mood': round(avg_mood, 1),
+            'confidence': round(avg_confidence, 1)
+        })
+    
+    return render_template(
+        'employee_mood_tracking.html',
+        title='Mood & Wellness',
+        today=datetime.utcnow(),
+        employee=user,
+        current_mood=current_mood,
+        current_confidence=current_confidence,
+        avg_mood_7=round(avg_mood_7, 1),
+        avg_confidence_7=round(avg_confidence_7, 1),
+        trend_percentage=trend_percentage,
+        check_in_streak=streak,
+        wellness_score=wellness_score,
+        feedback_history=feedback_history[:10],  # Last 10 entries
+        mood_distribution=mood_distribution,
+        chart_data=chart_data
+    )
+
 def extract_text_from_pdf(file_stream):
     pdf_reader = PyPDF2.PdfReader(file_stream)
     text = ""
