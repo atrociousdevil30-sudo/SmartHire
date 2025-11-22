@@ -2300,8 +2300,40 @@ def onboarding_tasks():
         status='unread'
     ).count()
 
-    # Legacy check - onboarding checklist system has been removed
+    # Get onboarding tasks using the general Task model
+    onboarding_tasks = Task.query.filter_by(
+        assigned_to=user.id, 
+        task_type='onboarding'
+    ).all()
+    
+    # Create compatible task objects for template
+    compatible_tasks = []
+    for task in onboarding_tasks:
+        compatible_task = type('Task', (), {
+            'id': task.id,
+            'task_name': task.title,
+            'task_description': task.description,
+            'is_completed': task.status == 'completed',
+            'due_date': task.due_date,
+            'priority': task.priority,
+            'status': task.status
+        })()
+        compatible_tasks.append(compatible_task)
+    
+    # Create a checklist-like structure for compatibility with template
     checklist = None
+    if compatible_tasks:
+        def get_progress(self):
+            if not compatible_tasks:
+                return 0
+            completed_tasks = len([task for task in compatible_tasks if task.is_completed])
+            return int((completed_tasks / len(compatible_tasks)) * 100)
+        
+        checklist = type('Checklist', (), {
+            'tasks': compatible_tasks,
+            'created_at': onboarding_tasks[0].created_at if onboarding_tasks else datetime.utcnow(),
+            'get_progress': get_progress
+        })()
 
     return render_template('onboarding_tasks.html', user=user, checklist=checklist, now=datetime.utcnow(), unread_messages_count=unread_messages_count)
 
@@ -2320,6 +2352,41 @@ def offboarding_tasks():
 
     # Get user's documents
     documents = EmployeeDocument.query.filter_by(user_id=user_id).all()
+    
+    # Get offboarding tasks using the general Task model
+    offboarding_tasks = Task.query.filter_by(
+        assigned_to=user.id, 
+        task_type='offboarding'
+    ).all()
+    
+    # Create compatible task objects for template
+    compatible_tasks = []
+    for task in offboarding_tasks:
+        compatible_task = type('Task', (), {
+            'id': task.id,
+            'task_name': task.title,
+            'task_description': task.description,
+            'is_completed': task.status == 'completed',
+            'due_date': task.due_date,
+            'priority': task.priority,
+            'status': task.status
+        })()
+        compatible_tasks.append(compatible_task)
+    
+    # Create a checklist-like structure for compatibility with template
+    checklist = None
+    if compatible_tasks:
+        def get_progress(self):
+            if not compatible_tasks:
+                return 0
+            completed_tasks = len([task for task in compatible_tasks if task.is_completed])
+            return int((completed_tasks / len(compatible_tasks)) * 100)
+        
+        checklist = type('Checklist', (), {
+            'tasks': compatible_tasks,
+            'created_at': offboarding_tasks[0].created_at if offboarding_tasks else datetime.utcnow(),
+            'get_progress': get_progress
+        })()
     
     # Get HR contact - prioritize Deeksha and exclude test HR users
     hr_contact = User.query.filter_by(role='hr', is_active=True).filter(
@@ -2349,7 +2416,7 @@ def offboarding_tasks():
         'manager': manager
     }
 
-    return render_template('offboarding_tasks.html', offboarding=offboarding, unread_messages_count=unread_messages_count)
+    return render_template('offboarding_tasks.html', user=user, checklist=checklist, offboarding=offboarding, unread_messages_count=unread_messages_count)
 
 
 @app.route('/employee/pre-offboarding')
@@ -2987,8 +3054,42 @@ def onboarding():
     if employee_id:
         # Get employee and their onboarding checklist
         selected_employee = User.query.get_or_404(employee_id)
-# Legacy check - onboarding checklist system has been removed
-        checklist = None
+        
+        # Get onboarding tasks using the general Task model
+        onboarding_tasks = Task.query.filter_by(
+            assigned_to=selected_employee.id, 
+            task_type='onboarding'
+        ).all()
+        
+        # Create compatible task objects for template
+        compatible_tasks = []
+        for task in onboarding_tasks:
+            compatible_task = type('Task', (), {
+                'id': task.id,
+                'task_name': task.title,
+                'task_description': task.description,
+                'is_completed': task.status == 'completed',
+                'due_date': task.due_date,
+                'priority': task.priority,
+                'status': task.status
+            })()
+            compatible_tasks.append(compatible_task)
+        
+        # Create a checklist-like structure for compatibility with template
+        if compatible_tasks:
+            def get_progress(self):
+                if not compatible_tasks:
+                    return 0
+                completed_tasks = len([task for task in compatible_tasks if task.is_completed])
+                return int((completed_tasks / len(compatible_tasks)) * 100)
+            
+            checklist = type('Checklist', (), {
+                'tasks': compatible_tasks,
+                'created_at': onboarding_tasks[0].created_at if onboarding_tasks else datetime.utcnow(),
+                'get_progress': get_progress
+            })()
+        else:
+            checklist = None
     
     # Get current logged-in HR user
     current_hr = User.query.get(session['user_id'])
