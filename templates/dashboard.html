@@ -139,31 +139,52 @@
                 <h5 class="text-light mb-3">HR Insights & Strategy</h5>
                 <div class="card bg-dark bg-opacity-25 border-secondary">
                     <div class="card-body">
+                        <!-- Strategic Insights -->
+                        {% if strategic_insights %}
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-light mb-3">Strategic Insights</h6>
+                                {% for insight in strategic_insights %}
+                                <div class="alert alert-{{ 'warning' if insight.type == 'warning' else 'danger' if insight.type == 'alert' else 'info' }} bg-dark bg-opacity-25 border-{{ 'warning' if insight.type == 'warning' else 'danger' if insight.type == 'alert' else 'info' }} mb-2">
+                                    <h6 class="text-light mb-2">
+                                        <i class="bi bi-{{ 'exclamation-triangle' if insight.type == 'warning' else 'exclamation-circle' if insight.type == 'alert' else 'info-circle' }} text-{{ 'warning' if insight.type == 'warning' else 'danger' if insight.type == 'alert' else 'info' }} me-2"></i>
+                                        {{ insight.title }}
+                                    </h6>
+                                    <p class="text-muted mb-2">{{ insight.description }}</p>
+                                    <small class="text-{{ 'warning' if insight.type == 'warning' else 'danger' if insight.type == 'alert' else 'info' }}">
+                                        <i class="bi bi-lightbulb me-1"></i>{{ insight.action }}
+                                    </small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
                         <div class="row">
                             <div class="col-md-6">
                                 <h6 class="text-light mb-3">Recent Activity</h6>
                                 <div class="list-group list-group-flush">
-                                    {% if interview_results %}
-                                        {% for interview in interview_results[:2] %}
+                                    {% if recent_activities %}
+                                        {% for activity in recent_activities[:3] %}
                                         <div class="list-group-item bg-transparent border-secondary">
                                             <div class="d-flex justify-content-between align-items-center">
-                                                <span class="text-light">Interview with {{ interview.candidate_name }}</span>
-                                                <small class="text-muted">{{ interview.date }}</small>
+                                                <div>
+                                                    <span class="text-light">{{ activity.title }}</span>
+                                                    <div class="small text-muted mt-1">
+                                                        <i class="bi bi-{{ 'person-plus' if activity.type == 'hire' else 'chat-dots' if activity.type == 'interview' else 'heart' if activity.type == 'feedback' else 'clock' }} me-1"></i>
+                                                        {{ activity.type|title }}
+                                                    </div>
+                                                </div>
+                                                <div class="text-end">
+                                                    <small class="text-muted">{{ activity.date }}</small>
+                                                    {% if activity.priority == 'high' %}
+                                                        <div class="small text-danger mt-1">High Priority</div>
+                                                    {% endif %}
+                                                </div>
                                             </div>
                                         </div>
                                         {% endfor %}
-                                    {% endif %}
-                                    
-                                    {% if onboarding_count > 0 %}
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-light">{{ onboarding_count }} employee{{ 's' if onboarding_count != 1 else '' }} onboarding</span>
-                                            <small class="text-muted">Active now</small>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    
-                                    {% if recent_interviews|length == 0 and onboarding_count == 0 %}
+                                    {% else %}
                                     <div class="list-group-item bg-transparent border-secondary">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="text-muted">No recent activity</span>
@@ -174,13 +195,53 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <h6 class="text-light mb-3">Upcoming</h6>
+                                <h6 class="text-light mb-3">Upcoming Events & KPIs</h6>
                                 <div class="list-group list-group-flush">
+                                    <!-- Employee Status Summary -->
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-light">
+                                                <i class="bi bi-people text-success me-2"></i>
+                                                Total Employees
+                                            </span>
+                                            <span class="text-success fw-bold">{{ total_employees }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-light">
+                                                <i class="bi bi-person-check text-info me-2"></i>
+                                                Active Employees
+                                            </span>
+                                            <span class="text-info fw-bold">{{ active_count }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if onboarding_count > 0 %}
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-light">
+                                                <i class="bi bi-person-plus text-warning me-2"></i>
+                                                Onboarding
+                                            </span>
+                                            <span class="text-warning fw-bold">{{ onboarding_count }}</span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Upcoming Exit Interviews -->
                                     {% if upcoming_exits %}
                                         {% for exit in upcoming_exits[:2] %}
                                         <div class="list-group-item bg-transparent border-secondary">
                                             <div class="d-flex justify-content-between align-items-center">
-                                                <span class="text-light">Exit interview: {{ exit.name }}</span>
+                                                <div>
+                                                    <span class="text-light">
+                                                        <i class="bi bi-door-open text-danger me-2"></i>
+                                                        Exit: {{ exit.name }}
+                                                    </span>
+                                                    <div class="small text-muted mt-1">Exit Interview Scheduled</div>
+                                                </div>
                                                 <small class="text-muted">
                                                     {% if exit.days == 0 %}Today
                                                     {% elif exit.days == 1 %}Tomorrow
@@ -192,18 +253,33 @@
                                         {% endfor %}
                                     {% endif %}
                                     
-                                    {% if upcoming_goals %}
-                                        {% for goal in upcoming_goals[:2] %}
-                                        <div class="list-group-item bg-transparent border-secondary">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="text-light">{{ goal.type }} ({{ goal.count }} employee{{ 's' if goal.count != 1 else '' }})</span>
-                                                <small class="text-muted">{{ goal.timeframe }}</small>
-                                            </div>
+                                    <!-- Pending Tasks -->
+                                    {% if pending_tasks_count > 0 %}
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-light">
+                                                <i class="bi bi-list-task text-warning me-2"></i>
+                                                Pending Tasks
+                                            </span>
+                                            <span class="text-warning fw-bold">{{ pending_tasks_count }}</span>
                                         </div>
-                                        {% endfor %}
+                                    </div>
                                     {% endif %}
                                     
-                                    {% if upcoming_exits|length == 0 and upcoming_goals|length == 0 %}
+                                    <!-- Unread Messages -->
+                                    {% if unread_messages_count > 0 %}
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-light">
+                                                <i class="bi bi-envelope text-primary me-2"></i>
+                                                Unread Messages
+                                            </span>
+                                            <span class="text-primary fw-bold">{{ unread_messages_count }}</span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if upcoming_exits|length == 0 and onboarding_count == 0 and pending_tasks_count == 0 and unread_messages_count == 0 %}
                                     <div class="list-group-item bg-transparent border-secondary">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="text-muted">No upcoming events</span>
