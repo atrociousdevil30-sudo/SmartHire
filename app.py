@@ -899,6 +899,12 @@ class Message(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=True)  # For replies
     notification_data = db.Column(db.JSON, nullable=True)  # Additional notification metadata
     
+    # Edit and delete tracking
+    is_edited = db.Column(db.Boolean, default=False)
+    edited_at = db.Column(db.DateTime)
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime)
+    
     # Relationships
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
     recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
@@ -2162,6 +2168,7 @@ def employee_messages():
                          total_messages=total_messages,
                          unread_count=unread_count,
                          today_active=today_active,
+                         unread_messages_count=unread_count,
                          hr_contacts=User.query.filter_by(role='hr', is_active=True).all())
 
 @app.route('/hr/messages')
@@ -2242,6 +2249,28 @@ def messages_management():
                          users=users,
                          current_user=User.query.get(current_user_id))
 
+@app.route('/api/messages/unread-count', methods=['GET'])
+@login_required(['hr', 'employee'])
+def get_unread_count():
+    """Get unread message count for current user"""
+    try:
+        current_user_id = session['user_id']
+        unread_count = Message.query.filter_by(
+            recipient_id=current_user_id, 
+            status='unread'
+        ).count()
+        
+        return jsonify({
+            'status': 'success',
+            'unread_count': unread_count
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching unread count: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch unread count'
+        }), 500
+
 @app.route('/api/hr-contacts', methods=['GET'])
 @login_required('employee')
 def get_hr_contacts():
@@ -2270,17 +2299,154 @@ def get_hr_contacts():
             'message': 'Failed to fetch HR contacts'
         }), 500
 
+@app.route('/api/messages/<int:message_id>', methods=['PUT'])
+@login_required(['hr', 'employee'])
+def update_message(message_id):
+    """Update an existing message (edit functionality)"""
+    try:
+        current_user_id = session['user_id']
+        
+        # Get the message
+        message = Message.query.get_or_404(message_id)
+        
+        # Check if user is the sender of this message
+        if message.sender_id != current_user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'You can only edit your own messages'
+            }), 403
+        
+        # Check if message is recent (e.g., within 24 hours)
+        from datetime import datetime, timedelta
+        if datetime.now() - message.sent_at > timedelta(hours=24):
+            return jsonify({
+                'status': 'error',
+                'message': 'Messages can only be edited within 24 hours of sending'
+            }), 400
+        
+        # Get new content
+        data = request.get_json()
+        new_content = data.get('content', '').strip()
+        
+        if not new_content:
+            return jsonify({
+                'status': 'error',
+                'message': 'Message content cannot be empty'
+            }), 400
+        
+        # Update message
+        message.content = new_content
+        message.is_edited = True
+        message.edited_at = datetime.now()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Message updated successfully',
+            'data': {
+                'id': message.id,
+                'content': message.content,
+                'is_edited': message.is_edited,
+                'edited_at': message.edited_at.isoformat() if message.edited_at else None
+            }
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error updating message {message_id}: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to update message'
+        }), 500
+
+@app.route('/api/messages/<int:message_id>', methods=['DELETE'])
+@login_required(['hr', 'employee'])
+def delete_message(message_id):
+    """Delete a message"""
+    try:
+        current_user_id = session['user_id']
+        
+        # Get the message
+        message = Message.query.get_or_404(message_id)
+        
+        # Check if user is the sender of this message
+        if message.sender_id != current_user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'You can only delete your own messages'
+            }), 403
+        
+        # Check if message is recent (e.g., within 24 hours)
+        from datetime import datetime, timedelta
+        if datetime.now() - message.sent_at > timedelta(hours=24):
+            return jsonify({
+                'status': 'error',
+                'message': 'Messages can only be deleted within 24 hours of sending'
+            }), 400
+        
+        # Soft delete by marking as deleted
+        message.is_deleted = True
+        message.deleted_at = datetime.now()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Message deleted successfully'
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error deleting message {message_id}: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to delete message'
+        }), 500
+
 @app.route('/api/messages', methods=['POST'])
 @login_required(['hr', 'employee'])
 def create_message():
     """Create a new message"""
     try:
+        # Handle both form data and JSON data
+        if request.is_json:
+            data = request.get_json()
+            recipient_id = data.get('recipient_id')
+            subject = data.get('subject', 'No Subject')
+            content = data.get('content')
+            is_priority = data.get('is_priority', False)
+            message_type = data.get('message_type', 'message')
+            priority = data.get('priority', 'normal')
+        else:
+            recipient_id = request.form.get('recipient_id')
+            subject = request.form.get('subject', 'No Subject')
+            content = request.form.get('content')
+            is_priority = request.form.get('is_priority') == 'on'
+            message_type = request.form.get('message_type', 'message')
+            priority = request.form.get('priority', 'normal')
+        
+        # Validate required fields
+        if not recipient_id or not content:
+            return jsonify({
+                'status': 'error',
+                'message': 'Recipient and content are required'
+            }), 400
+        
+        # Verify recipient exists
+        recipient = User.query.get(recipient_id)
+        if not recipient:
+            return jsonify({
+                'status': 'error',
+                'message': 'Recipient not found'
+            }), 404
+        
         message = Message(
             sender_id=session['user_id'],
-            recipient_id=request.form.get('recipient_id'),
-            subject=request.form.get('subject'),
-            content=request.form.get('content'),
-            is_priority=request.form.get('is_priority') == 'on'
+            recipient_id=recipient_id,
+            subject=subject,
+            content=content,
+            message_type=message_type,
+            priority=priority,
+            is_priority=is_priority
         )
         
         db.session.add(message)
@@ -2293,7 +2459,6 @@ def create_message():
         })
         
     except Exception as e:
-        db.session.rollback()
         app.logger.error(f"Error creating message: {str(e)}")
         return jsonify({
             'status': 'error',
