@@ -401,15 +401,20 @@ function loadConversation(userId) {
         .then(data => {
             if (data.status === 'success') {
                 displayMessages(data.messages);
-                updateConversationHeader(userId);
+                // Update header with user name from API response
+                if (data.user && data.user.full_name) {
+                    document.getElementById('conversationHeader').textContent = data.user.full_name;
+                } else {
+                    updateConversationHeader(userId);
+                }
                 showQuickReply();
-                markAsRead(userId);
+                markMessagesAsRead(userId);
             } else {
                 showError('Failed to load conversation');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Error loading conversation:', error);
             showError('Error loading conversation');
         });
 }
@@ -419,16 +424,30 @@ function displayMessages(messages) {
     const messageThread = document.getElementById('messageThread');
     messageThread.innerHTML = '';
     
+    console.log('Displaying messages:', messages.length);
+    
     messages.forEach(message => {
+        console.log('Processing message:', {
+            id: message.id,
+            sender_name: message.sender_name,
+            sender_role: message.sender_role,
+            is_sent: message.is_sent
+        });
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = `message-container ${message.is_sent ? 'sent' : 'received'} mb-3`;
         messageDiv.setAttribute('data-message-id', message.id);
+        
+        // Ensure sender information exists
+        const senderName = message.is_sent ? 'You' : 
+                         (message.sender_name || 'Unknown') + 
+                         (message.sender_role ? ` <span class="sender-role">(${message.sender_role.toUpperCase()})</span>` : '');
         
         const messageContent = `
             <div class="d-flex ${message.is_sent ? 'justify-content-end' : 'justify-content-start'}">
                 <div class="message-card ${message.is_sent ? 'sent-message' : 'received-message'}">
                     <div class="message-header">
-                        <span class="sender-name">${message.is_sent ? 'You' : message.sender_name}</span>
+                        <span class="sender-name">${senderName}</span>
                         <span class="message-time">${formatTime(message.sent_at)}</span>
                         ${message.is_sent ? `
                             <div class="dropdown float-end ms-2">
@@ -449,7 +468,7 @@ function displayMessages(messages) {
                     <div class="message-body">
                         <div class="message-content">${message.content}</div>
                         ${message.is_edited ? '<div class="message-edited"><i class="fas fa-edit"></i> edited</div>' : ''}
-                        ${message.priority ? '<div class="message-priority"><i class="fas fa-exclamation-circle"></i> Priority</div>' : ''}
+                        ${message.is_priority ? '<div class="message-priority"><i class="fas fa-exclamation-circle"></i> Priority</div>' : ''}
                     </div>
                     <div class="message-footer">
                         ${message.is_sent ? '<i class="fas fa-check-double text-info"></i>' : ''}
@@ -470,8 +489,18 @@ function displayMessages(messages) {
 function updateConversationHeader(userId) {
     const conversationItem = document.querySelector(`[data-conversation-id="${userId}"]`);
     if (conversationItem) {
-        const userName = conversationItem.querySelector('h6').textContent.trim();
-        document.getElementById('conversationHeader').textContent = userName;
+        // Get the clean user name from data attribute
+        const userName = conversationItem.getAttribute('data-user-name');
+        if (userName) {
+            document.getElementById('conversationHeader').textContent = userName;
+        } else {
+            // Fallback to getting from h6 element and cleaning it
+            const headerElement = conversationItem.querySelector('h6');
+            if (headerElement) {
+                const cleanName = headerElement.textContent.replace(/HR/g, '').trim();
+                document.getElementById('conversationHeader').textContent = cleanName;
+            }
+        }
     }
 }
 
@@ -786,6 +815,14 @@ document.addEventListener('DOMContentLoaded', function() {
 .sender-name {
     font-weight: 600;
     margin-right: 8px;
+}
+
+.sender-role {
+    font-size: 10px;
+    opacity: 0.7;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .message-time {

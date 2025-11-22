@@ -2479,6 +2479,11 @@ def get_conversation_messages(user_id):
         
         message_list = []
         for msg in messages:
+            # Get sender information
+            sender = User.query.get(msg.sender_id)
+            sender_name = sender.full_name if sender else 'Unknown'
+            sender_role = sender.role if sender else 'unknown'
+            
             message_list.append({
                 'id': msg.id,
                 'content': msg.content,
@@ -2487,7 +2492,12 @@ def get_conversation_messages(user_id):
                 'sender_id': msg.sender_id,
                 'recipient_id': msg.recipient_id,
                 'is_read': msg.status == 'read',
-                'is_priority': msg.is_priority
+                'is_priority': msg.is_priority,
+                'is_edited': msg.is_edited,
+                'edited_at': msg.edited_at.isoformat() if msg.edited_at else None,
+                'sender_name': sender_name,
+                'sender_role': sender_role,
+                'is_sent': msg.sender_id == current_user_id
             })
         
         user = User.query.get(user_id)
