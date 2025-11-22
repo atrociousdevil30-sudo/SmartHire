@@ -23,6 +23,40 @@
         </div>
     </div>
     
+    <!-- Employee Selection -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <label for="employeeSelect" class="form-label text-light">Select Employee:</label>
+                            <select class="form-select bg-dark text-light border-secondary" id="employeeSelect">
+                                <option value="">Choose an employee in onboarding...</option>
+                                {% for employee in onboarding_employees %}
+                                <option value="{{ employee.id }}" {% if selected_employee and selected_employee.id == employee.id %}selected{% endif %}>
+                                    {{ employee.full_name }} - {{ employee.position }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted mt-3">
+                                {% if onboarding_employees %}
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    {{ onboarding_employees|length }} employee{{ 's' if onboarding_employees|length > 1 else '' }} currently in onboarding
+                                {% else %}
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    No employees currently in onboarding
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Progress Overview -->
     {% if selected_employee and selected_employee.status == 'Onboarding' and checklist %}
     <div class="row mb-4">
@@ -190,11 +224,51 @@
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="filterDropdown">
                                     <li><a class="dropdown-item active" href="#" data-filter="all">All Tasks</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filter="pending">Pending Only</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filter="completed">Completed Only</a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="#" data-filter="overdue">Overdue</a></li>
                                     <li><a class="dropdown-item" href="#" data-filter="today">Due Today</a></li>
                                 </ul>
                             </div>
                         </div>
+                        <!-- Completion Progress -->
+                        {% if selected_employee and checklist %}
+                        <div class="card-body border-bottom border-secondary">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <h6 class="text-light mb-0 me-3">Overall Progress</h6>
+                                        <span class="badge bg-primary bg-opacity-25 text-primary">{{ "%.0f"|format(checklist.get_progress()) }}% Complete</span>
+                                    </div>
+                                    <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                        <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" 
+                                             data-progress="{{ checklist.get_progress() }}"
+                                             style="width: 0%"
+                                             data-width="{{ checklist.get_progress() }}%"
+                                             aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <h6 class="text-success mb-0">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length }}</h6>
+                                            <small class="text-muted">Completed</small>
+                                        </div>
+                                        <div class="col-4">
+                                            <h6 class="text-warning mb-0">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length }}</h6>
+                                            <small class="text-muted">Pending</small>
+                                        </div>
+                                        <div class="col-4">
+                                            <h6 class="text-info mb-0">{{ checklist.tasks|length }}</h6>
+                                            <small class="text-muted">Total</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                         <div class="card-body p-0">
                             <div class="table-responsive">
                                 <table class="table table-dark table-hover align-middle mb-0">
@@ -381,29 +455,16 @@
                             {% endif %}
                             
                             <div class="row">
-                                <div class="col-md-6">
-                                    <h6 class="text-light mb-3">Task Filters</h6>
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" value="pending" id="filterPending">
-                                        <label class="form-check-label text-light" for="filterPending">
-                                            Show Pending Only
-                                        </label>
-                                    </div>
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" value="completed" id="filterCompleted">
-                                        <label class="form-check-label text-light" for="filterCompleted">
-                                            Show Completed Only
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <h6 class="text-light mb-3">Statistics</h6>
                                     <div class="mb-2">
                                         <small class="text-muted">Completion Rate</small>
                                         <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
                                             <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
                                                  role="progressbar" 
-                                                 style="width: {{ checklist.get_progress() }}%;"
+                                                 data-progress="{{ checklist.get_progress() }}"
+                                                 style="width: 0%"
+                                                 data-width="{{ checklist.get_progress() }}%"
                                                  aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
                                         </div>
                                     </div>
@@ -419,6 +480,122 @@
 
     <!-- JavaScript for tab functionality -->
     <script>
+        // Handle employee selection dropdown
+        document.addEventListener('DOMContentLoaded', function() {
+            const employeeSelect = document.getElementById('employeeSelect');
+            if (employeeSelect) {
+                employeeSelect.addEventListener('change', function() {
+                    const employeeId = this.value;
+                    if (employeeId) {
+                        // Navigate to selected employee's onboarding page
+                        window.location.href = `/onboarding?employee_id=${employeeId}`;
+                    } else {
+                        // Navigate back to main onboarding page without employee
+                        window.location.href = '/onboarding';
+                    }
+                });
+            }
+            
+            // Handle refresh button
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function() {
+                    // Add spinning animation to the icon
+                    const icon = this.querySelector('i');
+                    icon.classList.add('fa-spin');
+                    
+                    // Disable button during refresh
+                    this.disabled = true;
+                    
+                    // Refresh the current page
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                });
+            }
+            
+            // Set progress bar widths from data attributes
+            const progressBars = document.querySelectorAll('[data-width]');
+            progressBars.forEach(bar => {
+                const width = bar.getAttribute('data-width');
+                if (width) {
+                    bar.style.width = width;
+                }
+            });
+            
+            // Handle task filtering
+            const filterItems = document.querySelectorAll('[data-filter]');
+            const taskItems = document.querySelectorAll('.task-item');
+            
+            filterItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Update active state
+                    filterItems.forEach(fi => fi.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const filter = this.getAttribute('data-filter');
+                    const tbody = document.getElementById('onboardingTasks');
+                    
+                    // Filter tasks
+                    taskItems.forEach(taskItem => {
+                        const status = taskItem.getAttribute('data-status');
+                        const dueDateElement = taskItem.querySelector('td:nth-child(3) span');
+                        const dueDate = dueDateElement ? dueDateElement.textContent : '';
+                        
+                        let show = false;
+                        
+                        switch(filter) {
+                            case 'all':
+                                show = true;
+                                break;
+                            case 'pending':
+                                show = status === 'pending';
+                                break;
+                            case 'completed':
+                                show = status === 'completed';
+                                break;
+                            case 'overdue':
+                                // Check if task is pending and overdue
+                                if (status === 'pending' && dueDate !== 'TBD') {
+                                    const dueDateObj = new Date(dueDate);
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    show = dueDateObj < today;
+                                }
+                                break;
+                            case 'today':
+                                // Check if task is due today
+                                if (dueDate !== 'TBD') {
+                                    const dueDateObj = new Date(dueDate);
+                                    const today = new Date();
+                                    show = dueDateObj.toDateString() === today.toDateString();
+                                }
+                                break;
+                        }
+                        
+                        taskItem.style.display = show ? '' : 'none';
+                    });
+                    
+                    // Update task count display
+                    const visibleTasks = Array.from(taskItems).filter(item => item.style.display !== 'none');
+                    const countText = visibleTasks.length > 0 ? 
+                        `Showing ${visibleTasks.length} task${visibleTasks.length > 1 ? 's' : ''}` : 
+                        'No tasks found';
+                    
+                    // Update or create count display
+                    let countDisplay = document.querySelector('.task-count-display');
+                    if (!countDisplay) {
+                        countDisplay = document.createElement('div');
+                        countDisplay.className = 'task-count-display text-muted small ms-3';
+                        tbody.parentNode.parentNode.querySelector('.card-header h5').appendChild(countDisplay);
+                    }
+                    countDisplay.textContent = countText;
+                });
+            });
+        });
+        
         function toggleAdvanced() {
             // Switch to advanced tab
             var advancedTab = new bootstrap.Tab(document.getElementById('advanced-tab'));

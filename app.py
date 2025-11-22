@@ -1861,6 +1861,18 @@ def employee_dashboard():
     if onboarding_checklist:
         onboarding_progress = onboarding_checklist.get_progress()
     
+    # Calculate actual onboarding days from hire date
+    current_day = 1
+    total_days = 10  # Extended to 10 business days (2 weeks) for more realistic onboarding
+    if user.hire_date:
+        # Convert hire_date to datetime for proper comparison
+        hire_datetime = datetime.combine(user.hire_date, datetime.min.time())
+        days_since_hire = (datetime.utcnow() - hire_datetime).days
+        # Calculate business days (excluding weekends) - rough approximation
+        business_days = days_since_hire - (days_since_hire // 7) * 2
+        business_days = max(0, business_days)  # Don't go negative
+        current_day = min(business_days + 1, total_days)  # +1 to start from Day 1
+    
     # Generate employee data based on the logged-in user
     employee_data = {
         'name': user.full_name,
@@ -1900,8 +1912,8 @@ def employee_dashboard():
             {'name': 'IT Helpdesk', 'type': 'link', 'url': '#'}
         ],
         'onboarding_progress': {
-            'current_day': 1,
-            'total_days': 5,
+            'current_day': current_day,
+            'total_days': total_days,
             'percentage': onboarding_progress,
             'tasks_completed': int(onboarding_progress / 20) if onboarding_progress else 1,
             'total_tasks': 5
@@ -3397,17 +3409,23 @@ def get_candidates_list():
 @app.route('/onboarding', methods=['GET', 'POST'])
 @login_required('hr')
 def onboarding():
+    # Get all employees with 'Onboarding' status
+    onboarding_employees = User.query.filter_by(status='Onboarding', is_active=True).all()
+    
     # Check if employee_id is provided in URL parameters
     employee_id = request.args.get('employee_id')
+    selected_employee = None
+    checklist = None
+    
     if employee_id:
         # Get employee and their onboarding checklist
-        employee = User.query.get_or_404(employee_id)
+        selected_employee = User.query.get_or_404(employee_id)
         checklist = OnboardingChecklist.query.filter_by(employee_id=employee_id).first()
         
         # Create department-specific onboarding tasks if checklist doesn't exist
         if not checklist:
             checklist = OnboardingChecklist(
-                employee_id=employee.id,
+                employee_id=selected_employee.id,
                 assigned_hr_id=session['user_id'],
                 status='Pending'
             )
@@ -3415,7 +3433,7 @@ def onboarding():
             db.session.flush()
             
             # Create department-specific tasks
-            dept_tasks = get_department_tasks(employee.department, employee.position)
+            dept_tasks = get_department_tasks(selected_employee.department, selected_employee.position)
             for i, task_data in enumerate(dept_tasks):
                 task = OnboardingTask(
                     checklist_id=checklist.id,
@@ -3426,16 +3444,17 @@ def onboarding():
                 db.session.add(task)
             
             db.session.commit()
-        
-        # Get current logged-in HR user
-        current_hr = User.query.get(session['user_id'])
-        
-        # Render onboarding template with employee's specific data
-        return render_template('onboarding.html', 
-                             selected_employee=employee,
-                             checklist=checklist,
-                             user=current_hr,
-                             sample_candidates=[])
+    
+    # Get current logged-in HR user
+    current_hr = User.query.get(session['user_id'])
+    
+    # Render onboarding template with employee's specific data
+    return render_template('onboarding.html', 
+                         selected_employee=selected_employee,
+                         checklist=checklist,
+                         onboarding_employees=onboarding_employees,
+                         user=current_hr,
+                         sample_candidates=[])
     
     candidates = Candidate.query.order_by(Candidate.created_at.desc()).all()
     selected_candidate = None
