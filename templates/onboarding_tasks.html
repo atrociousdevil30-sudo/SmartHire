@@ -304,7 +304,7 @@
             <form id="commentForm">
                 <div class="mb-3">
                     <label for="comment" class="form-label">Add a comment or question</label>
-                    <textarea class="form-control bg-dark text-light" id="comment" rows="3" placeholder="Type your message here..."></textarea>
+                    <textarea class="form-control bg-dark text-light" id="comment" rows="3" placeholder="Type your message here..." autocomplete="off"></textarea>
                 </div>
                 <div class="d-flex justify-content-between">
                     <div class="form-text">Your message will be visible to the HR team</div>
@@ -329,16 +329,15 @@
                 <form id="documentUploadForm">
                     <div class="mb-3">
                         <label for="documentType" class="form-label">Document Type</label>
-                        <input type="text" class="form-control bg-dark text-light" id="documentType" readonly>
+                        <input type="text" class="form-control bg-dark text-light" id="documentType" readonly autocomplete="off">
                     </div>
                     <div class="mb-3">
                         <label for="fileInput" class="form-label">Choose file</label>
-                        <input class="form-control bg-dark text-light" type="file" id="fileInput">
-                        <div class="form-text">Accepted formats: PDF, JPG, PNG (Max size: 5MB)</div>
+                        <input type="file" class="form-control bg-dark text-light" id="fileInput" autocomplete="off">
                     </div>
                     <div class="mb-3">
                         <label for="documentNotes" class="form-label">Notes (Optional)</label>
-                        <textarea class="form-control bg-dark text-light" id="documentNotes" rows="3" placeholder="Add any additional information..."></textarea>
+                        <textarea class="form-control bg-dark text-light" id="documentNotes" rows="3" placeholder="Add any additional information..." autocomplete="off"></textarea>
                     </div>
                 </form>
             </div>
@@ -362,12 +361,12 @@
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">Task</label>
-                    <input type="text" class="form-control bg-dark text-light" id="issueTaskName" readonly>
+                    <label for="issueTaskName" class="form-label">Task</label>
+                    <input type="text" class="form-control bg-dark text-light" id="issueTaskName" readonly autocomplete="off">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Issue Type</label>
-                    <select class="form-select bg-dark text-light" id="issueType">
+                    <label for="issueType" class="form-label">Issue Type</label>
+                    <select class="form-select bg-dark text-light" id="issueType" autocomplete="off">
                         <option value="technical">Technical Issue</option>
                         <option value="access">Access Problem</option>
                         <option value="clarification">Need Clarification</option>
@@ -376,8 +375,8 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Describe your issue</label>
-                    <textarea class="form-control bg-dark text-light" id="issueDescription" rows="4" placeholder="Please describe the issue you're experiencing..."></textarea>
+                    <label for="issueDescription" class="form-label">Describe your issue</label>
+                    <textarea class="form-control bg-dark text-light" id="issueDescription" rows="4" placeholder="Please describe the issue you're experiencing..." autocomplete="off"></textarea>
                 </div>
             </div>
             <div class="modal-footer border-secondary">
@@ -444,21 +443,64 @@
         }
 
         // Event delegation for task checkboxes
-        document.getElementById('tasksList').addEventListener('change', function(e) {
-            if (e.target.classList.contains('task-checkbox')) {
-                const taskId = e.target.getAttribute('data-task-id');
-                const isChecked = e.target.checked;
-                updateTaskStatus(taskId, isChecked);
-            }
-        });
+        const tasksList = document.getElementById('tasksList');
+        if (tasksList) {
+            tasksList.addEventListener('change', function(e) {
+                if (e.target.classList.contains('task-checkbox')) {
+                    const taskId = e.target.getAttribute('data-task-id');
+                    const isChecked = e.target.checked;
+                    updateTaskStatus(taskId, isChecked);
+                }
+            });
 
-        // Event delegation for task action buttons
-        document.getElementById('tasksList').addEventListener('click', function(e) {
+            // Event delegation for task action buttons
+            tasksList.addEventListener('click', function(e) {
+                const button = e.target.closest('.task-action');
+                console.log('Button clicked:', button); // Debug log
+                if (button) {
+                    const action = button.getAttribute('data-action');
+                    const taskId = button.getAttribute('data-task-id');
+                    const taskName = button.getAttribute('data-task-name');
+                    
+                    console.log('Action:', action, 'Task ID:', taskId, 'Task Name:', taskName); // Debug log
+                    
+                    switch(action) {
+                        case 'open-form':
+                            openTaskForm(taskId, JSON.parse(taskName));
+                            break;
+                        case 'open-video':
+                            openVideo(taskId, JSON.parse(taskName));
+                            break;
+                        case 'open-policy':
+                            openPolicy(taskId, JSON.parse(taskName));
+                            break;
+                        case 'sign-document':
+                            signDocument(taskId, JSON.parse(taskName));
+                            break;
+                        case 'report-issue':
+                            reportIssue(taskId, JSON.parse(taskName));
+                            break;
+                        default:
+                            console.log('Unknown action:', action); // Debug log
+                    }
+                } else {
+                    console.log('No task-action button found'); // Debug log
+                }
+            });
+        } else {
+            console.error('tasksList element not found!'); // Debug log
+        }
+
+        // Fallback: Document-level event listener for task action buttons
+        document.addEventListener('click', function(e) {
             const button = e.target.closest('.task-action');
             if (button) {
+                console.log('Document-level button clicked:', button); // Debug log
                 const action = button.getAttribute('data-action');
                 const taskId = button.getAttribute('data-task-id');
                 const taskName = button.getAttribute('data-task-name');
+                
+                console.log('Document-level Action:', action, 'Task ID:', taskId, 'Task Name:', taskName); // Debug log
                 
                 switch(action) {
                     case 'open-form':
@@ -476,6 +518,8 @@
                     case 'report-issue':
                         reportIssue(taskId, JSON.parse(taskName));
                         break;
+                    default:
+                        console.log('Document-level Unknown action:', action); // Debug log
                 }
             }
         });
@@ -531,6 +575,7 @@
 
     // Report an issue
     function reportIssue(taskId, taskName) {
+        console.log('reportIssue called with:', taskId, taskName); // Debug log
         // Create a temporary button to trigger the modal
         const tempButton = document.createElement('button');
         tempButton.setAttribute('data-bs-toggle', 'modal');
@@ -726,6 +771,7 @@
 
     // Task-specific action functions
     function openTaskForm(taskId, taskName) {
+        console.log('openTaskForm called with:', taskId, taskName); // Debug log
         // Create and show a modal for form completion
         const modalHtml = `
             <div class="modal fade" id="taskFormModal" tabindex="-1">
@@ -740,7 +786,7 @@
                                 <div class="mb-3">
                                     <label for="completionDetails" class="form-label">Completion Details</label>
                                     <textarea class="form-control bg-dark text-light" id="completionDetails" rows="3" 
-                                              placeholder="Please provide any details about completing this task..." required></textarea>
+                                              placeholder="Please provide any details about completing this task..." required autocomplete="off"></textarea>
                                 </div>
                                 <div class="mb-3">
                                     <div class="form-check">
@@ -772,7 +818,7 @@
     }
 
     function openVideo(taskId, taskName) {
-        // Simulate opening a video player
+        // Simulate opening a video player with realistic content
         const modalHtml = `
             <div class="modal fade" id="videoModal" tabindex="-1">
                 <div class="modal-dialog modal-lg">
@@ -782,30 +828,109 @@
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="ratio ratio-16x9 bg-black">
+                            <div class="ratio ratio-16x9 bg-black rounded mb-3">
                                 <div class="d-flex align-items-center justify-content-center h-100">
                                     <div class="text-center">
                                         <i class="bi bi-play-circle fa-4x text-primary mb-3"></i>
-                                        <h5>Video Player</h5>
-                                        <p class="text-muted">This would play the actual video content</p>
-                                        <button class="btn btn-primary" onclick="markVideoWatched(${taskId})">Mark as Watched</button>
+                                        <h6>Video Player Simulation</h6>
+                                        <p class="text-muted">This would play the actual training video for ${taskName}</p>
+                                        <div class="progress mt-3" style="height: 4px;">
+                                            <div class="progress-bar bg-primary" id="videoProgress" style="width: 0%"></div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block" id="videoTime">0:00 / 5:30</small>
                                     </div>
                                 </div>
                             </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-light btn-sm" onclick="playVideo()">
+                                        <i class="bi bi-play-fill"></i> Play
+                                    </button>
+                                    <button class="btn btn-outline-light btn-sm" onclick="pauseVideo()">
+                                        <i class="bi bi-pause-fill"></i> Pause
+                                    </button>
+                                    <button class="btn btn-outline-light btn-sm" onclick="rewindVideo()">
+                                        <i class="bi bi-arrow-counterclockwise"></i> -10s
+                                    </button>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="videoWatched">
+                                    <label class="form-check-label" for="videoWatched">
+                                        I have watched this video completely
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-secondary">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" onclick="completeVideo(${taskId})">
+                                <i class="bi bi-check-circle me-1"></i> Mark as Watched
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
         
-        // Remove existing modal if present
-        const existingModal = document.getElementById('videoModal');
-        if (existingModal) existingModal.remove();
-        
-        // Add modal to body and show it
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         const modal = new bootstrap.Modal(document.getElementById('videoModal'));
         modal.show();
+        
+        // Simulate video progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 2;
+            if (progress > 100) progress = 100;
+            
+            const progressBar = document.getElementById('videoProgress');
+            const timeDisplay = document.getElementById('videoTime');
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+                const currentSeconds = Math.floor((progress / 100) * 330); // 5:30 total
+                const minutes = Math.floor(currentSeconds / 60);
+                const seconds = currentSeconds % 60;
+                if (timeDisplay) {
+                    timeDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')} / 5:30`;
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    const checkbox = document.getElementById('videoWatched');
+                    if (checkbox) checkbox.checked = true;
+                }
+            }
+        }, 100);
+        
+        // Cleanup on modal hide
+        document.getElementById('videoModal').addEventListener('hidden.bs.modal', () => {
+            clearInterval(progressInterval);
+            document.getElementById('videoModal').remove();
+        });
+    }
+
+    // Video control functions
+    function playVideo() {
+        showToast('Video playing...', 'info');
+    }
+
+    function pauseVideo() {
+        showToast('Video paused', 'info');
+    }
+
+    function rewindVideo() {
+        showToast('Video rewound 10 seconds', 'info');
+    }
+
+    function completeVideo(taskId) {
+        const checkbox = document.getElementById('videoWatched');
+        if (!checkbox.checked) {
+            showToast('Please confirm you have watched the video completely', 'warning');
+            return;
+        }
+        
+        updateTaskStatus(taskId, true);
+        bootstrap.Modal.getInstance(document.getElementById('videoModal')).hide();
+        showToast('Video marked as watched!', 'success');
     }
 
     function openPolicy(taskId, taskName) {
@@ -871,7 +996,7 @@
                                         <p class="text-muted mb-0">By typing your name below, you agree to the terms of this document.</p>
                                     </div>
                                     <input type="text" class="form-control bg-dark text-light mt-2" 
-                                           placeholder="Type your full name to sign" id="signatureInput">
+                                           placeholder="Type your full name to sign" id="signatureInput" autocomplete="off">
                                 </div>
                             </div>
                         </div>

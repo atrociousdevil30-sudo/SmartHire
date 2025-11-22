@@ -5780,10 +5780,34 @@ def delete_onboarding_task(task_id):
 def employee_toggle_onboarding_task(task_id):
     """Toggle onboarding task completion (employee view)"""
     try:
-        # Legacy check - onboarding task system has been removed
-        return jsonify({'status': 'error', 'message': 'Onboarding task system has been removed'}), 400
+        user_id = session.get('user_id')
+        user = User.query.get(user_id)
+        
+        # Get the task and verify it belongs to the current user
+        task = Task.query.filter_by(id=task_id, assigned_to=user.id, task_type='onboarding').first()
+        if not task:
+            return jsonify({'status': 'error', 'message': 'Task not found'}), 404
+        
+        # Toggle task status
+        if task.status == 'completed':
+            task.status = 'pending'
+            task.completed_at = None
+        else:
+            task.status = 'completed'
+            task.completed_at = datetime.utcnow()
+        
+        task.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success', 
+            'message': 'Task updated successfully',
+            'task_status': task.status,
+            'completed_at': task.completed_at.isoformat() if task.completed_at else None
+        })
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f'Error toggling onboarding task: {str(e)}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/employee/onboarding/tasks/<int:task_id>/report-issue', methods=['POST'])
@@ -5791,10 +5815,56 @@ def employee_toggle_onboarding_task(task_id):
 def employee_report_issue(task_id):
     """Report an issue with a task"""
     try:
-        # Legacy check - onboarding task system has been removed
-        return jsonify({'status': 'error', 'message': 'Onboarding task system has been removed'}), 400
+        user_id = session.get('user_id')
+        user = User.query.get(user_id)
+        
+        # Get the task and verify it belongs to the current user
+        task = Task.query.filter_by(id=task_id, assigned_to=user.id, task_type='onboarding').first()
+        if not task:
+            return jsonify({'status': 'error', 'message': 'Task not found'}), 404
+        
+        # Get issue details from request
+        data = request.get_json()
+        issue_description = data.get('issue_description', '')
+        issue_type = data.get('issue_type', 'general')
+        
+        if not issue_description:
+            return jsonify({'status': 'error', 'message': 'Issue description is required'}), 400
+        
+        # Update task to mark as having an issue
+        task.status = 'issue_reported'
+        task.updated_at = datetime.utcnow()
+        
+        # Add issue details to task description or comments
+        issue_note = f"[ISSUE REPORTED - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}]: {issue_description} (Type: {issue_type})"
+        if task.description:
+            task.description = f"{task.description}\n\n{issue_note}"
+        else:
+            task.description = issue_note
+        
+        # Create a message to HR about the issue
+        hr_users = User.query.filter_by(role='hr', is_active=True).all()
+        for hr_user in hr_users:
+            message = Message(
+                sender_id=user.id,
+                recipient_id=hr_user.id,
+                subject=f'Onboarding Task Issue: {task.title}',
+                content=f'Employee {user.full_name} has reported an issue with onboarding task "{task.title}".\n\nIssue Details:\n{issue_description}\n\nIssue Type: {issue_type}',
+                priority='medium',
+                status='unread'
+            )
+            db.session.add(message)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success', 
+            'message': 'Issue reported successfully. HR has been notified.',
+            'task_status': task.status
+        })
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f'Error reporting task issue: {str(e)}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/employee/onboarding/comment', methods=['POST'])
