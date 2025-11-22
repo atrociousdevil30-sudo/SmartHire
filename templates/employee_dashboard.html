@@ -207,6 +207,28 @@
                                 </div>
                                 {% endfor %}
                             </div>
+                            {% if user.status in ['Offboarding', 'Pre-Offboarding', 'Pre Offboarding', 'pre_offboarding', 'offboarding'] %}
+                            <!-- Debug: User status is {{ user.status }} -->
+                            <div class="mt-4">
+                                <div class="card bg-dark bg-opacity-50 border-secondary">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-light mb-1">
+                                                    <i class="bi bi-box-arrow-right me-2"></i>Offboarding Tasks
+                                                </h6>
+                                                <p class="text-muted small mb-0">Manage your offboarding checklist and requirements</p>
+                                            </div>
+                                            <a href="{{ url_for('offboarding_tasks') }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-list-task me-1"></i>View Tasks
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <!-- Debug: User status is {{ user.status }} - not showing offboarding -->
+                            {% endif %}
                         </div>
                         
                         <!-- Resources Tab -->

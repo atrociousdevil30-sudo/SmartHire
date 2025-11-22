@@ -1679,8 +1679,22 @@ def employee_dashboard():
     # Get unread messages count
     unread_messages_count = Message.query.filter_by(recipient_id=session['user_id'], status='unread').count()
     
-    # Get HR contacts for messaging
-    hr_contacts = User.query.filter_by(role='hr', is_active=True).all()
+    # Get HR contacts for messaging - exclude test HR users
+    hr_contacts = User.query.filter_by(role='hr', is_active=True).filter(
+        User.username != 'test_hr',
+        User.username != 'testhr',
+        User.full_name.notlike('%test%')
+    ).all()
+    
+    # Set Deeksha as primary HR contact if available, otherwise use first available HR
+    hr_contact = User.query.filter_by(role='hr', is_active=True).filter(
+        User.username != 'test_hr',
+        User.username != 'testhr',
+        User.full_name.notlike('%test%')
+    ).filter(User.full_name.like('%Deeksha%')).first()
+    
+    if not hr_contact and hr_contacts:
+        hr_contact = hr_contacts[0]
     
     # Generate employee journey timeline data
     employee_journey = {
@@ -1765,12 +1779,12 @@ def employee_messages():
     # Get recent conversations
     recent_messages = Message.query.filter(
         (Message.sender_id == user_id) | (Message.recipient_id == user_id)
-    ).order_by(Message.created_at.desc()).limit(50).all()
+    ).order_by(Message.sent_at.desc()).limit(50).all()
     
     # Get unread count
     unread_messages_count = Message.query.filter_by(
         recipient_id=user_id, 
-        is_read=False
+        status='unread'
     ).count()
     
     return render_template('employee_messages.html',
@@ -1784,6 +1798,12 @@ def employee_messages():
 @login_required('employee')
 def employee_profile():
     user = User.query.get(session['user_id'])
+    
+    # Get unread messages count
+    unread_messages_count = Message.query.filter_by(
+        recipient_id=user.id, 
+        status='unread'
+    ).count()
 
     if request.method == 'POST':
         try:
@@ -1799,7 +1819,7 @@ def employee_profile():
             app.logger.error(f'Error updating employee profile: {str(e)}')
             flash('An error occurred while updating your profile. Please try again.', 'danger')
 
-    return render_template('employee_profile.html', user=user, current_user=user)
+    return render_template('employee_profile.html', user=user, current_user=user, unread_messages_count=unread_messages_count)
 
 @app.route('/api/employee/tasks/<int:task_id>/status', methods=['PUT'])
 @login_required('employee')
@@ -1866,7 +1886,12 @@ def get_unread_count():
 def get_hr_contacts():
     """Get list of HR contacts for employees to message"""
     try:
-        hr_contacts = User.query.filter_by(role='hr', is_active=True).all()
+        # Get HR contacts - exclude test HR users
+        hr_contacts = User.query.filter_by(role='hr', is_active=True).filter(
+            User.username != 'test_hr',
+            User.username != 'testhr',
+            User.full_name.notlike('%test%')
+        ).all()
         contacts_list = []
         
         for hr in hr_contacts:
@@ -1875,7 +1900,8 @@ def get_hr_contacts():
                 'full_name': hr.full_name,
                 'username': hr.username,
                 'email': hr.email,
-                'position': hr.position or 'HR Representative'
+                'position': hr.position or 'HR Representative',
+                'is_primary': hr.full_name.like('%Deeksha%')
             })
         
         return jsonify({
@@ -2267,11 +2293,17 @@ def delete_task(task_id):
 def onboarding_tasks():
     user_id = session.get('user_id')
     user = User.query.get(user_id)
+    
+    # Get unread messages count
+    unread_messages_count = Message.query.filter_by(
+        recipient_id=user.id, 
+        status='unread'
+    ).count()
 
     # Legacy check - onboarding checklist system has been removed
     checklist = None
 
-    return render_template('onboarding_tasks.html', user=user, checklist=checklist, now=datetime.utcnow())
+    return render_template('onboarding_tasks.html', user=user, checklist=checklist, now=datetime.utcnow(), unread_messages_count=unread_messages_count)
 
 
 @app.route('/employee/offboarding-tasks')
@@ -2279,12 +2311,29 @@ def onboarding_tasks():
 def offboarding_tasks():
     user_id = session.get('user_id')
     user = User.query.get(user_id)
+    
+    # Get unread messages count
+    unread_messages_count = Message.query.filter_by(
+        recipient_id=user.id, 
+        status='unread'
+    ).count()
 
     # Get user's documents
     documents = EmployeeDocument.query.filter_by(user_id=user_id).all()
     
-    # Get HR contact
-    hr_contact = User.query.filter_by(role='hr', is_active=True).first()
+    # Get HR contact - prioritize Deeksha and exclude test HR users
+    hr_contact = User.query.filter_by(role='hr', is_active=True).filter(
+        User.username != 'test_hr',
+        User.username != 'testhr',
+        User.full_name.notlike('%test%')
+    ).filter(User.full_name.like('%Deeksha%')).first()
+    
+    if not hr_contact:
+        hr_contact = User.query.filter_by(role='hr', is_active=True).filter(
+            User.username != 'test_hr',
+            User.username != 'testhr',
+            User.full_name.notlike('%test%')
+        ).first()
     
     # Get manager information if available
     manager = None
@@ -2300,7 +2349,7 @@ def offboarding_tasks():
         'manager': manager
     }
 
-    return render_template('offboarding_tasks.html', offboarding=offboarding)
+    return render_template('offboarding_tasks.html', offboarding=offboarding, unread_messages_count=unread_messages_count)
 
 
 @app.route('/employee/pre-offboarding')
@@ -2312,6 +2361,12 @@ def employee_pre_offboarding():
     if not user:
         flash('Employee not found.', 'danger')
         return redirect(url_for('employee_dashboard'))
+    
+    # Get unread messages count
+    unread_messages_count = Message.query.filter_by(
+        recipient_id=user.id, 
+        status='unread'
+    ).count()
 
     status = user.status or 'Active'
     phase = 'none'
@@ -2330,7 +2385,7 @@ def employee_pre_offboarding():
         except Exception:
             notice_days = None
 
-    return render_template('pre-offboarding.html', user=user, phase=phase, notice_days=notice_days)
+    return render_template('pre-offboarding.html', user=user, phase=phase, notice_days=notice_days, unread_messages_count=unread_messages_count)
 
 @app.route('/download-document/<int:doc_id>')
 @login_required(['employee', 'hr'])
@@ -3259,7 +3314,16 @@ def ai_interview_training():
 @login_required('employee')
 def employee_interview():
     """Employee AI interview session"""
-    return render_template('employee_interview.html')
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    # Get unread messages count
+    unread_messages_count = Message.query.filter_by(
+        recipient_id=user.id, 
+        status='unread'
+    ).count()
+    
+    return render_template('employee_interview.html', unread_messages_count=unread_messages_count)
 
 @app.route('/api/employee/interview/status', methods=['GET'])
 @login_required('employee')
@@ -3932,9 +3996,19 @@ def exit_interview(employee_id=None):
     if session.get('role') == 'hr':
         hr_contact = User.query.get(session['user_id'])
     else:
-        hr_contact = User.query.filter_by(role='hr', is_active=True).first()
+        # Prioritize Deeksha and exclude test HR users
+        hr_contact = User.query.filter_by(role='hr', is_active=True).filter(
+            User.username != 'test_hr',
+            User.username != 'testhr',
+            User.full_name.notlike('%test%')
+        ).filter(User.full_name.like('%Deeksha%')).first()
+        
         if not hr_contact:
-            hr_contact = User.query.filter_by(role='hr').first()
+            hr_contact = User.query.filter_by(role='hr', is_active=True).filter(
+                User.username != 'test_hr',
+                User.username != 'testhr',
+                User.full_name.notlike('%test%')
+            ).first()
     
     # Render the template with employee data, exit feedbacks, offboarding employees, and HR contact
     return render_template('exit.html', employee=employee, exit_feedbacks=exit_feedbacks, 
@@ -3952,9 +4026,19 @@ def knowledge_transfer():
     if session.get('role') == 'hr':
         hr_contact = User.query.get(session['user_id'])
     else:
-        hr_contact = User.query.filter_by(role='hr', is_active=True).first()
+        # Prioritize Deeksha and exclude test HR users
+        hr_contact = User.query.filter_by(role='hr', is_active=True).filter(
+            User.username != 'test_hr',
+            User.username != 'testhr',
+            User.full_name.notlike('%test%')
+        ).filter(User.full_name.like('%Deeksha%')).first()
+        
         if not hr_contact:
-            hr_contact = User.query.filter_by(role='hr').first()
+            hr_contact = User.query.filter_by(role='hr', is_active=True).filter(
+                User.username != 'test_hr',
+                User.username != 'testhr',
+                User.full_name.notlike('%test%')
+            ).first()
     
     # Fetch Knowledge Transfer data from database
     kt_sessions = KTSession.query.order_by(KTSession.scheduled_date.desc()).all()
@@ -4075,6 +4159,12 @@ def employee_mood_tracking():
     if not user:
         return redirect(url_for('login'))
     
+    # Get unread messages count
+    unread_messages_count = Message.query.filter_by(
+        recipient_id=user.id, 
+        status='unread'
+    ).count()
+    
     # Get mood feedback history
     feedback_history = EmployeeFeedback.query.filter_by(user_id=user.id)\
                                           .order_by(EmployeeFeedback.created_at.desc())\
@@ -4155,6 +4245,7 @@ def employee_mood_tracking():
         title='Mood & Wellness',
         today=datetime.utcnow(),
         employee=user,
+        unread_messages_count=unread_messages_count,
         current_mood=current_mood,
         current_confidence=current_confidence,
         avg_mood_7=round(avg_mood_7, 1),
