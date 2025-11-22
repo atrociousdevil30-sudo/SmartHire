@@ -279,23 +279,49 @@
                                 </div>
                                 
                                 <div class="col-md-6">
-                                    <h6 class="text-light mb-3">Company Resources</h6>
+                                    <h6 class="text-light mb-3">HR Contact Information</h6>
                                     <div class="list-group">
-                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
-                                            <i class="bi bi-file-pdf me-2 text-danger"></i> Employee Handbook
-                                        </a>
-                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
-                                            <i class="bi bi-shield-check me-2 text-success"></i> IT Security Policy
-                                        </a>
-                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
-                                            <i class="bi bi-heart me-2 text-info"></i> Health & Wellness
-                                        </a>
-                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
-                                            <i class="bi bi-building me-2 text-warning"></i> Office Map
-                                        </a>
-                                        <a href="#" class="list-group-item list-group-item-action bg-dark bg-opacity-25 border-secondary">
-                                            <i class="bi bi-headset me-2 text-primary"></i> IT Support
-                                        </a>
+                                        {% if hr_contacts %}
+                                            {% for hr_contact in hr_contacts[:3] %}
+                                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-sm me-3">
+                                                            <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle" style="width: 32px; height: 32px; line-height: 32px;">
+                                                                {{ hr_contact.full_name|first|upper }}
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <h6 class="text-light mb-0">{{ hr_contact.full_name }}</h6>
+                                                            <small class="text-muted">{{ hr_contact.position or 'HR Representative' }}</small>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <a href="tel:{{ hr_contact.phone }}" class="btn btn-outline-primary btn-sm me-1" title="Call">
+                                                                <i class="fas fa-phone"></i>
+                                                            </a>
+                                                            <a href="https://wa.me/{{ hr_contact.phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '') }}" class="btn btn-outline-success btn-sm" target="_blank" title="WhatsApp">
+                                                                <i class="fab fa-whatsapp"></i>
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="list-group-item bg-dark bg-opacity-25 border-secondary text-center">
+                                                <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                                                <p class="text-muted mb-0">HR Team information will be available soon</p>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if hr_contact %}
+                                            <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
+                                                <div class="text-center">
+                                                    <small class="text-muted">Primary HR Contact</small>
+                                                    <div class="text-light mt-1">
+                                                        <i class="fas fa-envelope me-2"></i>{{ hr_contact.email }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>

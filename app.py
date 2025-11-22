@@ -1752,6 +1752,34 @@ def employee_dashboard():
                          current_user=user,  # For compatibility with existing templates
                          title=f'{user.full_name}\'s Dashboard')
 
+@app.route('/employee/messages')
+@login_required('employee')
+def employee_messages():
+    """Employee messages page"""
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    # Get all users for messaging (HR and other employees)
+    all_users = User.query.filter(User.id != user_id, User.is_active == True).all()
+    
+    # Get recent conversations
+    recent_messages = Message.query.filter(
+        (Message.sender_id == user_id) | (Message.recipient_id == user_id)
+    ).order_by(Message.created_at.desc()).limit(50).all()
+    
+    # Get unread count
+    unread_messages_count = Message.query.filter_by(
+        recipient_id=user_id, 
+        is_read=False
+    ).count()
+    
+    return render_template('employee_messages.html',
+                         user=user,
+                         all_users=all_users,
+                         recent_messages=recent_messages,
+                         unread_messages_count=unread_messages_count,
+                         title='Messages')
+
 @app.route('/employee/profile', methods=['GET', 'POST'])
 @login_required('employee')
 def employee_profile():
@@ -2108,6 +2136,30 @@ def mark_messages_as_read(user_id):
         return jsonify({
             'status': 'error',
             'message': 'Failed to mark messages as read'
+        }), 500
+
+@app.route('/api/messages/unread-count', methods=['GET'])
+@login_required(['hr', 'employee'])
+def get_unread_count():
+    """Get unread message count for current user"""
+    try:
+        current_user_id = session['user_id']
+        
+        unread_count = Message.query.filter_by(
+            recipient_id=current_user_id,
+            status='unread'
+        ).count()
+        
+        return jsonify({
+            'status': 'success',
+            'unread_count': unread_count
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error getting unread count: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get unread count'
         }), 500
 
 @app.route('/api/tasks', methods=['POST'])
