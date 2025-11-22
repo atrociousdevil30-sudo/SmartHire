@@ -735,7 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeNotifications();
     
     // Load user profile
-    loadProfile();
+    loadProfileModal();
     
     // Add event listeners for modal forms if needed
     const profileModal = document.getElementById('profileModal');

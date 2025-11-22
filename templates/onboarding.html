@@ -24,9 +24,15 @@
     </div>
     
     <!-- Progress Overview -->
-    {% if selected_employee and checklist %}
+    {% if selected_employee and selected_employee.status == 'Onboarding' and checklist %}
     <div class="row mb-4">
         <div class="col-12">
+            <div class="alert alert-info d-flex align-items-center" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <div>
+                    <strong>Viewing:</strong> {{ selected_employee.full_name }}'s Onboarding Checklist
+                </div>
+            </div>
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-body">
                     <div class="row align-items-center">
@@ -77,43 +83,15 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-6 mb-3 mb-md-0">
-                            <h5 class="text-light mb-2">Onboarding Progress</h5>
-                            <div class="progress bg-dark bg-opacity-50 mb-2" style="height: 10px;">
-                                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
-                                     role="progressbar" style="width: 25%;" 
-                                     aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <small class="text-muted">25% Complete</small>
-                                <small class="text-warning">
-                                    <i class="fas fa-exclamation-triangle me-1"></i> 2 tasks overdue
-                                </small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex flex-wrap justify-content-md-end gap-2">
-                                <div class="border-end pe-3 me-3">
-                                    <h6 class="text-light mb-1">5</h6>
-                                    <small class="text-muted">Total Tasks</small>
-                                </div>
-                                <div class="border-end pe-3 me-3">
-                                    <h6 class="text-success mb-1">2</h6>
-                                    <small class="text-muted">Completed</small>
-                                </div>
-                                <div class="border-end pe-3 me-3">
-                                    <h6 class="text-warning mb-1">2</h6>
-                                    <small class="text-muted">In Progress</small>
-                                </div>
-                                <div>
-                                    <h6 class="text-danger mb-1">1</h6>
-                                    <small class="text-muted">Overdue</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-user-tie fa-3x text-muted mb-3"></i>
+                    {% if selected_employee and selected_employee.status != 'Onboarding' %}
+                        <h5 class="text-light mb-2">Employee Not in Onboarding</h5>
+                        <p class="text-muted">This employee is not currently in the onboarding process</p>
+                    {% else %}
+                        <h5 class="text-light mb-2">No Employee Selected</h5>
+                        <p class="text-muted">Select an employee in onboarding to view their progress</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -121,827 +99,330 @@
     {% endif %}
 
     <div class="row">
-        <!-- Employee/Candidate Selection Sidebar -->
-        <div class="col-lg-4 mb-4 order-lg-2">
+        <!-- Employee Selection Sidebar (Simplified) -->
+        <div class="col-lg-3 mb-4 order-lg-2">
             {% if selected_employee %}
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-header bg-transparent border-secondary">
                     <h5 class="mb-0 text-light">
-                        <i class="fas fa-user me-2"></i>Employee Details
+                        <i class="fas fa-user me-2"></i>{{ selected_employee.full_name }}
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Name</label>
-                        <p class="text-light mb-0">{{ selected_employee.full_name }}</p>
+                    <div class="text-center mb-3">
+                        <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle mx-auto" style="width: 60px; height: 60px; line-height: 60px;">
+                            {{ selected_employee.full_name|first|upper }}
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Email</label>
-                        <p class="text-light mb-0">{{ selected_employee.email }}</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('goal_setting', employee_id=selected_employee.id) }}" 
+                           class="btn btn-primary btn-sm">
+                            <i class="fas fa-bullseye me-1"></i>Goals
+                        </a>
+                        <button class="btn btn-outline-light btn-sm" onclick="toggleAdvanced()">
+                            <i class="fas fa-cog me-1"></i>Advanced
+                        </button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Position</label>
-                        <p class="text-light mb-0">{{ selected_employee.position or 'N/A' }}</p>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Department</label>
-                        <p class="text-light mb-0">{{ selected_employee.department or 'N/A' }}</p>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Status</label>
-                        <p class="text-light mb-0">
-                            <span class="badge bg-{{ 'success' if selected_employee.status == 'Active' else 'warning' if selected_employee.status == 'Onboarding' else 'secondary' }} bg-opacity-25 text-{{ 'success' if selected_employee.status == 'Active' else 'warning' if selected_employee.status == 'Onboarding' else 'secondary' }}">
-                                {{ selected_employee.status or 'N/A' }}
-                            </span>
-                        </p>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Hire Date</label>
-                        <p class="text-light mb-0">{{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else selected_employee.created_at.strftime('%B %d, %Y') if selected_employee.created_at else 'N/A' }}</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Goal Setting Button -->
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-body text-center">
-                    <a href="{{ url_for('goal_setting', employee_id=selected_employee.id) }}" 
-                       class="btn btn-primary w-100">
-                        <i class="fas fa-bullseye me-2"></i>
-                        30-60-90 Day Goal Setting
-                    </a>
-                    <small class="text-muted d-block mt-2">
-                        Set structured goals for successful onboarding
-                    </small>
                 </div>
             </div>
             {% else %}
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-header bg-transparent border-secondary">
                     <h5 class="mb-0 text-light">
-                        <i class="fas fa-user-tie me-2"></i>Select Employee/Candidate
+                        <i class="fas fa-user-tie me-2"></i>Select Employee
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label for="employeeSearch" class="form-label text-light">Search Employee</label>
                         <input type="text" class="form-control bg-dark text-light border-secondary" 
-                               id="employeeSearch" placeholder="Search by name...">
+                               id="employeeSearch" placeholder="Search...">
                     </div>
-                    <div id="employeeList" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                    <div id="employeeList" class="list-group" style="max-height: 300px; overflow-y: auto;">
                         <div class="text-muted text-center py-3">
-                            <i class="fas fa-search me-2"></i>Search or select an employee
+                            <i class="fas fa-search me-2"></i>Search employee
                         </div>
                     </div>
                 </div>
             </div>
             {% endif %}
-
         </div>
         
         <!-- Main Content -->
-        <div class="col-lg-8 order-lg-1">
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-clipboard-list me-2"></i>Onboarding Checklist
-                    </h5>
-                    <div class="dropdown">
-                        <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-filter me-1"></i> Filter
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="filterDropdown">
-                            <li><a class="dropdown-item active" href="#" data-filter="all">All Tasks</a></li>
-                            <li><a class="dropdown-item" href="#" data-filter="overdue">Overdue</a></li>
-                            <li><a class="dropdown-item" href="#" data-filter="today">Due Today</a></li>
-                            <li><a class="dropdown-item" href="#" data-filter="upcoming">Upcoming</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" data-filter="my-tasks">My Tasks</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-dark table-hover align-middle mb-0">
-                            <thead class="bg-dark bg-opacity-50">
-                                <tr>
-                                    <th class="ps-4">Task</th>
-                                    <th>Status</th>
-                                    <th>Assigned To</th>
-                                    <th>Due Date</th>
-                                    <th class="text-end pe-4">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="onboardingTasks">
-                                {% if selected_employee and checklist and checklist.tasks %}
-                                    {% for task in checklist.tasks %}
-                                    <tr class="task-item" data-status="{{ 'completed' if task.is_completed else 'pending' }}" data-task-id="{{ task.id }}">
-                                        <td class="ps-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input task-checkbox" type="checkbox" 
-                                                       id="task{{ task.id }}" 
-                                                       data-task-id="{{ task.id }}" 
-                                                       {{ 'checked' if task.is_completed else '' }}>
-                                                <label class="form-check-label" for="task{{ task.id }}">
-                                                    {{ task.task_name }}
-                                                    {% if task.task_description %}
-                                                    <small class="d-block text-muted">{{ task.task_description }}</small>
-                                                    {% endif %}
-                                                    {% if task.employee_comment %}
-                                                    <div class="mt-1">
-                                                        <small class="text-info">
-                                                            <i class="fas fa-comment me-1"></i>Employee comment: {{ task.employee_comment }}
-                                                        </small>
-                                                    </div>
-                                                    {% endif %}
-                                                </label>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {% if task.is_completed %}
-                                                <span class="badge bg-success bg-opacity-25 text-success">
-                                                    <i class="fas fa-check-circle me-1"></i> Completed
-                                                    {% if task.completed_at %}
-                                                    <small class="d-block">{{ task.completed_at.strftime('%b %d, %Y') }}</small>
-                                                    {% endif %}
-                                                </span>
-                                            {% else %}
-                                                <span class="badge bg-secondary bg-opacity-25 text-muted">
-                                                    <i class="far fa-clock me-1"></i> Pending
-                                                </span>
-                                            {% endif %}
-                                            {% if task.has_issue %}
-                                            <div class="mt-1">
-                                                <span class="badge bg-danger bg-opacity-25 text-danger">
-                                                    <i class="fas fa-exclamation-triangle me-1"></i> Issue Reported
-                                                </span>
-                                            </div>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="avatar-xs me-2">
-                                                    <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle">
-                                                        HR
-                                                    </div>
-                                                </div>
-                                                HR Department
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="far fa-calendar-alt text-muted me-2"></i>
-                                                {% if task.due_date %}
-                                                    <span>{{ task.due_date.strftime('%b %d') }}</span>
-                                                {% else %}
-                                                    <span>TBD</span>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                        <td class="text-end pe-4">
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" 
-                                                        id="task{{ task.id }}Dropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="task{{ task.id }}Dropdown">
-                                                    <li>
-                                                        <a class="dropdown-item task-action" href="#" data-task-id="{{ task.id }}" data-completed="{{ 'false' if task.is_completed else 'true' }}" data-action="toggle-completion">
-                                                            <i class="fas fa-{{ 'undo' if task.is_completed else 'check' }} me-2"></i>{{ 'Mark as Incomplete' if task.is_completed else 'Mark as Complete' }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editTaskModal" data-task-id="{{ task.id }}">
-                                                            <i class="far fa-edit me-2"></i>Edit Task
-                                                        </a>
-                                                    </li>
-                                                    {% if task.has_issue %}
-                                                    <li>
-                                                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#resolveIssueModal" data-task-id="{{ task.id }}">
-                                                            <i class="fas fa-check-circle me-2"></i>Resolve Issue
-                                                        </a>
-                                                    </li>
-                                                    {% endif %}
-                                                </ul>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                {% else %}
-                                <tr>
-                                    <td colspan="5" class="text-center py-4">
-                                        <div class="text-muted">
-                                            <i class="fas fa-clipboard-list fa-2x mb-2"></i>
-                                            <p>No checklist available. Select an employee to view their onboarding tasks.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sidebar -->
-        <div class="col-lg-4">
-            <!-- Job Description Card -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4 d-none" id="jobDescriptionCard">
-                <div class="card-header bg-transparent border-secondary">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-briefcase me-2"></i>Job Description
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div id="jobDescriptionContent" class="text-light" style="max-height: 300px; overflow-y: auto;">
-                        <div class="text-muted text-center py-3">
-                            Select an employee to view job description
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Task Filters -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-secondary">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-filter me-2"></i>Filter Tasks
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label text-light">Status</label>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" value="" id="filterAll" checked>
-                            <label class="form-check-label text-light" for="filterAll">
-                                All Tasks
-                            </label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input filter-status" type="checkbox" value="pending" id="filterPending">
-                            <label class="form-check-label text-light" for="filterPending">
-                                <span class="badge bg-secondary bg-opacity-25 text-muted">
-                                    <i class="far fa-clock me-1"></i> Pending
-                                </span>
-                            </label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input filter-status" type="checkbox" value="in-progress" id="filterInProgress">
-                            <label class="form-check-label text-light" for="filterInProgress">
-                                <span class="badge bg-warning bg-opacity-25 text-warning">
-                                    <i class="fas fa-sync-alt fa-spin me-1"></i> In Progress
-                                </span>
-                            </label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input filter-status" type="checkbox" value="completed" id="filterCompleted">
-                            <label class="form-check-label text-light" for="filterCompleted">
-                                <span class="badge bg-success bg-opacity-25 text-success">
-                                    <i class="fas fa-check-circle me-1"></i> Completed
-                                </span>
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input filter-status" type="checkbox" value="overdue" id="filterOverdue">
-                            <label class="form-check-label text-light" for="filterOverdue">
-                                <span class="badge bg-danger bg-opacity-25 text-danger">
-                                    <i class="fas fa-exclamation-circle me-1"></i> Overdue
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label text-light">Assigned To</label>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input filter-assigned" type="checkbox" value="all" id="filterAllDepartments" checked>
-                            <label class="form-check-label text-light" for="filterAllDepartments">
-                                All Departments
-                            </label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input filter-assigned" type="checkbox" value="hr" id="filterHR">
-                            <label class="form-check-label text-light" for="filterHR">
-                                <span class="badge bg-primary bg-opacity-10 text-primary">HR Department</span>
-                            </label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input filter-assigned" type="checkbox" value="it" id="filterIT">
-                            <label class="form-check-label text-light" for="filterIT">
-                                <span class="badge bg-info bg-opacity-10 text-info">IT Department</span>
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input filter-assigned" type="checkbox" value="admin" id="filterAdmin">
-                            <label class="form-check-label text-light" for="filterAdmin">
-                                <span class="badge bg-secondary bg-opacity-10 text-secondary">Admin Team</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button class="btn btn-outline-light" id="applyFilters">
-                            <i class="fas fa-filter me-1"></i> Apply Filters
-                        </button>
-                        <button class="btn btn-link text-light mt-2" id="resetFilters">
-                            <i class="fas fa-undo me-1"></i> Reset Filters
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Task Stats -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-secondary">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-chart-pie me-2"></i>Task Statistics
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-light">Completion Rate</span>
-                            <span class="text-light">40%</span>
-                        </div>
-                        <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: 40%;" 
-                                 aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted small">HR Department</span>
-                            <span class="text-muted small">1/2</span>
-                        </div>
-                        <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
-                            <div class="progress-bar bg-primary" role="progressbar" style="width: 50%;" 
-                                 aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted small">IT Department</span>
-                            <span class="text-muted small">1/3</span>
-                        </div>
-                        <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
-                            <div class="progress-bar bg-info" role="progressbar" style="width: 33%;" 
-                                 aria-valuenow="33" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted small">Admin Team</span>
-                            <span class="text-muted small">1/1</span>
-                        </div>
-                        <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
-                            <div class="progress-bar bg-secondary" role="progressbar" style="width: 100%;" 
-                                 aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Upcoming Deadlines -->
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-secondary">
-                    <h5 class="mb-0 text-light">
-                        <i class="far fa-calendar-alt me-2"></i>Upcoming Deadlines
-                    </h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item bg-transparent border-secondary">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0 text-light">Document Collection</h6>
-                                    <small class="text-danger">
-                                        <i class="far fa-clock me-1"></i> Overdue
-                                    </small>
-                                </div>
-                                <span class="badge bg-danger bg-opacity-25 text-danger">HR</span>
-                            </div>
-                        </div>
-                        <div class="list-group-item bg-transparent border-secondary">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0 text-light">Laptop/Asset Allocation</h6>
-                                    <small class="text-warning">
-                                        <i class="far fa-clock me-1"></i> Due Today
-                                    </small>
-                                </div>
-                                <span class="badge bg-info bg-opacity-25 text-info">IT</span>
-                            </div>
-                        </div>
-                        <div class="list-group-item bg-transparent border-secondary">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0 text-light">Team Introduction</h6>
-                                    <small class="text-muted">
-                                        <i class="far fa-clock me-1"></i> Tomorrow
-                                    </small>
-                                </div>
-                                <span class="badge bg-primary bg-opacity-25 text-primary">HR</span>
-                            </div>
-                        </div>
-                        <div class="list-group-item bg-transparent border-secondary">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0 text-light">System Access Creation</h6>
-                                    <small class="text-muted">
-                                        <i class="far fa-clock me-1"></i> In 2 days
-                                    </small>
-                                </div>
-                                <span class="badge bg-info bg-opacity-25 text-info">IT</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-secondary">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-chart-line me-2"></i>Onboarding Progress
-                    </h5>
-                </div>
-                <div class="card-body text-light">
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>Completion</span>
-                            <span>14%</span>
-                        </div>
-                        <div class="progress" style="height: 10px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: 14%;" aria-valuenow="14" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Pending Tasks</span>
-                            <span class="badge bg-primary rounded-pill">7</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Completed Tasks</span>
-                            <span class="badge bg-success rounded-pill">0</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center text-danger">
-                            <span>Overdue Tasks</span>
-                            <span class="badge bg-danger rounded-pill">0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Upcoming Deadlines -->
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Upcoming Deadlines</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        {% for task in [
-                            {'title': 'Document Collection', 'date': 'Today', 'assigned': 'HR'},
-                            {'title': 'IT Setup', 'date': 'Tomorrow', 'assigned': 'IT'},
-                            {'title': 'Orientation', 'date': 'Day 1', 'assigned': 'HR'}
-                        ] %}
-                        <div class="list-group-item">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">{{ task.title }}</h6>
-                                <small class="text-muted">{{ task.date }}</small>
-                            </div>
-                            <small class="text-muted">Assigned to: {{ task.assigned }}</small>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- New Hire Modal -->
-<div class="modal fade" id="newHireModal" tabindex="-1" aria-labelledby="newHireModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-light">
-            <div class="modal-header border-secondary">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="newHireModalLabel">Add New Hire</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="newHireForm">
-                    <div class="mb-3">
-                        <label for="newHireName" class="form-label">Full Name</label>
-                        <input type="text" class="form-control" id="newHireName" name="newHireName" autocomplete="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="newHireEmail" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="newHireEmail" name="newHireEmail" autocomplete="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="newHireDepartment" class="form-label">Department</label>
-                        <select class="form-select" id="newHireDepartment" required>
-                            <option value="" selected disabled>Select Department</option>
-                            <option value="it">IT</option>
-                            <option value="hr">Human Resources</option>
-                            <option value="finance">Finance</option>
-                            <option value="marketing">Marketing</option>
-                            <option value="operations">Operations</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="newHireStartDate" class="form-label">Start Date</label>
-                        <input type="date" class="form-control" id="newHireStartDate" name="newHireStartDate" autocomplete="off" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="resumeFile" class="form-label">Resume (PDF/DOCX)</label>
-                        <input type="file" class="form-control" id="resumeFile" accept=".pdf,.doc,.docx">
-                        <div class="form-text">Upload the candidate's resume to extract information</div>
-                    </div>
-                    <button type="button" class="btn btn-outline-primary mb-3" onclick="analyzeResume()">
-                        <i class="fas fa-file-import me-1"></i>Analyze Resume
+        <div class="col-lg-9 order-lg-1">
+            <!-- Tab Navigation -->
+            <ul class="nav nav-tabs nav-tabs-dark mb-4" id="onboardingTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab">
+                        <i class="fas fa-tasks me-2"></i>Tasks
                     </button>
-                    
-                    <!-- Resume Analysis Results -->
-                    <div class="card mb-3 d-none" id="resumeAnalysisResults">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">Resume Analysis Results</h6>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="progress-tab" data-bs-toggle="tab" data-bs-target="#progress" type="button" role="tab">
+                        <i class="fas fa-chart-line me-2"></i>Progress
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab">
+                        <i class="fas fa-info-circle me-2"></i>Details
+                    </button>
+                </li>
+                {% if selected_employee %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab">
+                        <i class="fas fa-cog me-2"></i>Advanced
+                    </button>
+                </li>
+                {% endif %}
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="onboardingTabsContent">
+                <!-- Tasks Tab -->
+                <div class="tab-pane fade show active" id="tasks" role="tabpanel">
+                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 text-light">
+                                <i class="fas fa-clipboard-list me-2"></i>Onboarding Tasks
+                            </h5>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-filter me-1"></i> Filter
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="filterDropdown">
+                                    <li><a class="dropdown-item active" href="#" data-filter="all">All Tasks</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filter="overdue">Overdue</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filter="today">Due Today</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover align-middle mb-0">
+                                    <thead class="bg-dark bg-opacity-50">
+                                        <tr>
+                                            <th class="ps-4">Task</th>
+                                            <th>Status</th>
+                                            <th>Due Date</th>
+                                            <th class="text-end pe-4">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="onboardingTasks">
+                                        {% if selected_employee and checklist and checklist.tasks %}
+                                            {% for task in checklist.tasks %}
+                                            <tr class="task-item" data-status="{{ 'completed' if task.is_completed else 'pending' }}" data-task-id="{{ task.id }}">
+                                                <td class="ps-4">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input task-checkbox" type="checkbox" 
+                                                               id="task{{ task.id }}" 
+                                                               data-task-id="{{ task.id }}" 
+                                                               {{ 'checked' if task.is_completed else '' }}>
+                                                        <label class="form-check-label" for="task{{ task.id }}">
+                                                            {{ task.task_name }}
+                                                        </label>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    {% if task.is_completed %}
+                                                        <span class="badge bg-success bg-opacity-25 text-success">
+                                                            <i class="fas fa-check-circle me-1"></i> Completed
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary bg-opacity-25 text-muted">
+                                                            <i class="far fa-clock me-1"></i> Pending
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if task.due_date %}
+                                                        <span>{{ task.due_date.strftime('%b %d') }}</span>
+                                                    {% else %}
+                                                        <span>TBD</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-end pe-4">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-dark">
+                                                            <li>
+                                                                <a class="dropdown-item task-action" href="#" data-task-id="{{ task.id }}" data-completed="{{ 'false' if task.is_completed else 'true' }}" data-action="toggle-completion">
+                                                                    <i class="fas fa-{{ 'undo' if task.is_completed else 'check' }} me-2"></i>{{ 'Mark as Incomplete' if task.is_completed else 'Mark as Complete' }}
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4">
+                                                <div class="text-muted">
+                                                    <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                                                    <p>Select an employee to view their onboarding tasks.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Tab -->
+                <div class="tab-pane fade" id="progress" role="tabpanel">
+                    {% if selected_employee and selected_employee.status == 'Onboarding' and checklist %}
+                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                        <div class="card-body">
+                            <h5 class="text-light mb-4">Overall Progress</h5>
+                            <div class="progress bg-dark bg-opacity-50 mb-3" style="height: 20px;">
+                                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" 
+                                     data-progress="{{ checklist.get_progress() }}"
+                                     aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <h4 class="text-light">{{ checklist.tasks|length }}</h4>
+                                    <small class="text-muted">Total</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <h4 class="text-success">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length }}</h4>
+                                    <small class="text-muted">Completed</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <h4 class="text-warning">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length }}</h4>
+                                    <small class="text-muted">Pending</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <h4 class="text-info">{{ "%.0f"|format(checklist.get_progress()) }}%</h4>
+                                    <small class="text-muted">Complete</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Select an employee to view progress details.</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Details Tab -->
+                <div class="tab-pane fade" id="details" role="tabpanel">
+                    {% if selected_employee %}
+                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">Employee Information</h6>
+                                    <p><strong>Name:</strong> {{ selected_employee.full_name }}</p>
+                                    <p><strong>Email:</strong> {{ selected_employee.email }}</p>
+                                    <p><strong>Position:</strong> {{ selected_employee.position or 'N/A' }}</p>
+                                    <p><strong>Department:</strong> {{ selected_employee.department or 'N/A' }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">Status Information</h6>
+                                    <p><strong>Status:</strong> 
+                                        <span class="badge bg-{{ 'success' if selected_employee.status == 'Active' else 'warning' if selected_employee.status == 'Onboarding' else 'secondary' }}">
+                                            {{ selected_employee.status or 'N/A' }}
+                                        </span>
+                                    </p>
+                                    <p><strong>Hire Date:</strong> {{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else 'N/A' }}</p>
+                                    <p><strong>Days Since Start:</strong> {{ (now() - checklist.created_at).days if checklist.created_at else 0 }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Select an employee to view detailed information.</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Advanced Tab (Hidden by default) -->
+                {% if selected_employee %}
+                <div class="tab-pane fade" id="advanced" role="tabpanel">
+                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                        <div class="card-header bg-transparent border-secondary">
+                            <h5 class="mb-0 text-light">
+                                <i class="fas fa-cog me-2"></i>Advanced Options
+                            </h5>
                         </div>
                         <div class="card-body">
-                            <div class="mb-3">
-                                <label class="form-label">Skills</label>
-                                <div id="extractedSkills" class="d-flex flex-wrap gap-1">
-                                    <!-- Skills will be added here -->
+                            <!-- Employee Specific Details -->
+                            {% if selected_employee %}
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">Employee Information</h6>
+                                    <p class="text-muted mb-2"><strong>Department:</strong> {{ selected_employee.department or 'Not Assigned' }}</p>
+                                    <p class="text-muted mb-2"><strong>Position:</strong> {{ selected_employee.position or 'Not Assigned' }}</p>
+                                    <p class="text-muted mb-2"><strong>Hire Date:</strong> {{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else 'N/A' }}</p>
+                                    <p class="text-muted mb-2"><strong>Days Since Start:</strong> {{ (now() - checklist.created_at).days if checklist.created_at else 0 }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">Checklist Details</h6>
+                                    <p class="text-muted mb-2"><strong>Created:</strong> {{ checklist.created_at.strftime('%B %d, %Y') if checklist.created_at else 'N/A' }}</p>
+                                    <p class="text-muted mb-2"><strong>Total Tasks:</strong> {{ checklist.tasks | length }}</p>
+                                    <p class="text-muted mb-2"><strong>Completed:</strong> {{ checklist.tasks | selectattr('is_completed', 'equalto', true) | list | length }}</p>
+                                    <p class="text-muted mb-2"><strong>Progress:</strong> {{ "%.0f"|format(checklist.get_progress()) }}%</p>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Experience</label>
-                                <div id="extractedExperience" class="list-group">
-                                    <!-- Experience items will be added here -->
+                            {% endif %}
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">Task Filters</h6>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="pending" id="filterPending">
+                                        <label class="form-check-label text-light" for="filterPending">
+                                            Show Pending Only
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="completed" id="filterCompleted">
+                                        <label class="form-check-label text-light" for="filterCompleted">
+                                            Show Completed Only
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Education</label>
-                                <div id="extractedEducation" class="list-group">
-                                    <!-- Education items will be added here -->
+                                <div class="col-md-6">
+                                    <h6 class="text-light mb-3">Statistics</h6>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Completion Rate</small>
+                                        <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                            <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                                                 role="progressbar" 
+                                                 style="width: {{ checklist.get_progress() }}%"
+                                                 aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="addNewHire()">Create Onboarding</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Reassign Task Modal -->
-<div class="modal fade" id="reassignModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-light">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title">Reassign Task</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Task</label>
-                    <input type="text" class="form-control" id="taskName" readonly>
-                </div>
-                <div class="mb-3">
-                    <label for="assignTo" class="form-label">Assign To</label>
-                    <select class="form-select" id="assignTo">
-                        <option value="hr">HR Department</option>
-                        <option value="it">IT Department</option>
-                        <option value="admin">Admin Department</option>
-                        <option value="manager">Hiring Manager</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="dueDate" class="form-label">Due Date</label>
-                    <input type="date" class="form-control" id="dueDate">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="confirmReassignment()">Reassign</button>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="modal fade" id="selectCandidateModal" tabindex="-1" aria-labelledby="selectCandidateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content bg-dark text-light">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title" id="selectCandidateModalLabel">Select Candidate</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                {% if sample_candidates %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Position</th>
-                                <th>Score</th>
-                                <th>Added On</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for candidate in sample_candidates %}
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-2">
-                                            <i class="fas fa-user-circle fa-lg"></i>
-                                        </div>
-                                        <div>
-                                            <div class="fw-bold">{{ candidate.name }}</div>
-                                            {% if candidate.summary %}
-                                            <small class="text-muted">{{ candidate.summary[:50] }}...</small>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>{{ candidate.job_desc }}</td>
-                                <td>
-                                    <span class="badge bg-{{ 'success' if candidate.score >= 80 else 'warning' if candidate.score >= 60 else 'danger' }}">
-                                        {{ "%.1f"|format(candidate.score) }}%
-                                    </span>
-                                </td>
-                                <td>{{ candidate.created_at.strftime('%Y-%m-%d') }}</td>
-                                <td>
-                                    <a href="{{ url_for('onboarding', candidate_id=candidate.id) }}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-user-plus me-1"></i> Select
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-4">
-                    <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
-                    <p class="mb-0">No candidates found. Please add candidates first.</p>
-                    <a href="{{ url_for('pre_onboarding') }}" class="btn btn-primary mt-3">
-                        <i class="fas fa-plus me-1"></i> Add Candidate
-                    </a>
                 </div>
                 {% endif %}
             </div>
-            <div class="modal-footer border-secondary">
-                <a href="{{ url_for('pre_onboarding') }}" class="btn btn-outline-primary me-auto">
-                    <i class="fas fa-plus me-1"></i> Add New Candidate
-                </a>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
         </div>
     </div>
-</div>
 
-<!-- New Hire Details Card (initially hidden) -->
-<div class="card bg-dark bg-opacity-25 border-secondary mb-4 d-none" id="newHireCard">
-    <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 text-light">
-            <i class="fas fa-user-plus me-2"></i>New Hire Details
-        </h5>
-        <button class="btn btn-sm btn-outline-secondary" onclick="resetOnboarding()">
-            <i class="fas fa-redo me-1"></i>Start Over
-        </button>
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <p><strong>Name:</strong> <span id="candidateName">-</span></p>
-                <p><strong>Email:</strong> <span id="candidateEmail">-</span></p>
-                <p><strong>Position:</strong> <span id="candidatePosition">-</span></p>
-            </div>
-            <div class="col-md-6">
-                <p><strong>Experience:</strong> <span id="candidateExperience">-</span></p>
-                <p><strong>Skills:</strong> <span id="candidateSkills">-</span></p>
-                <p><strong>Hire Date:</strong> <span id="hireDate">-</span></p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/onboarding.js') }}"></script>
-<script>
-// DOM Elements
-const taskList = document.getElementById('onboardingTasks');
-const progressBar = document.querySelector('.progress-bar');
-const progressText = document.querySelector('.progress-bar').parentElement.nextElementSibling.firstElementChild;
-const taskCounts = {
-    total: document.querySelector('.col-md-6 .d-flex div:nth-child(1) h6'),
-    completed: document.querySelector('.col-md-6 .d-flex div:nth-child(2) h6'),
-    inProgress: document.querySelector('.col-md-6 .d-flex div:nth-child(3) h6'),
-    overdue: document.querySelector('.col-md-6 .d-flex div:nth-child(4) h6')
-};
-
-// Handle task checkbox changes for employee-specific onboarding
-document.addEventListener('change', function(e) {
-    if (e.target.matches('.task-checkbox')) {
-        const taskId = parseInt(e.target.dataset.taskId);
-        const completed = e.target.checked;
-        toggleTaskCompletion(taskId, completed);
-    }
-});
-
-// Initialize the page
-document.addEventListener('DOMContentLoaded', function() {
-    // Set up event listeners only
-    setupEventListeners();
-});
-
-// Setup event listeners for task actions
-function setupEventListeners() {
-    // Handle task completion toggles
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('.task-action')) {
-            e.preventDefault();
-            const taskId = e.target.dataset.taskId;
-            const completed = e.target.dataset.completed === 'true';
-            const action = e.target.dataset.action;
-            
-            if (action === 'toggle-completion') {
-                toggleTaskCompletion(taskId, completed);
-            }
+    <!-- JavaScript for tab functionality -->
+    <script>
+        function toggleAdvanced() {
+            // Switch to advanced tab
+            var advancedTab = new bootstrap.Tab(document.getElementById('advanced-tab'));
+            advancedTab.show();
         }
-    });
-    
-    // Handle resolve issue button
-    const resolveIssueBtn = document.getElementById('resolveIssueBtn');
-    if (resolveIssueBtn) {
-        resolveIssueBtn.addEventListener('click', function() {
-            const taskId = document.getElementById('resolveIssueModal').dataset.taskId;
-            resolveTaskIssue(taskId);
-        });
-    }
-}
-
-// Toggle task completion
-function toggleTaskCompletion(taskId, completed) {
-    fetch(`/api/onboarding/tasks/${taskId}/toggle`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrf_token]').value
-        },
-        body: JSON.stringify({ completed: completed })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            location.reload();
-        } else {
-            alert('Error updating task: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating task');
-    });
-}
-
-// Resolve task issue
-function resolveTaskIssue(taskId) {
-    const resolutionNote = document.getElementById('resolutionNote').value;
-    
-    fetch(`/api/onboarding/tasks/${taskId}/resolve-issue`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrf_token]').value
-        },
-        body: JSON.stringify({ resolution_note: resolutionNote })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            bootstrap.Modal.getInstance(document.getElementById('resolveIssueModal')).hide();
-            location.reload();
-        } else {
-            alert('Error resolving issue: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error resolving issue');
-    });
-}
-</script>
-
-<script src="{{ url_for('static', filename='js/onboarding-selection.js') }}"></script>
+    </script>
 {% endblock %}

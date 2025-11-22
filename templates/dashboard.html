@@ -4,190 +4,62 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- HR User Info Header -->
+    <!-- HR User Info Header (Simplified) -->
     <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
         <div class="card-body py-3">
             <div class="d-flex align-items-center">
-                <div class="me-4">
-                    <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
-                        <i class="fas fa-user-tie fa-2x"></i>
+                <div class="me-3">
+                    <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <i class="fas fa-user-tie"></i>
                     </div>
                 </div>
                 <div class="flex-grow-1">
-                    <h4 class="mb-1 text-light">Welcome, {{ user.full_name }}</h4>
-                    <p class="mb-0 text-muted">
-                        <i class="fas fa-briefcase me-2"></i>HR Manager
-                        <span class="mx-2">•</span>
-                        <i class="fas fa-envelope me-2"></i>{{ user.email }}
-                        <span class="mx-2">•</span>
-                        <i class="fas fa-phone me-2"></i>{{ user.phone }}
-                    </p>
+                    <h5 class="mb-1 text-light">Welcome, {{ user.full_name }}</h5>
+                    <p class="mb-0 text-muted small">HR Manager</p>
                 </div>
-                <div class="ms-3">
-                    <a href="{{ url_for('list_employees') }}" class="btn btn-outline-light me-2">
-                        <i class="fas fa-users me-1"></i> View All Employees
-                    </a>
-                    <a href="/hr/employees/add" class="btn btn-primary">
-                        <i class="fas fa-user-plus me-1"></i> Add New Employee
-                    </a>
+                <div>
+                    <button class="btn btn-outline-light btn-sm" onclick="toggleAdvancedMode()">
+                        <i class="fas fa-cog me-1"></i>Advanced
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 text-light mb-0">HR Insights & Strategy Dashboard</h1>
-            <p class="text-muted mb-0">Welcome to your HR command center</p>
-        </div>
-        <div>
-            <a href="#" class="btn btn-outline-light">
-                <i class="fas fa-download me-1"></i> Export
-            </a>
-        </div>
-    </div>
-
-    <!-- Quick Actions Section -->
-    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-        <div class="card-header bg-transparent border-secondary">
-            <h5 class="mb-0 text-light">
-                <i class="fas fa-bolt me-2"></i>Quick Actions
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <!-- Tasks -->
-                <div class="col-md-3">
-                    <a href="/hr/tasks" class="text-decoration-none">
-                        <div class="card bg-primary bg-opacity-10 border-primary h-100 hover-card">
-                            <div class="card-body text-center">
-                                <div class="mb-3">
-                                    <i class="fas fa-tasks fa-2x text-primary"></i>
-                                </div>
-                                <h6 class="text-light mb-1">Tasks</h6>
-                                <span class="badge bg-primary">{{ pending_tasks_count or 0 }}</span>
-                                <div class="small text-muted">Manage Tasks</div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                
-                <!-- Messages -->
-                <div class="col-md-3">
-                    <a href="/hr/messages" class="text-decoration-none">
-                        <div class="card bg-success bg-opacity-10 border-success h-100 hover-card">
-                            <div class="card-body text-center">
-                                <div class="mb-3">
-                                    <i class="fas fa-envelope fa-2x text-success"></i>
-                                </div>
-                                <h6 class="text-light mb-1">Messages</h6>
-                                <span class="badge bg-success">{{ unread_messages_count or 0 }}</span>
-                                <div class="small text-muted">View Messages</div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                
-                <!-- Goal Setting -->
-                <div class="col-md-3">
-                    <a href="{{ url_for('goal_setting') }}" class="text-decoration-none">
-                        <div class="card bg-warning bg-opacity-10 border-warning h-100 hover-card">
-                            <div class="card-body text-center">
-                                <div class="mb-3">
-                                    <i class="fas fa-bullseye fa-2x text-warning"></i>
-                                </div>
-                                <h6 class="text-light mb-1">Goal Setting</h6>
-                                <span class="badge bg-warning">30-60-90</span>
-                                <div class="small text-muted">Set Employee Goals</div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                
-                <!-- Access Records -->
-                <div class="col-md-3">
-                    <a href="/hr/access-records" class="text-decoration-none">
-                        <div class="card bg-secondary bg-opacity-10 border-secondary h-100 hover-card">
-                            <div class="card-body text-center">
-                                <div class="mb-3">
-                                    <i class="fas fa-key fa-2x text-secondary"></i>
-                                </div>
-                                <h6 class="text-light mb-1">Access Records</h6>
-                                <span class="badge bg-secondary">Security</span>
-                                <div class="small text-muted">Manage Access</div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Alumni Network Section -->
-    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-        <div class="card-header bg-transparent border-secondary">
-            <h5 class="mb-0 text-light">
-                <i class="fas fa-users me-2"></i>Alumni Network Management
-            </h5>
-        </div>
-        <div class="card-body">
+    <!-- Quick Actions (Primary Focus) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="text-light mb-3">Quick Actions</h5>
             <div class="row g-3">
                 <div class="col-md-3">
-                    <a href="{{ url_for('alumni_network') }}" class="text-decoration-none">
-                        <div class="card bg-info bg-opacity-10 border-info h-100 hover-card">
-                            <div class="card-body text-center">
-                                <div class="mb-3">
-                                    <i class="fas fa-user-friends fa-2x text-info"></i>
-                                </div>
-                                <h6 class="text-light mb-1">Alumni Network</h6>
-                                <span class="badge bg-info">40% Industry</span>
-                                <div class="small text-muted">Manage Alumni</div>
-                            </div>
+                    <a href="{{ url_for('add_employee') }}" class="card card-simplified h-100 text-decoration-none">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-user-plus fa-2x text-primary mb-2"></i>
+                            <h6 class="text-light">Add Employee</h6>
                         </div>
                     </a>
                 </div>
-                
                 <div class="col-md-3">
-                    <a href="{{ url_for('alumni_network') }}" class="text-decoration-none">
-                        <div class="card bg-success bg-opacity-10 border-success h-100 hover-card">
-                            <div class="card-body text-center">
-                                <div class="mb-3">
-                                    <i class="fas fa-redo fa-2x text-success"></i>
-                                </div>
-                                <h6 class="text-light mb-1">Rehire Potential</h6>
-                                <span class="badge bg-success">Top Talent</span>
-                                <div class="small text-muted">Track Candidates</div>
-                            </div>
+                    <a href="{{ url_for('onboarding') }}" class="card card-simplified h-100 text-decoration-none">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-user-clock fa-2x text-success mb-2"></i>
+                            <h6 class="text-light">Onboarding</h6>
                         </div>
                     </a>
                 </div>
-                
                 <div class="col-md-3">
-                    <a href="{{ url_for('alumni_network') }}" class="text-decoration-none">
-                        <div class="card bg-warning bg-opacity-10 border-warning h-100 hover-card">
-                            <div class="card-body text-center">
-                                <div class="mb-3">
-                                    <i class="fas fa-star fa-2x text-warning"></i>
-                                </div>
-                                <h6 class="text-light mb-1">Brand Ambassadors</h6>
-                                <span class="badge bg-warning">Advocates</span>
-                                <div class="small text-muted">Manage Advocacy</div>
-                            </div>
+                    <a href="{{ url_for('interview') }}" class="card card-simplified h-100 text-decoration-none">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-robot fa-2x text-info mb-2"></i>
+                            <h6 class="text-light">AI Interview</h6>
                         </div>
                     </a>
                 </div>
-                
                 <div class="col-md-3">
-                    <a href="{{ url_for('alumni_network') }}" class="text-decoration-none">
-                        <div class="card bg-primary bg-opacity-10 border-primary h-100 hover-card">
-                            <div class="card-body text-center">
-                                <div class="mb-3">
-                                    <i class="fas fa-robot fa-2x text-primary"></i>
-                                </div>
-                                <h6 class="text-light mb-1">Stay-in-Touch</h6>
-                                <span class="badge bg-primary">Automation</span>
-                                <div class="small text-muted">Automate Outreach</div>
-                            </div>
+                    <a href="{{ url_for('list_employees') }}" class="card card-simplified h-100 text-decoration-none">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-users fa-2x text-warning mb-2"></i>
+                            <h6 class="text-light">Employees</h6>
                         </div>
                     </a>
                 </div>
@@ -195,112 +67,40 @@
         </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="row g-4 mb-4">
-        <!-- Total Employees -->
-        <div class="col-md-6 col-lg-3">
-            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
-                            <i class="fas fa-users text-primary"></i>
-                        </div>
-                        <div class="text-end">
-                            <h3 class="mb-0 text-light">{{ total_employees }}</h3>
-                            <span class="text-muted small">Total Employees</span>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="{{ url_for('list_employees') }}" class="small text-primary text-decoration-none">
-                            View All <i class="fas fa-arrow-right ms-1"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Onboarding -->
-        <div class="col-md-6 col-lg-3">
-            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="bg-warning bg-opacity-10 p-3 rounded-circle">
-                            <i class="fas fa-user-clock text-warning"></i>
-                        </div>
-                        <div class="text-end">
-                            <h3 class="mb-0 text-light">{{ onboarding_count }}</h3>
-                            <span class="text-muted small">In Onboarding</span>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="#" class="small text-warning text-decoration-none">
-                            View Onboarding <i class="fas fa-arrow-right ms-1"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Active Employees -->
-        <div class="col-md-6 col-lg-3">
-            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase text-muted small">Avg. Onboarding</h6>
-                            <h3 class="mb-0 text-light">{{ avg_onboarding_days }} <small class="text-muted">days</small></h3>
-                            <span class="text-success small"><i class="bi bi-arrow-down"></i> Improving</span>
-                        </div>
-                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
-                            <i class="bi bi-clock-history text-primary fs-4"></i>
+    <!-- Key Metrics (Simplified) -->
+    <div class="row mb-4" id="keyMetrics">
+        <div class="col-12">
+            <h5 class="text-light mb-3">Overview</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="card card-simplified">
+                        <div class="card-body text-center p-3">
+                            <h3 class="text-light mb-1">{{ total_employees or 0 }}</h3>
+                            <small class="text-muted">Total Employees</small>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase text-muted small">Avg. Exit Time</h6>
-                            <h3 class="mb-0 text-light">14.5 <small class="text-muted">days</small></h3>
-                            <span class="text-danger small"><i class="bi bi-arrow-up"></i> 8% from last month</span>
-                        </div>
-                        <div class="bg-danger bg-opacity-10 p-3 rounded-circle">
-                            <i class="bi bi-box-arrow-right text-danger fs-4"></i>
+                <div class="col-md-3">
+                    <div class="card card-simplified">
+                        <div class="card-body text-center p-3">
+                            <h3 class="text-success mb-1">{{ onboarding_count or 0 }}</h3>
+                            <small class="text-muted">Onboarding</small>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase text-muted small">Active Employees</h6>
-                            <h3 class="mb-0 text-light">{{ active_count }}</h3>
-                            <span class="text-success small"><i class="bi bi-arrow-up"></i> Growing</span>
-                        </div>
-                        <div class="bg-success bg-opacity-10 p-3 rounded-circle">
-                            <i class="bi bi-people-fill text-success fs-4"></i>
+                <div class="col-md-3">
+                    <div class="card card-simplified">
+                        <div class="card-body text-center p-3">
+                            <h3 class="text-warning mb-1">{{ pending_tasks or 0 }}</h3>
+                            <small class="text-muted">Pending Tasks</small>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase text-muted small">Engagement Score</h6>
-                            <h3 class="mb-0 text-light">{{ engagement_score }}%</h3>
-                            <span class="text-success small"><i class="bi bi-arrow-up"></i> Stable</span>
-                        </div>
-                        <div class="bg-warning bg-opacity-10 p-3 rounded-circle">
-                            <i class="bi bi-graph-up text-warning fs-4"></i>
+                <div class="col-md-3">
+                    <div class="card card-simplified">
+                        <div class="card-body text-center p-3">
+                            <h3 class="text-info mb-1">{{ completed_interviews or 0 }}</h3>
+                            <small class="text-muted">Interviews</small>
                         </div>
                     </div>
                 </div>
@@ -308,511 +108,260 @@
         </div>
     </div>
 
-    <div class="row g-4">
-        <!-- Left Column -->
-        <div class="col-lg-8">
-            <!-- Recent AI Interview Results -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                    <h6 class="text-uppercase text-light-50 small fw-bold mb-0">Recent AI Interview Results</h6>
-                    <a href="{{ url_for('interview') }}" class="btn btn-sm btn-primary">
-                        <i class="bi bi-robot me-1"></i> Start New Interview
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-dark table-borderless">
-                            <thead>
-                                <tr class="border-secondary">
-                                    <th>Candidate</th>
-                                    <th>Role</th>
-                                    <th>Overall Score</th>
-                                    <th>Recommendation</th>
-                                    <th>Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="interviewResultsTable">
-                                {% if interview_results %}
-                                    {% for result in interview_results %}
-                                    <tr>
-                                        <td>{{ result.candidate_name }}</td>
-                                        <td>{{ result.role }}</td>
-                                        <td>
-                                            {% if result.score != 'N/A' %}
-                                                {% if result.score >= 7.5 %}
-                                                    <span class="badge bg-success">{{ result.score }}/10</span>
-                                                {% elif result.score >= 6.0 %}
-                                                    <span class="badge bg-warning">{{ result.score }}/10</span>
-                                                {% else %}
-                                                    <span class="badge bg-danger">{{ result.score }}/10</span>
-                                                {% endif %}
-                                            {% else %}
-                                                <span class="badge bg-secondary">{{ result.score }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if result.recommendation == 'Proceed to Next Round' %}
-                                                <span class="badge bg-success">{{ result.recommendation }}</span>
-                                            {% elif result.recommendation == 'Hold for Review' %}
-                                                <span class="badge bg-warning">{{ result.recommendation }}</span>
-                                            {% else %}
-                                                <span class="badge bg-danger">{{ result.recommendation }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ result.date }}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewInterviewSummary('{{ result.id }}')" title="View Interview Summary">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
-                                            {% if result.recommendation == 'Proceed to Next Round' %}
-                                                <button class="btn btn-sm btn-outline-success" onclick="sendToNextRound('{{ result.id }}')">
-                                                    <i class="bi bi-arrow-right"></i>
-                                                </button>
-                                            {% else %}
-                                                <button class="btn btn-sm btn-outline-warning" onclick="scheduleReview('{{ result.id }}')">
-                                                    <i class="bi bi-calendar"></i>
-                                                </button>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">
-                                            <i class="bi bi-inbox fs-1 mb-2 d-block"></i>
-                                            No interview results available yet.
-                                            <br><small>Start conducting AI interviews to see results here.</small>
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Exit Reasons Analysis -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-0">
-                    <h6 class="text-uppercase text-light-50 small fw-bold mb-0">Exit Reasons Analysis</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        {% set total_sentiment = sentiment_data.Positive + sentiment_data.Neutral + sentiment_data.Negative %}
-                        {% if total_sentiment > 0 %}
-                            {% set positive_pct = ((sentiment_data.Positive / total_sentiment) * 100) | round(1) %}
-                            {% set neutral_pct = ((sentiment_data.Neutral / total_sentiment) * 100) | round(1) %}
-                            {% set negative_pct = ((sentiment_data.Negative / total_sentiment) * 100) | round(1) %}
-                            
+    <!-- Advanced Section (Hidden by default) -->
+    <div id="advancedSection" style="display: none;">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h5 class="text-light mb-3">HR Insights & Strategy</h5>
+                <div class="card bg-dark bg-opacity-25 border-secondary">
+                    <div class="card-body">
+                        <div class="row">
                             <div class="col-md-6">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="text-light small">Positive Feedback</span>
-                                    <span class="text-light-50 small">{{ positive_pct }}%</span>
-                                </div>
-                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                    <div class="progress-bar bg-success" role="progressbar" data-width="{{ positive_pct }}" style="width: 0%;"></div>
+                                <h6 class="text-light mb-3">Recent Activity</h6>
+                                <div class="list-group list-group-flush">
+                                    {% if interview_results %}
+                                        {% for interview in interview_results[:2] %}
+                                        <div class="list-group-item bg-transparent border-secondary">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="text-light">Interview with {{ interview.candidate_name }}</span>
+                                                <small class="text-muted">{{ interview.date }}</small>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                    
+                                    {% if onboarding_count > 0 %}
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-light">{{ onboarding_count }} employee{{ 's' if onboarding_count != 1 else '' }} onboarding</span>
+                                            <small class="text-muted">Active now</small>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if recent_interviews|length == 0 and onboarding_count == 0 %}
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-muted">No recent activity</span>
+                                            <small class="text-muted">-</small>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="text-light small">Neutral Feedback</span>
-                                    <span class="text-light-50 small">{{ neutral_pct }}%</span>
-                                </div>
-                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                    <div class="progress-bar bg-warning" role="progressbar" data-width="{{ neutral_pct }}" style="width: 0%;"></div>
+                                <h6 class="text-light mb-3">Upcoming</h6>
+                                <div class="list-group list-group-flush">
+                                    {% if upcoming_exits %}
+                                        {% for exit in upcoming_exits[:2] %}
+                                        <div class="list-group-item bg-transparent border-secondary">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="text-light">Exit interview: {{ exit.name }}</span>
+                                                <small class="text-muted">
+                                                    {% if exit.days == 0 %}Today
+                                                    {% elif exit.days == 1 %}Tomorrow
+                                                    {% else %}In {{ exit.days }} days
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                    
+                                    {% if upcoming_goals %}
+                                        {% for goal in upcoming_goals[:2] %}
+                                        <div class="list-group-item bg-transparent border-secondary">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="text-light">{{ goal.type }} ({{ goal.count }} employee{{ 's' if goal.count != 1 else '' }})</span>
+                                                <small class="text-muted">{{ goal.timeframe }}</small>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                    
+                                    {% if upcoming_exits|length == 0 and upcoming_goals|length == 0 %}
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-muted">No upcoming events</span>
+                                            <small class="text-muted">-</small>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="text-light small">Negative Feedback</span>
-                                    <span class="text-light-50 small">{{ negative_pct }}%</span>
-                                </div>
-                                <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
-                                    <div class="progress-bar bg-danger" role="progressbar" data-width="{{ negative_pct }}" style="width: 0%;"></div>
-                                </div>
-                            </div>
-                            
-                            <script>
-                                // Set progress bar widths after page load
-                                document.addEventListener('DOMContentLoaded', function() {
-                                    const progressBars = document.querySelectorAll('[data-width]');
-                                    progressBars.forEach(function(bar) {
-                                        const width = bar.getAttribute('data-width');
-                                        bar.style.width = width + '%';
-                                    });
-                                });
-                            </script>
-                        {% else %}
-                            <div class="col-12 text-center text-muted py-3">
-                                <i class="bi bi-chat-square-text fs-1 mb-2 d-block"></i>
-                                No exit feedback data available yet.
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Department-wise Issues -->
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-0">
-                    <h6 class="text-uppercase text-light-50 small fw-bold mb-0">Department-wise Issues</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-dark table-borderless">
-                            <thead>
-                                <tr class="border-secondary">
-                                    <th>Department</th>
-                                    <th>Active Issues</th>
-                                    <th>Avg. Resolve Time</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% if departments %}
-                                    {% for dept in departments %}
-                                    <tr>
-                                        <td>{{ dept.department or 'Unassigned' }}</td>
-                                        <td>{{ dept.count }}</td>
-                                        <td>{{ (dept.count * 0.5 + 1.0) | round(1) }} days</td>
-                                        <td>
-                                            {% if dept.count >= 10 %}
-                                                <span class="badge bg-warning">Needs Attention</span>
-                                            {% else %}
-                                                <span class="badge bg-success">Stable</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr>
-                                        <td colspan="4" class="text-center text-muted py-3">
-                                            No department data available.
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Column -->
-        <div class="col-lg-4">
-            <!-- Common Onboarding Delays -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-0">
-                    <h6 class="text-uppercase text-light-50 small fw-bold mb-0">Common Onboarding Delays</h6>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-light small">Background Check</span>
-                            <span class="text-light-50 small">42% delayed</span>
-                        </div>
-                        <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
-                            <div class="progress-bar bg-danger" role="progressbar" style="width: 42%;"></div>
-                        </div>
+        <!-- Charts and Analytics (Advanced) -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card bg-dark bg-opacity-25 border-secondary">
+                    <div class="card-header bg-transparent border-secondary">
+                        <h6 class="text-light mb-0">Employee Distribution</h6>
                     </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-light small">Equipment Setup</span>
-                            <span class="text-light-50 small">28% delayed</span>
-                        </div>
-                        <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
-                            <div class="progress-bar bg-warning" role="progressbar" style="width: 28%;"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-light small">Training Completion</span>
-                            <span class="text-light-50 small">15% delayed</span>
-                        </div>
-                        <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
-                            <div class="progress-bar bg-info" role="progressbar" style="width: 15%;"></div>
-                        </div>
+                    <div class="card-body">
+                        <canvas id="employeeChart" width="400" height="200"></canvas>
                     </div>
                 </div>
             </div>
-
-            <!-- Most Frequently Late Tasks -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-0">
-                    <h6 class="text-uppercase text-light-50 small fw-bold mb-0">Frequently Late Tasks</h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item bg-transparent border-secondary">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1 text-light">Background Verification</h6>
-                                <small class="text-danger">+3.2 days</small>
-                            </div>
-                            <small class="text-muted">HR Department</small>
-                        </div>
-                        <div class="list-group-item bg-transparent border-secondary">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1 text-light">Laptop Setup</h6>
-                                <small class="text-warning">+1.5 days</small>
-                            </div>
-                            <small class="text-muted">IT Department</small>
-                        </div>
-                        <div class="list-group-item bg-transparent border-secondary">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1 text-light">Security Badge</h6>
-                                <small class="text-warning">+1.2 days</small>
-                            </div>
-                            <small class="text-muted">Facilities</small>
-                        </div>
+            <div class="col-md-6">
+                <div class="card bg-dark bg-opacity-25 border-secondary">
+                    <div class="card-header bg-transparent border-secondary">
+                        <h6 class="text-light mb-0">Onboarding Progress</h6>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="onboardingChart" width="400" height="200"></canvas>
                     </div>
                 </div>
             </div>
-
-
         </div>
     </div>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
+<!-- JavaScript for advanced mode toggle and charts -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Helper function to show toast notifications
-    function showToast(message, type = 'info') {
-        const toastContainer = document.getElementById('toastContainer') || (() => {
-            const container = document.createElement('div');
-            container.id = 'toastContainer';
-            container.style.position = 'fixed';
-            container.style.bottom = '1rem';
-            container.style.right = '1rem';
-            container.style.zIndex = '1100';
-            document.body.appendChild(container);
-            return container;
-        })();
-
-        const toastId = 'toast-' + Date.now();
-        const toast = document.createElement('div');
-        toast.id = toastId;
-        toast.className = 'toast show';
-        toast.role = 'alert';
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
+    function toggleAdvancedMode() {
+        const advancedSection = document.getElementById('advancedSection');
+        const button = event.target.closest('button');
         
-        const bgClass = {
-            'success': 'bg-success',
-            'error': 'bg-danger',
-            'warning': 'bg-warning',
-            'info': 'bg-info'
-        }[type] || 'bg-primary';
-        
-        toast.innerHTML = `
-            <div class="toast-header ${bgClass} text-white">
-                <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body bg-dark text-light">
-                ${message}
-            </div>
-        `;
-        
-        toastContainer.appendChild(toast);
-        
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 5000);
-        
-        return toast;
+        if (advancedSection.style.display === 'none') {
+            advancedSection.style.display = 'block';
+            button.innerHTML = '<i class="fas fa-times me-1"></i>Simple';
+        } else {
+            advancedSection.style.display = 'none';
+            button.innerHTML = '<i class="fas fa-cog me-1"></i>Advanced';
+        }
     }
 
-    // Initialize tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    // Initialize popovers
-    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    popoverTriggerList.map(function (popoverTriggerEl) {
-        return new bootstrap.Popover(popoverTriggerEl);
-    });
-});
-
-// Interview result action functions
-function viewInterviewSummary(interviewId) {
-    // Create modal to show interview summary
-    const modal = document.createElement('div');
-    modal.className = 'modal fade';
-    modal.innerHTML = `
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content bg-dark border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title text-light">Interview Summary #${interviewId}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Loading interview summary...</p>
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    const modalInstance = new bootstrap.Modal(modal);
-    modalInstance.show();
-    
-    // Fetch interview details from backend
-    fetch(`/api/interviews/${interviewId}`)
-        .then(response => response.json())
-        .then(data => {
-            const modalBody = modal.querySelector('.modal-body');
-
-            if (!data || data.status !== 'success') {
-                modalBody.innerHTML = `
-                    <div class="alert alert-danger" role="alert">
-                        Failed to load interview details. ${data && data.message ? data.message : ''}
-                    </div>
-                `;
-                return;
+    // Initialize charts with real data
+    document.addEventListener('DOMContentLoaded', function() {
+        // Employee Distribution Chart
+        const employeeCtx = document.getElementById('employeeChart');
+        if (employeeCtx) {
+            try {
+                // Department data from server
+                const departmentData = JSON.parse('{{ departments|tojson|safe }}');
+                console.log('Department data:', departmentData);
+                
+                // Use fallback data if no real data
+                let deptLabels, deptCounts;
+                if (departmentData && departmentData.length > 0) {
+                    deptLabels = departmentData.map(d => d[0] || 'Unassigned');
+                    deptCounts = departmentData.map(d => d[1]);
+                } else {
+                    // Fallback data
+                    deptLabels = ['No Departments', 'Engineering', 'Sales', 'HR'];
+                    deptCounts = [0, 0, 0, 0];
+                }
+                
+                console.log('Department labels:', deptLabels);
+                console.log('Department counts:', deptCounts);
+                
+                new Chart(employeeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: deptLabels,
+                        datasets: [{
+                            data: deptCounts,
+                            backgroundColor: [
+                                '#FF6384',
+                                '#36A2EB',
+                                '#FFCE56',
+                                '#4BC0C0',
+                                '#9966FF',
+                                '#FF9F40'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#fff',
+                                    padding: 10
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error creating employee distribution chart:', error);
+                // Show error message on chart
+                employeeCtx.parentElement.innerHTML = '<div class="text-center text-muted py-5">Error loading department data</div>';
             }
+        }
 
-            const interview = data.data;
-            const candidate = interview.candidate || {};
-            const score = candidate.score !== null && candidate.score !== undefined ? candidate.score : 'N/A';
-            const recommendation = candidate.recommendation || 'N/A';
-
-            modalBody.innerHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="text-primary">Candidate Information</h6>
-                        <p class="text-light"><strong>Name:</strong> ${candidate.name || 'Unknown'}</p>
-                        <p class="text-light"><strong>Role:</strong> ${candidate.job_desc || 'N/A'}</p>
-                        <p class="text-light"><strong>Interview ID:</strong> ${interview.interview_id}</p>
-                        <p class="text-light"><strong>Interview Date:</strong> ${interview.created_at || 'N/A'}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-primary">Performance Metrics</h6>
-                        <p class="text-light"><strong>Overall Score:</strong> ${score !== 'N/A' ? score + '/10' : 'N/A'}</p>
-                        <p class="text-light"><strong>Recommendation:</strong> ${recommendation}</p>
-                    </div>
-                </div>
-                <hr class="border-secondary">
-                <h6 class="text-primary">AI Analysis Summary</h6>
-                <p class="text-light">${interview.summary || 'No summary available.'}</p>
-            `;
-        })
-        .catch(error => {
-            const modalBody = modal.querySelector('.modal-body');
-            modalBody.innerHTML = `
-                <div class="alert alert-danger" role="alert">
-                    An error occurred while loading interview details.
-                </div>
-            `;
-            console.error('Error fetching interview details:', error);
-        });
-    
-    // Clean up modal when closed
-    modal.addEventListener('hidden.bs.modal', () => {
-        document.body.removeChild(modal);
-    });
-}
-
-function sendToNextRound(interviewId) {
-    if (confirm('Are you sure you want to send this candidate to the next round?')) {
-        showToast(`Candidate from interview #${interviewId} has been sent to the next round.`, 'success');
-        // Here you would make an API call to update the candidate status
-    }
-}
-
-function scheduleReview(interviewId) {
-    const reviewDate = prompt('Enter review date (YYYY-MM-DD):');
-    if (reviewDate) {
-        showToast(`Review scheduled for interview #${interviewId} on ${reviewDate}.`, 'info');
-        // Here you would make an API call to schedule the review
-    }
-}
-
-// Hide tooltips when clicking elsewhere
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('[data-bs-toggle="tooltip"]')) {
-        const tooltips = [].slice.call(document.querySelectorAll('.tooltip'));
-        tooltips.forEach(tooltip => {
-            const tooltipInstance = bootstrap.Tooltip.getInstance(tooltip);
-            if (tooltipInstance) {
-                tooltipInstance.hide();
+        // Onboarding Progress Chart
+        const onboardingCtx = document.getElementById('onboardingChart');
+        if (onboardingCtx) {
+            try {
+                // Employee count data from server
+                const onboardingCount = parseInt('{{ onboarding_count }}') || 0;
+                const activeCount = parseInt('{{ active_count }}') || 0;
+                const totalEmployees = parseInt('{{ total_employees }}') || 0;
+                const otherCount = totalEmployees - onboardingCount - activeCount;
+                
+                console.log('Employee counts:', { onboardingCount, activeCount, totalEmployees, otherCount });
+                
+                new Chart(onboardingCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Onboarding', 'Active', 'Other'],
+                        datasets: [{
+                            label: 'Employees',
+                            data: [onboardingCount, activeCount, otherCount],
+                            backgroundColor: [
+                                '#FF6384',
+                                '#36A2EB',
+                                '#FFCE56'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#fff',
+                                    stepSize: 1
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error creating onboarding progress chart:', error);
+                // Show error message on chart
+                onboardingCtx.parentElement.innerHTML = '<div class="text-center text-muted py-5">Error loading employee data</div>';
             }
-        });
-    }
-});
+        }
+    });
 </script>
 
-<style>
-    /* Custom styles for the dashboard */
-    .fullscreen-chart {
-        position: fixed !important;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1050;
-        background-color: rgba(0, 0, 0, 0.9);
-        padding: 20px;
-        transition: all 0.3s ease;
-    }
-    
-    /* Custom scrollbar */
-    .chart-container {
-        scrollbar-width: thin;
-        scrollbar-color: #495057 #212529;
-    }
-    
-    .chart-container::-webkit-scrollbar {
-        width: 8px;
-    }
-    
-    .chart-container::-webkit-scrollbar-track {
-        background: #212529;
-    }
-    
-    .chart-container::-webkit-scrollbar-thumb {
-        background: #495057;
-        border-radius: 4px;
-    }
-    
-    .chart-container::-webkit-scrollbar-thumb:hover {
-        background: #6c757d;
-    }
-    
-    /* Quick Actions Card Hover Effects */
-    .hover-card {
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    
-    .hover-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        border-color: var(--bs-primary) !important;
-    }
-    
-    .hover-card .badge {
-        transition: all 0.3s ease;
-    }
-    
-    .hover-card:hover .badge {
-        transform: scale(1.1);
-    }
-</style>
-
-{% endblock %}
+    {% endblock %}

@@ -186,33 +186,60 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('index') %}active{% endif %}" href="{{ url_for('index') }}">
-                            <i class="bi bi-house-door"></i> Home
+                    <!-- Core Navigation -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="coreDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-house-door"></i> Core
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="coreDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('index') }}">Dashboard</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('list_employees') }}">Employees</a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path in [url_for('onboarding'), url_for('pre_onboarding')] %}active{% endif %}" href="{{ url_for('pre_onboarding') }}">
-                            <i class="bi bi-person-plus"></i> Onboarding
+                    
+                    <!-- Employee Lifecycle -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.path in [url_for('onboarding'), url_for('pre_onboarding'), url_for('knowledge_transfer')] %}active{% endif %}" href="#" id="lifecycleDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-plus"></i> Lifecycle
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="lifecycleDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('pre_onboarding') }}">Pre-Onboarding</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('onboarding') }}">Onboarding</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('exit_interview') }}">Offboarding</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('knowledge_transfer') }}">Knowledge Transfer</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('goal_setting') }}">Goal Setting</a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('interview') %}active{% endif %}" href="{{ url_for('interview') }}">
-                            <i class="bi bi-chat-left-text"></i> AI Interview
+                    
+                    <!-- AI Tools -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.path == url_for('interview') %}active{% endif %}" href="#" id="aiDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-robot"></i> AI Tools
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="aiDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('interview') }}">AI Interviews</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('ai_interview_training') }}">Interview Training</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('mood_analytics') }}">Mood Analytics</a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('exit_interview') %}active{% endif %}" href="{{ url_for('exit_interview') }}">
-                            <i class="bi bi-door-open"></i> Exit Interviews
+                    
+                    <!-- More Tools (Collapsible) -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="moreDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots"></i> More
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="moreDropdown">
+                            <li><h6 class="dropdown-header">Communication</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('messages_management') }}">Messages</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('social_integration') }}">Social Integration</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Management</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('tasks_management') }}">Tasks</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('alumni_network') }}">Alumni Network</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('access_records_management') }}">Access Records</a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('mood_analytics') %}active{% endif %}" href="{{ url_for('mood_analytics') }}" title="Mood & Confidence Analytics">
-                            <i class="bi bi-emoji-smile"></i> Mood Analytics
-                        </a>
-                    </li>
-
-                    </ul>
+                </ul>
             </div>
         </div>
     </nav>

@@ -31,12 +31,27 @@ def create_sample_users():
     )
     hr_manager.set_password('hrpassword123')
     
+    # Create Department Manager
+    dept_manager = User(
+        username='dept_manager',
+        email='raj.kumar@company.in',
+        full_name='Raj Kumar',
+        phone='+919876543210',
+        role='manager',
+        is_active=True,
+        status='Active',
+        position='Engineering Manager',
+        department='Engineering',
+        hire_date=datetime.utcnow().date() - timedelta(days=365*3)  # 3 years ago
+    )
+    dept_manager.set_password('managerpass123')
+    
     # Create Employee
     employee = User(
         username='employee1',
-        email='employee1@example.com',
-        full_name='John Smith',
-        phone='+1987654321',
+        email='priya.sharma@company.in',
+        full_name='Priya Sharma',
+        phone='+919812345678',
         role='employee',
         is_active=True,
         status='Active',
@@ -48,12 +63,20 @@ def create_sample_users():
     
     # Add to database
     db.session.add(hr_manager)
+    db.session.add(dept_manager)
     db.session.add(employee)
+    
+    # Flush to get IDs before setting relationships
+    db.session.flush()
+    
+    # Assign manager after getting the manager ID
+    employee.manager_id = dept_manager.id
     
     try:
         db.session.commit()
         print("Successfully created sample users:")
         print(f"- HR Manager: {hr_manager.username} (password: hrpassword123)")
+        print(f"- Department Manager: {dept_manager.username} (password: managerpass123)")
         print(f"- Employee: {employee.username} (password: employeepass123)")
     except Exception as e:
         db.session.rollback()

@@ -1,3 +1,66 @@
+/* Dark Theme Tab Styling */
+.nav-tabs.nav-tabs-dark {
+    border-bottom: 1px solid #444;
+}
+
+.nav-tabs.nav-tabs-dark .nav-link {
+    color: #adb5bd;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background-color: transparent;
+    padding: 0.75rem 1rem;
+    margin-bottom: -1px;
+}
+
+.nav-tabs.nav-tabs-dark .nav-link:hover {
+    color: #f8f9fa;
+    border-color: #444 transparent transparent #444;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.nav-tabs.nav-tabs-dark .nav-link.active {
+    color: #f8f9fa;
+    background-color: #2d2d2d;
+    border-color: #444 #444 transparent #444;
+}
+
+.nav-tabs.nav-tabs-dark .nav-link:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem rgba(123, 44, 191, 0.25);
+}
+
+/* Tab content dark theme */
+.tab-content .tab-pane {
+    background-color: transparent;
+}
+
+/* Simplified card styling */
+.card-simplified {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.card-simplified:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+}
+
+/* Progress indicator styling */
+.progress-indicator {
+    height: 8px;
+    background-color: var(--bg-darker);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-indicator .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
+    transition: width 0.6s ease;
+}
+
 /* Global Styles */
 :root {
     --primary-color: #2196f3;  /* Blue accent color */

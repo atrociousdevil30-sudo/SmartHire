@@ -18,48 +18,51 @@
         </div>
     </div>
 
-    <!-- Filters -->
+    <!-- Enhanced Search and Filters (Simplified) -->
     <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
         <div class="card-body p-3">
-            <form class="row g-3 align-items-end" method="GET">
-                <div class="col-md-4">
-                    <label for="search" class="form-label text-light small mb-1">Search</label>
+            <div class="row g-3">
+                <!-- Search Bar (Primary) -->
+                <div class="col-lg-6">
                     <div class="input-group">
                         <span class="input-group-text bg-dark border-secondary text-light">
                             <i class="fas fa-search"></i>
                         </span>
-                        <input type="text" class="form-control bg-dark text-light border-secondary" id="search" name="search" value="{{ current_search }}" placeholder="Search employees...">
+                        <input type="text" class="form-control bg-dark text-light border-secondary" 
+                               id="quickSearch" placeholder="Quick search employees..." 
+                               onkeyup="filterEmployees()">
+                        <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <label for="department" class="form-label text-light small mb-1">Department</label>
-                    <select class="form-select bg-dark text-light border-secondary" id="department" name="department">
-                        <option value="">All Departments</option>
-                        {% for dept in departments %}
-                        <option value="{{ dept }}" {% if dept == current_department %}selected{% endif %}>{{ dept }}</option>
-                        {% endfor %}
-                    </select>
+                
+                <!-- Quick Filters (Collapsible) -->
+                <div class="col-lg-6">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-outline-light btn-sm" onclick="toggleFilters()">
+                            <i class="fas fa-filter me-1"></i>Filters
+                        </button>
+                        <div id="quickFilters" style="display: none;">
+                            <select class="form-select form-select-sm bg-dark text-light border-secondary" 
+                                    id="deptFilter" onchange="filterEmployees()" style="width: auto;">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                            <select class="form-select form-select-sm bg-dark text-light border-secondary" 
+                                    id="statusFilter" onchange="filterEmployees()" style="width: auto;">
+                                <option value="">All Status</option>
+                                <option value="Active">Active</option>
+                                <option value="Onboarding">Onboarding</option>
+                                <option value="On Leave">On Leave</option>
+                                <option value="Offboarding">Offboarding</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <label for="status" class="form-label text-light small mb-1">Status</label>
-                    <select class="form-select bg-dark text-light border-secondary" id="status">
-                        <option value="">All Status</option>
-                        <option value="Onboarding" {% if current_status == 'Onboarding' %}selected{% endif %}>Onboarding</option>
-                        <option value="Active" {% if current_status == 'Active' %}selected{% endif %}>Active</option>
-                        <option value="On Leave" {% if current_status == 'On Leave' %}selected{% endif %}>On Leave</option>
-                        <option value="Offboarding" {% if current_status == 'Offboarding' %}selected{% endif %}>Offboarding</option>
-                        <option value="Inactive" {% if current_status == 'Inactive' %}selected{% endif %}>Inactive</option>
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-1"></i> Filter
-                    </button>
-                    <a href="{{ url_for('list_employees') }}" class="btn btn-outline-secondary w-100 mt-1">
-                        <i class="fas fa-times me-1"></i> Clear
-                    </a>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -67,7 +70,7 @@
     <div class="card bg-dark bg-opacity-25 border-secondary">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-dark table-hover align-middle mb-0">
+                <table class="table table-dark table-hover align-middle mb-0" id="employeesTable">
                     <thead class="bg-dark bg-opacity-50">
                         <tr>
                             <th class="ps-4">Employee</th>
@@ -80,7 +83,9 @@
                     </thead>
                     <tbody>
                         {% for employee in employees %}
-                        <tr>
+                        <tr class="employee-row" data-name="{{ employee.full_name|lower }}" 
+                            data-department="{{ employee.department|lower or '' }}" 
+                            data-status="{{ employee.status|lower or '' }}">
                             <td class="ps-4">
                                 <div class="d-flex align-items-center">
                                     <div class="avatar-sm me-3">
@@ -151,8 +156,8 @@
                                         {% endif %}
                                         <li><hr class="dropdown-divider"></li>
                                         <li>
-                                            <a class="dropdown-item text-warning" href="#">
-                                                <i class="fas fa-edit me-2"></i> Edit
+                                            <a class="dropdown-item text-warning" href="#" data-bs-toggle="modal" data-bs-target="#editStatusModal{{ employee.id }}">
+                                                <i class="fas fa-edit me-2"></i> Edit Status
                                             </a>
                                         </li>
                                         <li>
@@ -163,34 +168,6 @@
                                     </ul>
                                 </div>
 
-                                <!-- Deactivate Modal -->
-                                <div class="modal fade" id="deactivateModal{{ employee.id }}" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content bg-dark border-secondary">
-                                            <div class="modal-header border-secondary">
-                                                <h5 class="modal-title text-light">Confirm Deactivation</h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p class="text-light">
-                                                    Are you sure you want to deactivate {{ employee.full_name }}? 
-                                                    This action cannot be undone.
-                                                </p>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="notifyEmployee{{ employee.id }}">
-                                                    <label class="form-check-label text-light" for="notifyEmployee{{ employee.id }}">
-                                                        Notify employee via email
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer border-secondary">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <button type="button" class="btn btn-danger">
-                                                    <i class="fas fa-user-slash me-1"></i> Deactivate
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -213,6 +190,88 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Employee Modals (Outside table to prevent flickering) -->
+            {% for employee in employees %}
+            <!-- Deactivate Modal -->
+            <div class="modal fade" id="deactivateModal{{ employee.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content bg-dark border-secondary">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title text-light">Confirm Deactivation</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-light">
+                                Are you sure you want to deactivate {{ employee.full_name }}? 
+                                This action cannot be undone.
+                            </p>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="deactivateNotifyEmployee{{ employee.id }}">
+                                <label class="form-check-label text-light" for="deactivateNotifyEmployee{{ employee.id }}">
+                                    Notify employee via email
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-secondary">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-danger">
+                                <i class="fas fa-user-slash me-1"></i> Deactivate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Status Modal -->
+            <div class="modal fade" id="editStatusModal{{ employee.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content bg-dark border-secondary">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title text-light">Edit Employee Status</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form method="POST" action="{{ url_for('update_employee_status', employee_id=employee.id) }}">
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label text-light">Current Status</label>
+                                    <div class="form-control bg-dark bg-opacity-50 text-light border-secondary">
+                                        {{ employee.status or 'N/A' }}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="newStatus{{ employee.id }}" class="form-label text-light">New Status <span class="text-danger">*</span></label>
+                                    <select class="form-select bg-dark text-light border-secondary" id="newStatus{{ employee.id }}" name="status" required>
+                                        <option value="">Select Status</option>
+                                        <option value="Active" {% if employee.status == 'Active' %}selected{% endif %}>Active</option>
+                                        <option value="Onboarding" {% if employee.status == 'Onboarding' %}selected{% endif %}>Onboarding</option>
+                                        <option value="Offboarding" {% if employee.status == 'Offboarding' %}selected{% endif %}>Offboarding</option>
+                                        <option value="Terminated" {% if employee.status == 'Terminated' %}selected{% endif %}>Terminated</option>
+                                        <option value="On Leave" {% if employee.status == 'On Leave' %}selected{% endif %}>On Leave</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="statusNotes{{ employee.id }}" class="form-label text-light">Notes (Optional)</label>
+                                    <textarea class="form-control bg-dark text-light border-secondary" id="statusNotes{{ employee.id }}" name="notes" rows="3" placeholder="Add any notes about this status change..."></textarea>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="statusNotifyEmployee{{ employee.id }}" name="notify_employee">
+                                    <label class="form-check-label text-light" for="statusNotifyEmployee{{ employee.id }}">
+                                        Notify employee via email
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-secondary">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-edit me-1"></i> Update Status
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
 
             <!-- Pagination -->
             {% if employees %}
@@ -247,21 +306,90 @@
 
 {% block scripts %}
 <script>
+    // Toggle filter visibility
+    function toggleFilters() {
+        const filters = document.getElementById('quickFilters');
+        const button = event.target.closest('button');
+        
+        if (filters.style.display === 'none') {
+            filters.style.display = 'flex';
+            button.innerHTML = '<i class="fas fa-times me-1"></i>Hide';
+        } else {
+            filters.style.display = 'none';
+            button.innerHTML = '<i class="fas fa-filter me-1"></i>Filters';
+        }
+    }
+
+    // Clear search
+    function clearSearch() {
+        document.getElementById('quickSearch').value = '';
+        document.getElementById('deptFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        filterEmployees();
+    }
+
+    // Filter employees
+    function filterEmployees() {
+        const searchTerm = document.getElementById('quickSearch').value.toLowerCase();
+        const deptFilter = document.getElementById('deptFilter').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+        
+        const rows = document.querySelectorAll('.employee-row');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const name = row.dataset.name;
+            const department = row.dataset.department;
+            const status = row.dataset.status;
+            
+            const matchesSearch = !searchTerm || name.includes(searchTerm);
+            const matchesDept = !deptFilter || department.includes(deptFilter);
+            const matchesStatus = !statusFilter || status.includes(statusFilter);
+            
+            if (matchesSearch && matchesDept && matchesStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Show no results message if needed
+        const noResultsRow = document.querySelector('.no-results-row');
+        if (visibleCount === 0 && !noResultsRow) {
+            const tbody = document.querySelector('#employeesTable tbody');
+            const noRow = document.createElement('tr');
+            noRow.className = 'no-results-row';
+            noRow.innerHTML = `
+                <td colspan="6" class="text-center py-4">
+                    <div class="text-muted">
+                        <i class="fas fa-search fa-2x mb-2"></i>
+                        <p>No employees match your filters</p>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(noRow);
+        } else if (visibleCount > 0 && noResultsRow) {
+            noResultsRow.remove();
+        }
+    }
+
+    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
-        // Auto-submit form on filter changes
-        document.getElementById('department').addEventListener('change', function() {
-            this.form.submit();
-        });
-        
-        document.getElementById('status').addEventListener('change', function() {
-            this.form.submit();
-        });
-        
-        // Submit form on Enter key in search
-        document.getElementById('search').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.form.submit();
+        // Add data attributes to existing rows if not present
+        const rows = document.querySelectorAll('#employeesTable tbody tr:not(.no-results-row)');
+        rows.forEach(row => {
+            if (!row.classList.contains('employee-row')) {
+                const nameCell = row.querySelector('td:nth-child(1) h6');
+                const deptCell = row.querySelector('td:nth-child(3) span');
+                const statusCell = row.querySelector('td:nth-child(4) span');
+                
+                if (nameCell) {
+                    row.classList.add('employee-row');
+                    row.dataset.name = nameCell.textContent.toLowerCase();
+                    row.dataset.department = deptCell ? deptCell.textContent.toLowerCase() : '';
+                    row.dataset.status = statusCell ? statusCell.textContent.toLowerCase() : '';
+                }
             }
         });
     });

@@ -3,215 +3,203 @@
 {% block title %}AI Interview{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- HR Panel -->
+<div class="container-fluid py-4">
+    <!-- Simplified Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-light mb-1">
+                <i class="fas fa-robot me-2"></i>AI Interview
+            </h1>
+            <p class="text-muted mb-0">Conduct AI-powered interviews efficiently</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-light btn-sm" onclick="toggleAdvancedMode()">
+                <i class="fas fa-cog me-1"></i>Advanced
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab-based Interface -->
+    <ul class="nav nav-tabs nav-tabs-dark mb-4" id="interviewTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="setup-tab" data-bs-toggle="tab" data-bs-target="#setup" type="button" role="tab">
+                <i class="fas fa-cog me-2"></i>Setup
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="interview-tab" data-bs-toggle="tab" data-bs-target="#interview" type="button" role="tab">
+                <i class="fas fa-comments me-2"></i>Interview
+            </button>
+        </li>
         {% if session.role == 'hr' %}
-        <div class="col-lg-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Interview Settings</h5>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab">
+                <i class="fas fa-chart-bar me-2"></i>Results
+            </button>
+        </li>
+        {% endif %}
+    </ul>
+
+    <div class="tab-content" id="interviewTabsContent">
+        <!-- Setup Tab -->
+        <div class="tab-pane fade show active" id="setup" role="tabpanel">
+            <div class="row">
+                {% if session.role == 'hr' %}
+                <div class="col-lg-4">
+                    <!-- Quick Settings Card -->
+                    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                        <div class="card-header bg-transparent border-secondary">
+                            <h6 class="text-light mb-0">Quick Settings</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label text-light small">Interview Type</label>
+                                <select class="form-select bg-dark text-light border-secondary" id="interviewType">
+                                    <option value="technical">Technical</option>
+                                    <option value="hr" selected>HR</option>
+                                    <option value="behavioral">Behavioral</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-light small">Candidate Type</label>
+                                <select class="form-select bg-dark text-light border-secondary" id="candidateType">
+                                    <option value="fresher">Fresher</option>
+                                    <option value="experienced" selected>Experienced</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-light small">Job Role</label>
+                                <input type="text" class="form-control bg-dark text-light border-secondary" id="jobRole" 
+                                       placeholder="e.g., Software Engineer">
+                            </div>
+                            <button type="button" class="btn btn-primary w-100" id="startInterview">
+                                <i class="fas fa-play me-2"></i>Start Interview
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="interviewType" class="form-label">Interview Type</label>
-                        <select class="form-select" id="interviewType">
-                            <option value="technical">Technical</option>
-                            <option value="hr" selected>HR</option>
-                            <option value="behavioral">Behavioral</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="candidateType" class="form-label">Candidate Type</label>
-                        <select class="form-select" id="candidateType">
-                            <option value="fresher">Fresher</option>
-                            <option value="experienced" selected>Experienced</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="jobRole" class="form-label">Job Role</label>
-                        <input type="text" class="form-control" id="jobRole" placeholder="e.g., Software Engineer">
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="enableHRTraining" checked>
-                        <label class="form-check-label" for="enableHRTraining">Enable HR Training</label>
-                    </div>
-                    <button type="button" class="btn btn-primary w-100" id="startInterview">
-                        <i class="bi bi-play-circle me-2"></i>Start Interview
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Interview Progress -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Interview Progress</h5>
-                </div>
-                <div class="card-body">
-                    <div class="progress mb-3" style="height: 10px;">
-                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                             role="progressbar" style="width: 0%;" aria-valuenow="0" 
-                             aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <div class="d-flex justify-content-between small text-muted mb-2">
-                        <span>Progress</span>
-                        <span id="progressText">0%</span>
-                    </div>
-                    <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-outline-danger" id="endInterview" disabled>
-                            <i class="bi bi-stop-circle me-2"></i>End Interview
-                        </button>
+                {% endif %}
+                
+                <!-- Interview Preview -->
+                <div class="{% if session.role == 'hr' %}col-lg-8{% else %}col-12{% endif %}">
+                    <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-robot fa-3x text-primary mb-3"></i>
+                            <h5 class="text-light mb-2">Ready to Start Interview</h5>
+                            <p class="text-muted mb-4">Configure your settings and begin when ready</p>
+                            {% if session.role == 'hr' %}
+                            <button type="button" class="btn btn-primary" onclick="switchToInterviewTab()">
+                                <i class="fas fa-play me-2"></i>Begin Interview
+                            </button>
+                            {% else %}
+                            <p class="text-muted">Waiting for HR to start the interview...</p>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        {% endif %}
-        
-        <!-- Interview Area -->
-        <div class="{% if session.role == 'hr' %}col-lg-8{% else %}col-12{% endif %}">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0"><i class="bi bi-robot me-2"></i><span id="interviewTitle">AI Interview</span></h2>
+
+        <!-- Interview Tab -->
+        <div class="tab-pane fade" id="interview" role="tabpanel">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="badge bg-primary me-2" id="interviewTypeBadge">HR</span>
-                        <span class="badge bg-secondary" id="candidateTypeBadge">Experienced</span>
+                        <h5 class="text-light mb-0">Interview in Progress</h5>
+                        <small class="text-muted">
+                            <span class="badge bg-primary me-2" id="interviewTypeBadge">HR</span>
+                            <span class="badge bg-secondary" id="candidateTypeBadge">Experienced</span>
+                        </small>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <small class="text-muted">Progress: <span id="progressText">0%</span></small>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="endInterview" disabled>
+                            <i class="fas fa-stop me-1"></i>End
+                        </button>
                     </div>
                 </div>
-                <div class="card-body d-flex flex-column">
+                <div class="card-body">
+                    <!-- Progress Bar -->
+                    <div class="progress bg-dark bg-opacity-50 mb-4" style="height: 8px;">
+                        <div id="progressBar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    
                     <!-- Chat Container -->
-                    <div id="chatContainer" class="chat-container mb-4 bg-dark bg-opacity-10 p-3 rounded" style="flex: 1; overflow-y: auto; min-height: 400px;">
+                    <div id="chatContainer" class="chat-container bg-dark bg-opacity-10 p-3 rounded mb-4" 
+                         style="height: 400px; overflow-y: auto;">
                         <div class="text-center text-muted py-5" id="welcomeMessage">
-                            <i class="bi bi-chat-square-quote fs-1 mb-3"></i>
-                            <h5>Welcome to the AI Interview</h5>
-                            <p class="mb-0">Click 'Start Interview' to begin the session</p>
+                            <i class="fas fa-comments fa-2x mb-3"></i>
+                            <p>Click 'Start Interview' to begin</p>
                         </div>
                         <div id="chatMessages"></div>
                     </div>
                     
                     <!-- Response Form -->
                     <form id="responseForm" class="d-none">
-                        <div class="input-group mb-3">
-                            <textarea class="form-control" id="userResponse" rows="3" 
+                        <div class="input-group">
+                            <textarea class="form-control bg-dark text-light border-secondary" id="userResponse" rows="3" 
                                     placeholder="Type your response here..." style="resize: none;"></textarea>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
                         </div>
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <button type="button" class="btn btn-outline-secondary me-2" id="skipQuestion">
-                                    <i class="bi bi-skip-forward me-1"></i> Skip
-                                </button>
-                                <button type="button" class="btn btn-outline-info d-none" id="requestHint">
-                                    <i class="bi bi-lightbulb me-1"></i> Get Hint
-                                </button>
-                            </div>
-                            <div>
-                                <button type="submit" class="btn btn-primary" id="submitResponse">
-                                    <span id="submitText">Submit</span>
-                                    <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
-                                </button>
-                            </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="skipQuestion">
+                                <i class="fas fa-forward me-1"></i>Skip
+                            </button>
+                            <small class="text-muted">
+                                <i class="fas fa-keyboard me-1"></i>Press Enter to send, Shift+Enter for new line
+                            </small>
                         </div>
                     </form>
-                    
-                    <!-- Feedback Section -->
-                    <div id="feedbackSection" class="card mt-3 d-none">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>AI Feedback</h6>
-                            <span class="badge bg-primary" id="feedbackScore">0/10</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Tab (HR only) -->
+        {% if session.role == 'hr' %}
+        <div class="tab-pane fade" id="results" role="tabpanel">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">Interview Results</h6>
+                </div>
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                    <h5 class="text-light mb-2">No Interview Completed Yet</h5>
+                    <p class="text-muted">Complete an interview to see results and analytics here</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Advanced Section (Hidden by default) -->
+    <div id="advancedSection" style="display: none;" class="mt-4">
+        <div class="card bg-dark bg-opacity-25 border-secondary">
+            <div class="card-header bg-transparent border-secondary">
+                <h6 class="text-light mb-0">Advanced Settings</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableHRTraining" checked>
+                            <label class="form-check-label text-light" for="enableHRTraining">Enable HR Training Mode</label>
                         </div>
-                        <div class="card-body p-3" id="feedbackContent">
-                            <div class="d-flex justify-content-center">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Analyzing response...</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-light">
-                            <div class="d-flex justify-content-between">
-                                <button type="button" class="btn btn-outline-secondary" id="requestClarification">
-                                    <i class="bi bi-question-circle me-1"></i> Request Clarification
-                                </button>
-                                <button type="button" class="btn btn-primary" id="nextQuestion">
-                                    <i class="bi bi-arrow-right-circle me-1"></i> Next Question
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Interview Summary -->
-                    <div id="summarySection" class="card mt-3 d-none">
-                        <div class="card-header bg-success text-white">
-                            <h6 class="mb-0"><i class="bi bi-award me-2"></i>Interview Summary</h6>
-                        </div>
-                        <div class="card-body" id="summaryContent">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>Strengths</h6>
-                                    <ul id="strengthsList" class="list-unstyled"></ul>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>Areas for Improvement</h6>
-                                    <ul id="improvementsList" class="list-unstyled"></ul>
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <h6>Overall Assessment</h6>
-                                <p id="overallAssessment"></p>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span class="fw-bold">Recommendation:</span>
-                                        <span id="recommendation" class="badge bg-primary ms-2">Pending</span>
-                                    </div>
-                                    <div>
-                                        <span class="fw-bold">Confidence:</span>
-                                        <div class="progress ms-2" style="width: 200px; height: 20px;">
-                                            <div id="confidenceBar" class="progress-bar" role="progressbar" style="width: 0%" 
-                                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-light">
-                            <div class="d-flex justify-content-between">
-                                <button type="button" class="btn btn-outline-secondary" id="downloadReport">
-                                    <i class="bi bi-download me-1"></i> Download Report
-                                </button>
-                                <div>
-                                    <button type="button" class="btn btn-outline-primary me-2" id="restartInterview">
-                                        <i class="bi bi-arrow-repeat me-1"></i> Restart Interview
-                                    </button>
-                                    <button type="button" class="btn btn-primary" id="completeInterview">
-                                        <i class="bi bi-check-circle me-1"></i> Complete
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                            <button type="button" class="btn btn-success d-none" id="generateSummary">Generate Summary</button>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableRecording">
+                            <label class="form-check-label text-light" for="enableRecording">Record Interview Session</label>
                         </div>
                     </div>
-                    
-                    <div id="trainingSummary" class="d-none">
-                        <div class="alert alert-success">
-                            <h5>Interview Complete!</h5>
-                            <div id="summaryContent"></div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableAnalytics" checked>
+                            <label class="form-check-label text-light" for="enableAnalytics">Enable Real-time Analytics</label>
                         </div>
-                        <div class="mt-3">
-                            <button type="button" class="btn btn-primary" id="restartInterview">Start New Interview</button>
-                        </div>
-                    </div>
-                    
-                    <!-- AI Summary Section -->
-                    <div id="aiSummarySection" class="d-none">
-                        <div class="card bg-info bg-opacity-10 border-info">
-                            <div class="card-header">
-                                <h6 class="text-info mb-0"><i class="bi bi-file-text me-2"></i>AI Interview Summary</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="aiSummaryContent"></div>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <button type="button" class="btn btn-primary" id="restartAIInterview">Start New AI Interview</button>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableAutoSave">
+                            <label class="form-check-label text-light" for="enableAutoSave">Auto-save Responses</label>
                         </div>
                     </div>
                 </div>
@@ -220,933 +208,41 @@
     </div>
 </div>
 
-<!-- Interview Modal -->
-<div class="modal fade" id="interviewModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Start Interview</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="modalEmployeeName" class="form-label">Employee</label>
-                    <input type="text" class="form-control" id="modalEmployeeName" readonly>
-                </div>
-                <div class="mb-3">
-                    <label for="modalInterviewType" class="form-label">Interview Type</label>
-                    <select class="form-select" id="modalInterviewType">
-                        <option value="technical">Technical</option>
-                        <option value="behavioral">Behavioral</option>
-                        <option value="hr">HR Round</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="modalInstructions" class="form-label">Instructions</label>
-                    <textarea class="form-control" id="modalInstructions" rows="3" placeholder="Enter interview instructions..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="confirmStartInterview()">Start Interview</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+<!-- JavaScript -->
 <script>
-let selectedEmployee = null;
-let responses = [];
-let aiQuestions = [];
-let isAIInterview = false;
-
-function loadReadyEmployees() {
-    fetch('/api/hr/notifications')
-        .then(r => r.json())
-        .then(data => {
-            const readyList = document.getElementById('readyEmployeesList');
-            
-            // Check if the element exists before trying to modify it
-            if (!readyList) {
-                return;
-            }
-            
-            const msgs = (data.notifications || []).filter(n => n.type === 'interview_ready');
-            
-            if (msgs.length === 0) {
-                readyList.innerHTML = '<p class="text-muted small">No employees ready</p>';
-                return;
-            }
-            
-            readyList.innerHTML = msgs.map(n => {
-                const senderName = n.title.replace('Employee Ready for Interview - ', '');
-                return `
-                    <div class="alert alert-info mb-2">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <strong>${senderName}</strong>
-                                <p class="small mb-0">${n.message}</p>
-                            </div>
-                            <button class="btn btn-sm btn-success" onclick="openInterviewModal('${senderName}')">Select</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        });
-}
-
-function openInterviewModal(employeeName) {
-    selectedEmployee = employeeName;
-    document.getElementById('modalEmployeeName').value = employeeName;
-    new bootstrap.Modal(document.getElementById('interviewModal')).show();
-}
-
-function confirmStartInterview() {
-    const instructions = document.getElementById('modalInstructions').value;
-    const type = document.getElementById('modalInterviewType').value;
-    
-    fetch('/api/hr/start-interview/1', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({instructions, type})
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.status === 'success') {
-            bootstrap.Modal.getInstance(document.getElementById('interviewModal')).hide();
-            addMessage('Interview started for ' + selectedEmployee, 'ai');
-        }
-    });
-}
-
-function addMessage(text, sender) {
-    const container = document.getElementById('chatContainer');
-    const div = document.createElement('div');
-    div.className = sender === 'ai' ? 'mb-3' : 'mb-3 text-end';
-    div.innerHTML = `<div class="bg-${sender === 'ai' ? 'secondary' : 'primary'} text-white p-2 rounded d-inline-block">${text}</div>`;
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-}
-
-function askQuestion() {
-    // This function is deprecated - use showNextQuestion() instead
-    console.warn('askQuestion() is deprecated. Use showNextQuestion() instead.');
-}
-
-// Legacy AI Interview Functions - Deprecated
-// These functions are replaced by the new AI interview system
-
-function generateAIQuestions() {
-    console.warn('generateAIQuestions() is deprecated. Use startInterview() instead.');
-}
-
-function displayAIQuestions() {
-    console.warn('displayAIQuestions() is deprecated.');
-}
-
-function startAIInterview() {
-    console.warn('startAIInterview() is deprecated. Use startInterview() instead.');
-}
-
-function showNextAIQuestion() {
-    console.warn('showNextAIQuestion() is deprecated. Use showNextQuestion() instead.');
-}
-
-function analyzeResponse() {
-    console.warn('analyzeResponse() is deprecated. Use submitResponse() instead.');
-}
-
-function getFollowUpQuestion() {
-    console.warn('getFollowUpQuestion() is deprecated. Use requestClarification() instead.');
-}
-
-function generateAISummary() {
-    console.warn('generateAISummary() is deprecated. Use completeInterview() instead.');
-}
-
-function showAISummaryOption() {
-    console.warn('showAISummaryOption() is deprecated.');
-}
-
-function restartAIInterview() {
-    console.warn('restartAIInterview() is deprecated. Use restartInterview() instead.');
-}
-
-// Legacy Event Listeners - Deprecated
-// These are replaced by the new AI event listeners
-
-document.getElementById('generateQuestions')?.addEventListener('click', function() {
-    console.warn('generateQuestions button is deprecated.');
-});
-
-document.getElementById('startAIInterview')?.addEventListener('click', function() {
-    console.warn('startAIInterview button is deprecated. Use startInterview instead.');
-});
-
-document.getElementById('getFollowUp')?.addEventListener('click', function() {
-    console.warn('getFollowUp button is deprecated. Use requestClarification instead.');
-});
-
-document.getElementById('nextQuestion')?.addEventListener('click', function() {
-    console.warn('nextQuestion button listener is deprecated.');
-});
-
-document.getElementById('generateSummary')?.addEventListener('click', function() {
-    console.warn('generateSummary button is deprecated.');
-});
-
-if ('{{ session.role }}' === 'employee') {
-    // Employee interview status checking - deprecated
-    // This will be replaced by the new AI system
-    console.warn('Legacy employee interview status checking is deprecated.');
-}
-
-// Global variables for AI interview system
-let isInterviewActive = false;
-let currentQuestion = '';
-let currentAnswer = '';
-let interviewQuestions = [];
-let currentQuestionIndex = 0;
-let interviewData = [];
-let totalQuestions = 5; // Default number of questions
-let interviewSummary = null;
-let isHRTrainingEnabled = true;
-
-// DOM Elements - declared early to avoid null reference errors
-const chatContainer = document.getElementById('chatContainer');
-const chatMessages = document.getElementById('chatMessages');
-const responseForm = document.getElementById('responseForm');
-const userResponse = document.getElementById('userResponse');
-const submitButton = document.getElementById('submitResponse');
-const submitSpinner = document.getElementById('submitSpinner');
-const submitText = document.getElementById('submitText');
-const feedbackSection = document.getElementById('feedbackSection');
-const feedbackContent = document.getElementById('feedbackContent');
-const nextQuestionBtn = document.getElementById('nextQuestion');
-const skipQuestionBtn = document.getElementById('skipQuestion');
-const requestHintBtn = document.getElementById('requestHint');
-const requestClarificationBtn = document.getElementById('requestClarification');
-const endInterviewBtn = document.getElementById('endInterview');
-const restartInterviewBtn = document.getElementById('restartInterview');
-const completeInterviewBtn = document.getElementById('completeInterview');
-const downloadReportBtn = document.getElementById('downloadReport');
-const summarySection = document.getElementById('summarySection');
-const progressBar = document.getElementById('progressBar');
-const progressText = document.getElementById('progressText');
-const interviewTypeBadge = document.getElementById('interviewTypeBadge');
-const candidateTypeBadge = document.getElementById('candidateTypeBadge');
-
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize form submission
-    responseForm?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        submitResponse();
-    });
-    
-    // Initialize buttons
-    document.getElementById('startInterview')?.addEventListener('click', startInterview);
-    nextQuestionBtn?.addEventListener('click', showNextQuestion);
-    skipQuestionBtn?.addEventListener('click', skipQuestion);
-    requestHintBtn?.addEventListener('click', requestHint);
-    requestClarificationBtn?.addEventListener('click', requestClarification);
-    endInterviewBtn?.addEventListener('click', endInterview);
-    restartInterviewBtn?.addEventListener('click', restartInterview);
-    completeInterviewBtn?.addEventListener('click', completeInterview);
-    downloadReportBtn?.addEventListener('click', downloadReport);
-    
-    // Update UI based on interview type
-    document.getElementById('interviewType')?.addEventListener('change', updateInterviewType);
-    document.getElementById('candidateType')?.addEventListener('change', updateCandidateType);
-    document.getElementById('enableHRTraining')?.addEventListener('change', function(e) {
-        isHRTrainingEnabled = e.target.checked;
-    });
-    
-    // Initialize tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-    
-    // Initialize UI state
-    updateUIState('ready');
-});
-
-// Update UI based on interview state
-function updateUIState(state) {
-    const states = {
-        ready: {
-            startInterviewBtn: false,
-            responseForm: true,
-            feedbackSection: true,
-            summarySection: true,
-            endInterviewBtn: true,
-            progressBar: 0
-        },
-        active: {
-            startInterviewBtn: true,
-            responseForm: false,
-            feedbackSection: true,
-            summarySection: true,
-            endInterviewBtn: false,
-            progressBar: 0
-        },
-        waiting: {
-            startInterviewBtn: true,
-            responseForm: true,
-            feedbackSection: true,
-            summarySection: true,
-            endInterviewBtn: false,
-            progressBar: 0
-        },
-        feedback: {
-            startInterviewBtn: true,
-            responseForm: true,
-            feedbackSection: false,
-            summarySection: true,
-            endInterviewBtn: false,
-            progressBar: (currentQuestionIndex / totalQuestions) * 100
-        },
-        complete: {
-            startInterviewBtn: true,
-            responseForm: true,
-            feedbackSection: true,
-            summarySection: false,
-            endInterviewBtn: true,
-            progressBar: 100
-        }
-    };
-    
-    const uiState = states[state] || states.ready;
-    
-    // Update UI elements
-    const startBtn = document.getElementById('startInterview');
-    if (startBtn) startBtn.disabled = uiState.startInterviewBtn;
-    
-    const responseFormEl = document.getElementById('responseForm');
-    if (responseFormEl) responseFormEl.classList.toggle('d-none', uiState.responseForm);
-    
-    const feedbackSectionEl = document.getElementById('feedbackSection');
-    if (feedbackSectionEl) feedbackSectionEl.classList.toggle('d-none', uiState.feedbackSection);
-    
-    const summarySectionEl = document.getElementById('summarySection');
-    if (summarySectionEl) summarySectionEl.classList.toggle('d-none', uiState.summarySection);
-    
-    const endInterviewBtnEl = document.getElementById('endInterview');
-    if (endInterviewBtnEl) endInterviewBtnEl.disabled = uiState.endInterviewBtn;
-    
-    // Update progress
-    if (progressBar) {
-        progressBar.style.width = `${uiState.progressBar}%`;
-        progressBar.setAttribute('aria-valuenow', uiState.progressBar);
+    // Switch to interview tab
+    function switchToInterviewTab() {
+        const interviewTab = new bootstrap.Tab(document.getElementById('interview-tab'));
+        interviewTab.show();
     }
-    
-    if (progressText) {
-        progressText.textContent = `${Math.round(uiState.progressBar)}%`;
-    }
-}
 
-// Start a new interview
-async function startInterview() {
-    const interviewType = document.getElementById('interviewType').value;
-    const isFresher = document.getElementById('candidateType').value === 'fresher';
-    const jobRole = document.getElementById('jobRole').value || 'General';
-    isHRTrainingEnabled = document.getElementById('enableHRTraining').checked;
-    
-    // Update UI
-    updateUIState('active');
-    if (chatMessages) chatMessages.innerHTML = '';
-    
-    // Update badges
-    if (interviewTypeBadge) interviewTypeBadge.textContent = interviewType.charAt(0).toUpperCase() + interviewType.slice(1);
-    if (candidateTypeBadge) candidateTypeBadge.textContent = isFresher ? 'Fresher' : 'Experienced';
-    
-    try {
-        // Initialize interview with backend
-        const response = await fetch('/api/interview/start', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                interview_type: interviewType,
-                is_fresher: isFresher,
-                job_role: jobRole,
-                enable_hr_training: isHRTrainingEnabled
-            })
-        });
+    // Toggle advanced mode
+    function toggleAdvancedMode() {
+        const advancedSection = document.getElementById('advancedSection');
+        const button = event.target.closest('button');
         
-        if (!response.ok) {
-            throw new Error('Failed to start interview');
-        }
-        
-        const data = await response.json();
-        totalQuestions = data.total_questions || 5;
-        
-        // Show welcome message
-        addMessage(`Welcome to your ${interviewType} interview${jobRole ? ' for ' + jobRole : ''}. ` + 
-                  `I'll be your interviewer today. Let's begin!`, 'ai');
-        
-        // Show first question
-        await showNextQuestion();
-        
-    } catch (error) {
-        console.error('Error starting interview:', error);
-        addMessage('Sorry, there was an error starting the interview. Please try again.', 'ai', 'error');
-        updateUIState('ready');
-    }
-}
-
-// Show the next question
-async function showNextQuestion() {
-    if (currentQuestionIndex >= totalQuestions) {
-        await completeInterview();
-        return;
-    }
-    
-    updateUIState('waiting');
-    
-    try {
-        // Get next question from backend
-        const response = await fetch('/api/interview/next-question', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                question_index: currentQuestionIndex,
-                previous_question: currentQuestion,
-                previous_answer: currentAnswer
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to get next question');
-        }
-        
-        const data = await response.json();
-        currentQuestion = data.question;
-        currentQuestionIndex++;
-        
-        // Update UI
-        addMessage(currentQuestion, 'ai');
-        updateUIState('active');
-        userResponse.value = '';
-        userResponse.focus();
-        
-    } catch (error) {
-        console.error('Error getting next question:', error);
-        addMessage('Sorry, there was an error getting the next question. Please try again.', 'ai', 'error');
-        updateUIState('active');
-    }
-}
-
-// Submit user response
-async function submitResponse() {
-    currentAnswer = userResponse.value.trim();
-    if (!currentAnswer) return;
-    
-    // Add user's response to chat
-    addMessage(currentAnswer, 'user');
-    
-    // Debug: Log what's being sent
-    console.log('=== DEBUG: Submitting Response ===');
-    console.log('Question:', currentQuestion);
-    console.log('Answer:', currentAnswer);
-    console.log('Question Index:', currentQuestionIndex - 1);
-    
-    // Disable form and show loading
-    submitButton.disabled = true;
-    submitSpinner.classList.remove('d-none');
-    submitText.textContent = 'Analyzing...';
-    
-    try {
-        // Send response to backend for analysis
-        const response = await fetch('/api/interview/analyze-response', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                question: currentQuestion,
-                answer: currentAnswer,
-                question_index: currentQuestionIndex - 1
-            })
-        });
-        
-        console.log('=== DEBUG: Response Status ===');
-        console.log('Status:', response.status);
-        
-        if (!response.ok) {
-            throw new Error('Failed to analyze response');
-        }
-        
-        const data = await response.json();
-        
-        console.log('=== DEBUG: API Response ===');
-        console.log('Full Response:', data);
-        console.log('Feedback:', data.feedback);
-        
-        // Show feedback
-        showFeedback(data.feedback);
-        
-    } catch (error) {
-        console.error('Error analyzing response:', error);
-        addMessage('Sorry, there was an error analyzing your response. Please try again.', 'ai', 'error');
-        updateUIState('active');
-    } finally {
-        // Re-enable form
-        submitButton.disabled = false;
-        submitSpinner.classList.add('d-none');
-        submitText.textContent = 'Submit';
-    }
-}
-
-// Show feedback to the user
-function showFeedback(feedback) {
-    // Check if there's a mismatch between analysis and score
-    let displayScore = feedback.score;
-    let displayAnalysis = feedback.analysis;
-    
-    // If analysis says "good" but score is very low, adjust the display
-    if (feedback.score <= 2 && (
-        feedback.analysis.toLowerCase().includes('good') || 
-        feedback.analysis.toLowerCase().includes('excellent') ||
-        feedback.analysis.toLowerCase().includes('great')
-    )) {
-        displayScore = 7; // Give a more reasonable score
-        displayAnalysis = feedback.analysis + " (Score adjusted for consistency)";
-    }
-    
-    // Update feedback section
-    feedbackContent.innerHTML = `
-        <div class="mb-3">
-            <h6>Analysis</h6>
-            <p id="feedbackAnalysis">${displayAnalysis}</p>
-        </div>
-        <div class="row">
-            <div class="col-md-6">
-                <h6>Score</h6>
-                <div class="progress" style="height: 20px;">
-                    <div class="progress-bar" role="progressbar" 
-                         style="width: ${displayScore * 10}%" 
-                         aria-valuenow="${displayScore}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="10">
-                        ${displayScore}/10
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <h6>Keywords Matched</h6>
-                <div class="d-flex flex-wrap gap-1">
-                    ${(feedback.keywords || []).map(kw => 
-                        `<span class="badge bg-info text-dark">${kw}</span>`).join('')}
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Update feedback score
-    document.getElementById('feedbackScore').textContent = `${displayScore}/10`;
-    
-    // Show feedback section
-    updateUIState('feedback');
-}
-
-// Skip the current question
-async function skipQuestion() {
-    if (confirm('Are you sure you want to skip this question?')) {
-        addMessage('(Question skipped)', 'system');
-        await showNextQuestion();
-    }
-}
-
-// Request a hint for the current question
-async function requestHint() {
-    try {
-        const response = await fetch('/api/interview/request-hint', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                question: currentQuestion
-            })
-        });
-        
-        if (!response.ok) throw new Error('Failed to get hint');
-        
-        const data = await response.json();
-        addMessage(`💡 Hint: ${data.hint}`, 'ai', 'hint');
-        
-    } catch (error) {
-        console.error('Error getting hint:', error);
-        addMessage('Sorry, I could not generate a hint for this question.', 'ai', 'error');
-    }
-}
-
-// Request clarification for the current question
-async function requestClarification() {
-    console.log('Request clarification clicked');
-    console.log('Current question:', currentQuestion);
-    
-    // Add a test message first
-    addMessage('Requesting clarification...', 'ai', 'info');
-    
-    try {
-        const response = await fetch('/api/interview/request-clarification', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                question: currentQuestion
-            })
-        });
-        
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) throw new Error('Failed to get clarification');
-        
-        const data = await response.json();
-        console.log('Response data:', data);
-        
-        // Enhanced formatting for better readability with dark theme
-        const formattedClarification = data.clarification
-            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-info">$1</strong>')  // Bold text
-            .replace(/📝/g, '<span class="text-primary me-2">📝</span>')
-            .replace(/🎯/g, '<span class="text-warning me-2">🎯</span>')
-            .replace(/🌟/g, '<span class="text-success me-2">🌟</span>')
-            .replace(/💬/g, '<span class="text-info me-2">💬</span>')
-            .replace(/📈/g, '<span class="text-primary me-2">📈</span>')
-            .replace(/🚀/g, '<span class="text-danger me-2">🚀</span>')
-            .replace(/💪/g, '<span class="text-success me-2">💪</span>')
-            .replace(/🧠/g, '<span class="text-info me-2">🧠</span>')
-            .replace(/✅/g, '<span class="text-success me-2">✅</span>')
-            .replace(/🎤/g, '<span class="text-primary me-2">🎤</span>')
-            .replace(/🔗/g, '<span class="text-info me-2">🔗</span>')
-            .replace(/📊/g, '<span class="text-warning me-2">📊</span>')
-            .replace(/💡/g, '<span class="text-warning me-2">💡</span>')
-            .replace(/🔍/g, '<span class="text-primary me-2">🔍</span>')
-            .replace(/\n\n/g, '</div><div class="mb-4">')  // Section breaks
-            .replace(/\n•/g, '<br><span class="ms-3">•</span>')  // Indented bullet points
-            .replace(/\n/g, '<br>');  // Line breaks
-        
-        // Wrap in a styled container with dark theme support
-        const clarificationHtml = `
-            <div class="clarification-container bg-dark bg-opacity-90 p-4 rounded border-start border-4 border-info shadow-lg">
-                <h6 class="text-info mb-4 fw-bold">
-                    <i class="bi bi-info-circle-fill me-2"></i>Detailed Clarification & Feedback
-                </h6>
-                <div class="clarification-content">
-                    <div class="text-light">
-                        <div class="mb-4">${formattedClarification}</div>
-                    </div>
-                </div>
-                <div class="mt-3 pt-3 border-top border-secondary">
-                    <small class="text-muted">
-                        <i class="bi bi-lightbulb me-1"></i>
-                        Use this feedback to improve your interview performance
-                    </small>
-                </div>
-            </div>
-        `;
-        
-        console.log('Adding clarification message to chat');
-        addMessage(clarificationHtml, 'ai', 'info');
-        
-    } catch (error) {
-        console.error('Error getting clarification:', error);
-        addMessage('Sorry, I could not provide clarification for this question.', 'ai', 'error');
-    }
-}
-
-// Complete the interview
-async function completeInterview() {
-    updateUIState('waiting');
-    
-    try {
-        // Get interview summary from backend
-        const response = await fetch('/api/interview/summary', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        if (!response.ok) throw new Error('Failed to get interview summary');
-        
-        interviewSummary = await response.json();
-        
-        // Update summary section
-        updateSummaryUI(interviewSummary);
-        
-        // Show completion message
-        addMessage('Interview completed! Review your summary below.', 'ai', 'success');
-        
-        // Show summary section
-        updateUIState('complete');
-        
-    } catch (error) {
-        console.error('Error completing interview:', error);
-        addMessage('Sorry, there was an error completing the interview.', 'ai', 'error');
-        updateUIState('active');
-    }
-}
-
-// Update the summary UI with interview results
-function updateSummaryUI(summary) {
-    // Update strengths
-    const strengthsList = document.getElementById('strengthsList');
-    if (strengthsList) {
-        strengthsList.innerHTML = summary.strengths && summary.strengths.length > 0 
-            ? summary.strengths.map(s => `<li class="mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i>${s}</li>`).join('')
-            : '<li class="text-muted">No specific strengths identified.</li>';
-    }
-    
-    // Update areas for improvement
-    const improvementsList = document.getElementById('improvementsList');
-    if (improvementsList) {
-        improvementsList.innerHTML = summary.areas_for_improvement && summary.areas_for_improvement.length > 0 
-            ? summary.areas_for_improvement.map(i => `<li class="mb-1"><i class="bi bi-exclamation-circle-fill text-warning me-2"></i>${i}</li>`).join('')
-            : '<li class="text-muted">No specific areas for improvement identified.</li>';
-    }
-    
-    // Update overall assessment
-    const overallAssessment = document.getElementById('overallAssessment');
-    if (overallAssessment) {
-        overallAssessment.textContent = summary.summary || 'No summary available.';
-    }
-    
-    // Update recommendation
-    const recommendationEl = document.getElementById('recommendation');
-    if (recommendationEl) {
-        recommendationEl.textContent = summary.recommendation || 'Needs Further Evaluation';
-        
-        // Style recommendation badge
-        const recClass = {
-            'Strong Hire': 'bg-success',
-            'Hire': 'bg-primary',
-            'No Hire': 'bg-danger',
-            'Needs Further Evaluation': 'bg-warning text-dark'
-        }[summary.recommendation] || 'bg-secondary';
-        
-        recommendationEl.className = `badge ${recClass} ms-2`;
-    }
-    
-    // Update confidence score
-    const confidence = summary.confidence_score || 0;
-    const confidenceBar = document.getElementById('confidenceBar');
-    if (confidenceBar) {
-        confidenceBar.style.width = `${confidence}%`;
-        confidenceBar.setAttribute('aria-valuenow', confidence);
-        confidenceBar.textContent = `${confidence}%`;
-        confidenceBar.className = `progress-bar ${getConfidenceClass(confidence)}`;
-    }
-}
-
-// Get CSS class for confidence score
-function getConfidenceClass(score) {
-    if (score >= 80) return 'bg-success';
-    if (score >= 50) return 'bg-primary';
-    if (score >= 30) return 'bg-warning';
-    return 'bg-danger';
-}
-
-// Download interview report
-function downloadReport() {
-    if (!interviewSummary) {
-        alert('No interview data available to download.');
-        return;
-    }
-    
-    // Create a downloadable report
-    const report = {
-        interviewType: document.getElementById('interviewType').value,
-        candidateType: document.getElementById('candidateType').value,
-        jobRole: document.getElementById('jobRole').value || 'Not specified',
-        date: new Date().toISOString(),
-        ...interviewSummary
-    };
-    
-    // Create a blob and download link
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `interview-report-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-// Restart the interview
-function restartInterview() {
-    if (confirm('Are you sure you want to restart the interview? All progress will be lost.')) {
-        // Reset state
-        currentQuestionIndex = 0;
-        currentQuestion = '';
-        currentAnswer = '';
-        interviewSummary = null;
-        if (chatMessages) chatMessages.innerHTML = '';
-        
-        // Reset UI
-        updateUIState('ready');
-        
-        // Show welcome message
-        addMessage('Welcome! Click the Start Interview button to begin.', 'ai');
-    }
-}
-
-// End the current interview
-function endInterview() {
-    if (confirm('Are you sure you want to end the interview? Any unsaved progress will be lost.')) {
-        // Reset state
-        currentQuestionIndex = 0;
-        currentQuestion = '';
-        currentAnswer = '';
-        interviewSummary = null;
-        if (chatMessages) chatMessages.innerHTML = '';
-        
-        // Reset UI
-        updateUIState('ready');
-        
-        // Show welcome message
-        addMessage('Interview ended. Click Start Interview to begin a new session.', 'ai');
-    }
-}
-
-// Add a message to the chat
-function addMessage(text, sender, type = 'default') {
-    if (!chatMessages) return;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender} ${type}`;
-    
-    let messageContent = '';
-    let icon = '';
-    
-    if (type === 'error') {
-        icon = '<i class="bi bi-exclamation-triangle-fill me-2"></i>';
-        messageContent = `<div class="alert alert-danger">${icon}${text}</div>`;
-    } else if (type === 'hint') {
-        icon = '<i class="bi bi-lightbulb-fill me-2"></i>';
-        messageContent = `<div class="alert alert-info">${icon}${text}</div>`;
-    } else if (type === 'info') {
-        icon = '<i class="bi bi-info-circle-fill me-2"></i>';
-        messageContent = `<div class="alert alert-primary">${icon}${text}</div>`;
-    } else if (type === 'success') {
-        icon = '<i class="bi bi-check-circle-fill me-2"></i>';
-        messageContent = `<div class="alert alert-success">${icon}${text}</div>`;
-    } else if (type === 'system') {
-        messageContent = `<div class="alert alert-secondary"><em>${text}</em></div>`;
-    } else {
-        if (sender === 'ai') {
-            messageContent = `<div class="ai-message">${text}</div>`;
+        if (advancedSection.style.display === 'none') {
+            advancedSection.style.display = 'block';
+            button.innerHTML = '<i class="fas fa-times me-1"></i>Simple';
         } else {
-            messageContent = `<div class="user-message">${text}</div>`;
+            advancedSection.style.display = 'none';
+            button.innerHTML = '<i class="fas fa-cog me-1"></i>Advanced';
         }
     }
-    
-    messageDiv.innerHTML = messageContent;
-    chatMessages.appendChild(messageDiv);
-    
-    // Scroll to bottom
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
 
-// Update interview type badge
-function updateInterviewType() {
-    const type = document.getElementById('interviewType').value;
-    interviewTypeBadge.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-}
+    // Initialize interview functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Start interview button
+        document.getElementById('startInterview')?.addEventListener('click', function() {
+            switchToInterviewTab();
+            // Initialize interview logic here
+        });
 
-// Update candidate type badge
-function updateCandidateType() {
-    const type = document.getElementById('candidateType').value;
-    candidateTypeBadge.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-}
-
-// Add some basic styling
-const style = document.createElement('style');
-style.textContent = `
-    .message {
-        margin-bottom: 1rem;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .message.user {
-        align-items: flex-end;
-    }
-    
-    .message.ai {
-        align-items: flex-start;
-    }
-    
-    .message-content {
-        padding: 0.75rem 1rem;
-        border-radius: 1rem;
-        max-width: 80%;
-        word-wrap: break-word;
-    }
-    
-    .message.user .message-content {
-        background-color: #0d6efd;
-        color: white;
-    }
-    
-    .message.ai .message-content {
-        background-color: #f8f9fa;
-        color: #212529;
-    }
-    
-    .message.system {
-        align-items: center;
-        margin: 0.5rem 0;
-    }
-    
-    .message.system .message-content {
-        background-color: transparent;
-        color: #6c757d;
-        font-style: italic;
-        text-align: center;
-        padding: 0.5rem 0;
-    }
-    
-    .chat-container {
-        scroll-behavior: smooth;
-    }
-    
-    #userResponse:focus {
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        border-color: #86b7fe;
-    }
-    
-    .progress-bar-striped {
-        background-image: linear-gradient(
-            45deg,
-            rgba(255, 255, 255, 0.15) 25%,
-            transparent 25%,
-            transparent 50%,
-            rgba(255, 255, 255, 0.15) 50%,
-            rgba(255, 255, 255, 0.15) 75%,
-            transparent 75%,
-            transparent
-        );
-        background-size: 1rem 1rem;
-    }
-    
-    .progress-bar-animated {
-        animation: progress-bar-stripes 1s linear infinite;
-    }
-    
-    @keyframes progress-bar-stripes {
-        0% { background-position-x: 1rem; }
-    }
-`;
-document.head.appendChild(style);
+        // Response form submission
+        document.getElementById('responseForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Handle response submission
+        });
+    });
 </script>
 {% endblock %}

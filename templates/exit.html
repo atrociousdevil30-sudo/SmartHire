@@ -4,166 +4,107 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Header and Progress -->
-    <div class="row mb-4">
-        <div class="col-12">
+    <!-- Simplified Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-light mb-1">
+                <i class="fas fa-door-open me-2"></i>Employee Offboarding
+            </h1>
+            <p class="text-muted mb-0">Manage the employee exit process efficiently</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-light btn-sm" onclick="toggleAdvancedMode()">
+                <i class="fas fa-cog me-1"></i>Advanced
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab-based Interface -->
+    <ul class="nav nav-tabs nav-tabs-dark mb-4" id="exitTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                <i class="fas fa-chart-line me-2"></i>Overview
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab">
+                <i class="fas fa-tasks me-2"></i>Tasks
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
+                <i class="fas fa-comment me-2"></i>Feedback
+            </button>
+        </li>
+        {% if session.get('role') in ['hr', 'admin', 'manager'] %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+                <i class="fas fa-chart-bar me-2"></i>Analytics
+            </button>
+        </li>
+        {% endif %}
+    </ul>
+
+    <div class="tab-content" id="exitTabsContent">
+        <!-- Overview Tab -->
+        <div class="tab-pane fade show active" id="overview" role="tabpanel">
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <h1 class="h3 mb-1 text-light">
-                                <i class="fas fa-door-open me-2"></i>Employee Offboarding
-                            </h1>
-                            <p class="text-muted mb-0">Track and manage the employee exit process</p>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex flex-column align-items-md-end mt-3 mt-md-0">
-                                <div class="d-flex align-items-center mb-2">
-                                    <span class="me-3">Completion:</span>
-                                    <div class="progress bg-dark bg-opacity-50" style="height: 10px; width: 200px;">
-                                        <div id="exitProgressBar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
-                                             role="progressbar" style="width: 0%" 
-                                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                    <span class="ms-2 fw-bold" id="progressPercentage">0%</span>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    {% if session.get('role') in ['hr', 'admin', 'manager'] %}
-                                    <button class="btn btn-sm btn-outline-light" id="downloadSummary">
-                                        <i class="fas fa-download me-1"></i> Export Report
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" id="completeExit" disabled>
-                                        <i class="fas fa-check-circle me-1"></i> Complete Exit
-                                    </button>
-                                    {% endif %}
-                                </div>
+                    <!-- Progress Overview -->
+                    <div class="row align-items-center mb-4">
+                        <div class="col-md-8">
+                            <h6 class="text-light mb-3">Exit Progress</h6>
+                            <div class="progress bg-dark bg-opacity-50" style="height: 12px;">
+                                <div id="exitProgressBar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
+                            <small class="text-muted mt-2 d-block">Completion: <span id="progressPercentage">0%</span></small>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if session.get('role') in ['hr', 'admin', 'manager'] %}
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button class="btn btn-sm btn-outline-light" id="downloadSummary">
+                                    <i class="fas fa-download me-1"></i> Export
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" id="completeExit" disabled>
+                                    <i class="fas fa-check me-1"></i> Complete
+                                </button>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
-                </div>
-            <div class="card mt-3">
-                <div class="card-header bg-dark bg-opacity-25">
-                    <h2 class="h5 mb-0"><i class="bi bi-graph-up me-2"></i>Exit Analytics</h2>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card bg-dark bg-opacity-10 border-secondary">
-                                <div class="card-body text-center">
-                                    <h3 class="mb-1 text-primary">{{ exit_feedbacks|length }}</h3>
-                                    <p class="text-muted small mb-0">Exit Interviews</p>
-                                    <div class="text-success small">
-                                        <i class="bi bi-arrow-up"></i> {{ ((exit_feedbacks|length / 20 * 100) | round(1)) if exit_feedbacks|length > 0 else 0 }}% from last quarter
-                                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="card bg-dark bg-opacity-50 border-secondary text-center">
+                                <div class="card-body py-3">
+                                    <h4 class="text-primary mb-1">{{ exit_feedbacks|length }}</h4>
+                                    <small class="text-muted">Exit Interviews</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card bg-dark bg-opacity-10 border-secondary">
-                                <div class="card-body text-center">
+                        <div class="col-md-4">
+                            <div class="card bg-dark bg-opacity-50 border-secondary text-center">
+                                <div class="card-body py-3">
                                     {% set positive_count = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
                                     {% set rehire_percentage = ((positive_count / exit_feedbacks|length * 100) | round(1)) if exit_feedbacks|length > 0 else 75 %}
-                                    <h3 class="mb-1 text-success">{{ rehire_percentage }}%</h3>
-                                    <p class="text-muted small mb-0">Would Rehire</p>
-                                    <div class="text-{{ 'success' if rehire_percentage >= 70 else 'danger' }} small">
-                                        <i class="bi bi-arrow-{{ 'up' if rehire_percentage >= 70 else 'down' }}"></i> {{ (rehire_percentage - 65) | round(1) }}% from last quarter
-                                    </div>
+                                    <h4 class="text-success mb-1">{{ rehire_percentage }}%</h4>
+                                    <small class="text-muted">Would Rehire</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card bg-dark bg-opacity-10 border-secondary">
-                                <div class="card-body text-center">
+                        <div class="col-md-4">
+                            <div class="card bg-dark bg-opacity-50 border-secondary text-center">
+                                <div class="card-body py-3">
                                     {% set avg_satisfaction = 3.8 %}
                                     {% if exit_feedbacks|length > 0 %}
                                         {% set total_positive = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
                                         {% set total_neutral = exit_feedbacks|selectattr('sentiment', 'equalto', 'Neutral')|list|length %}
                                         {% set avg_satisfaction = ((total_positive * 4.5 + total_neutral * 3.0) / exit_feedbacks|length) | round(1) %}
                                     {% endif %}
-                                    <h3 class="mb-1 text-warning">{{ avg_satisfaction }}</h3>
-                                    <p class="text-muted small mb-0">Avg. Satisfaction</p>
-                                    <div class="text-{{ 'success' if avg_satisfaction >= 3.5 else 'danger' }} small">
-                                        <i class="bi bi-arrow-{{ 'up' if avg_satisfaction >= 3.5 else 'down' }}"></i> {{ (avg_satisfaction - 3.5) | round(1) }} from last quarter
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="text-uppercase text-muted mb-0">Reasons for Leaving</h6>
-                            <span class="badge bg-primary">Top 6 Reasons</span>
-                        </div>
-                        <div class="card bg-dark bg-opacity-10 border-0">
-                            <div class="card-body p-3">
-                                <div class="row g-2">
-                                    <div class="col-6 col-md-4">
-                                        <div class="d-flex align-items-center p-2 rounded hover-bg">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-2">
-                                                <i class="bi bi-briefcase text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <div class="small fw-medium">Career Growth</div>
-                                                <div class="extra-small text-muted">Limited advancement</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-4">
-                                        <div class="d-flex align-items-center p-2 rounded hover-bg">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-2">
-                                                <i class="bi bi-cash-coin text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <div class="small fw-medium">Compensation</div>
-                                                <div class="extra-small text-muted">Pay & benefits</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-4">
-                                        <div class="d-flex align-items-center p-2 rounded hover-bg">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-2">
-                                                <i class="bi bi-people text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <div class="small fw-medium">Management</div>
-                                                <div class="extra-small text-muted">Leadership issues</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-4">
-                                        <div class="d-flex align-items-center p-2 rounded hover-bg">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-2">
-                                                <i class="bi bi-heart-pulse text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <div class="small fw-medium">Work-Life</div>
-                                                <div class="extra-small text-muted">Balance issues</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-4">
-                                        <div class="d-flex align-items-center p-2 rounded hover-bg">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-2">
-                                                <i class="bi bi-lightbulb text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <div class="small fw-medium">Recognition</div>
-                                                <div class="extra-small text-muted">Lack of appreciation</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-4">
-                                        <div class="d-flex align-items-center p-2 rounded hover-bg">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-2">
-                                                <i class="bi bi-building text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <div class="small fw-medium">Culture</div>
-                                                <div class="extra-small text-muted">Work environment</div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <h4 class="text-warning mb-1">{{ avg_satisfaction }}</h4>
+                                    <small class="text-muted">Avg. Satisfaction</small>
                                 </div>
                             </div>
                         </div>
@@ -171,460 +112,297 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- AI Insights Section -->
-    {% if session.get('role') == 'hr' %}
-    <div class="row mt-4">
-        <div class="col-12">
+        <!-- Tasks Tab -->
+        <div class="tab-pane fade" id="tasks" role="tabpanel">
+            {% if employee and employee.status == 'Offboarding' and employee.checklist %}
+            <div class="alert alert-info d-flex align-items-center mb-3" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <div>
+                    <strong>Viewing:</strong> {{ employee.full_name }}'s Offboarding Checklist
+                </div>
+            </div>
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-header bg-transparent border-secondary">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-brain me-2 text-primary"></i>AI-Powered Insights
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-4">
-                        <!-- Risk Assessment -->
-                        <div class="col-lg-6">
-                            <div class="card bg-dark bg-opacity-10 border-secondary h-100">
-                                <div class="card-header bg-transparent border-secondary">
-                                    <h6 class="text-warning mb-0">
-                                        <i class="fas fa-exclamation-triangle me-2"></i>Risk Assessment
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    {% set high_risk_count = exit_feedbacks|selectattr('risk_level', 'equalto', 'high')|list|length + exit_feedbacks|selectattr('risk_level', 'equalto', 'critical')|list|length %}
-                                    {% set total_analyzed = exit_feedbacks|selectattr('risk_level')|list|length %}
-                                    
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-light">High Risk Feedback</span>
-                                            <span class="badge bg-{{ 'danger' if high_risk_count > 0 else 'success' }}">{{ high_risk_count }}</span>
-                                        </div>
-                                        <div class="progress bg-dark bg-opacity-50 mt-2" style="height: 8px;">
-                                            {% set risk_percentage = ((high_risk_count / total_analyzed) * 100) if total_analyzed > 0 else 0 %}
-                                            <div class="progress-bar bg-{{ 'danger' if high_risk_count > 0 else 'success' }}" 
-                                                 style="width: {{ risk_percentage }}%;"></div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="small text-muted">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        AI analysis identifies patterns that may indicate systemic issues requiring immediate attention.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Key Themes -->
-                        <div class="col-lg-6">
-                            <div class="card bg-dark bg-opacity-10 border-secondary h-100">
-                                <div class="card-header bg-transparent border-secondary">
-                                    <h6 class="text-info mb-0">
-                                        <i class="fas fa-tags me-2"></i>Emerging Themes
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="mb-3">
-                                        {% set themes = ['work_life_balance', 'management', 'compensation', 'career_growth', 'culture'] %}
-                                        {% for theme in themes %}
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="text-light small">{{ theme.replace('_', ' ').title() }}</span>
-                                            <span class="badge bg-secondary">{{ [3, 7, 5, 9, 4][loop.index0] }}</span>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    
-                                    <div class="small text-muted">
-                                        <i class="fas fa-chart-line me-1"></i>
-                                        AI identifies recurring patterns across all exit interviews to highlight organizational trends.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Actionable Insights -->
-                        <div class="col-12">
-                            <div class="card bg-dark bg-opacity-10 border-secondary">
-                                <div class="card-header bg-transparent border-secondary">
-                                    <h6 class="text-success mb-0">
-                                        <i class="fas fa-lightbulb me-2"></i>AI-Generated Recommendations
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <div class="border-start border-success border-3 ps-3">
-                                                <h6 class="text-light small mb-1">Management Training</h6>
-                                                <p class="text-muted small mb-0">
-                                                    AI recommends implementing leadership development programs based on feedback patterns about management style.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="border-start border-warning border-3 ps-3">
-                                                <h6 class="text-light small mb-1">Compensation Review</h6>
-                                                <p class="text-muted small mb-0">
-                                                    Analysis suggests conducting market salary benchmarking to address compensation concerns.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="border-start border-info border-3 ps-3">
-                                                <h6 class="text-light small mb-1">Career Path Development</h6>
-                                                <p class="text-muted small mb-0">
-                                                    Consider creating clear advancement pathways to improve retention rates.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="border-start border-primary border-3 ps-3">
-                                                <h6 class="text-light small mb-1">Work-Life Balance</h6>
-                                                <p class="text-muted small mb-0">
-                                                    Implement flexible work arrangements based on employee feedback patterns.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="text-light mb-0">Offboarding Tasks</h6>
+                        <span class="badge bg-primary bg-opacity-25 text-primary">
+                            {{ employee.checklist.tasks | selectattr('is_completed', 'equalto', true) | list | length }}/{{ employee.checklist.tasks | length }} Complete
+                        </span>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-        
-    <!-- Sidebar -->
-    <div class="row">
-        <div class="col-lg-4">
-            <!-- Employee Details -->
-            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-                <div class="card-header bg-transparent border-0">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-user-tie me-2"></i>Employee Details
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% set offboarding_employee = None %}
-                    {% if session.get('role') == 'employee' and employee and employee.status == 'Offboarding' %}
-                        {% set offboarding_employee = employee %}
-                    {% elif session.get('role') == 'hr' %}
-                        {# HR can see any offboarding employee - show first offboarding employee or allow selection #}
-                        {% if offboarding_employees and offboarding_employees|length > 0 %}
-                            {% set offboarding_employee = offboarding_employees[0] %}
-                        {% endif %}
-                    {% endif %}
-                    
-                    {% if offboarding_employees and offboarding_employees|length > 0 %}
-                        {% if session.get('role') == 'hr' and offboarding_employees|length > 1 %}
-                        <!-- Employee Selection for HR -->
-                        <div class="mb-4">
-                            <label class="form-label text-light">Select Offboarding Employee:</label>
-                            <select class="form-select bg-dark text-light border-secondary" id="offboardingEmployeeSelect">
-                                {% for emp in offboarding_employees %}
-                                <option value="{{ emp.id }}" {% if emp.id == offboarding_employee.id %}selected{% endif %}>
-                                    {{ emp.full_name }} - {{ emp.position or emp.role }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Selected Employee Details -->
-                        <div id="selectedEmployeeDetails">
-                    <div class="text-center mb-4">
-                        <div class="avatar-xxl mb-3">
-                            <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle display-4">
-                                {{ offboarding_employee.full_name|first|upper }}
-                            </div>
-                        </div>
-                        <h4 class="mb-1 text-light">{{ offboarding_employee.full_name }}</h4>
-                        <p class="text-muted">{{ offboarding_employee.position or offboarding_employee.role or 'Employee' }}</p>
-                        <div class="d-flex justify-content-center gap-2 mb-3 flex-wrap">
-                            <span class="badge bg-primary">Employee ID: {{ offboarding_employee.employee_id or 'EMP-' + offboarding_employee.id|string }}</span>
-                            <span class="badge bg-secondary">Department: {{ offboarding_employee.department or 'General' }}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="border-top border-secondary pt-3">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted">Email:</span>
-                            <a href="mailto:{{ offboarding_employee.email }}" class="text-light">{{ offboarding_employee.email }}</a>
-                        </div>
-                        {% if offboarding_employee.phone %}
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted">Phone:</span>
-                            <a href="tel:{{ offboarding_employee.phone }}" class="text-light">{{ offboarding_employee.phone }}</a>
-                        </div>
-                        {% endif %}
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted">Hire Date:</span>
-                            <span class="text-light">{{ offboarding_employee.hire_date.strftime('%B %d, %Y') if offboarding_employee.hire_date else offboarding_employee.created_at.strftime('%B %d, %Y') if offboarding_employee.created_at else 'N/A' }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted">Exit Date:</span>
-                            <span class="text-light">{{ offboarding_employee.exit_date.strftime('%B %d, %Y') if offboarding_employee.exit_date else 'Not set' }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted">Notice Period:</span>
-                            <span class="text-light">{{ ((offboarding_employee.exit_date - now().date()).days if offboarding_employee.exit_date and offboarding_employee.exit_date > now().date() else 0) }} days</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted">Exit Type:</span>
-                            <span class="text-light">{{ 'Resignation' if offboarding_employee.status == 'Offboarding' else 'Voluntary' }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="text-muted">Status:</span>
-                            <span class="badge bg-{{ 'warning' if offboarding_employee.status == 'Offboarding' else 'success' if offboarding_employee.status == 'Active' else 'secondary' }}">{{ offboarding_employee.status or 'Active' }}</span>
-                        </div>
-                    </div>
-                        </div> <!-- Close selectedEmployeeDetails -->
-                    {% else %}
-                    <div class="text-center py-5">
-                        <div class="mb-4">
-                            <i class="fas fa-user-times fa-3x text-muted" style="opacity: 0.5;"></i>
-                        </div>
-                        <h5 class="text-light mb-2">No Employee Offboarding</h5>
-                        <p class="text-muted mb-0">No employee is currently in the offboarding process.</p>
-                        <p class="text-muted small mt-2">When an employee begins their exit process, their details will appear here for tracking and management.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <!-- Quick Actions -->
-            {% if session.get('role') == 'hr' %}
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-0">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-bolt me-2"></i>Quick Actions
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('knowledge_transfer') }}" class="btn btn-outline-primary text-start">
-                            <i class="fas fa-brain me-2"></i> Knowledge Transfer
-                        </a>
-                        {% if offboarding_employee %}
-                        <button class="btn btn-outline-light text-start" type="button" data-bs-toggle="modal" data-bs-target="#sendReminderModal">
-                            <i class="far fa-bell me-2"></i> Send Reminder
-                        </button>
-                        <button class="btn btn-outline-light text-start" type="button" data-bs-toggle="modal" data-bs-target="#extendNoticeModal">
-                            <i class="far fa-calendar-plus me-2"></i> Extend Notice Period
-                        </button>
-                        <button class="btn btn-outline-light text-start" type="button" data-bs-toggle="modal" data-bs-target="#addNoteModal">
-                            <i class="far fa-sticky-note me-2"></i> Add Private Note
-                        </button>
-                        <button class="btn btn-outline-danger text-start" type="button" id="terminateImmediately">
-                            <i class="fas fa-user-slash me-2"></i> Terminate Immediately
-                        </button>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- HR Contact Section -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-0">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-user-tie me-2"></i>Your HR Contact
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="avatar-xl me-3">
-                            <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle">
-                                <i class="fas fa-user"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1 text-light">{{ hr_contact.full_name if hr_contact else 'Test HR' }}</h6>
-                            <p class="text-muted mb-1">{{ hr_contact.position if hr_contact and hr_contact.position else 'HR Business Partner' }}</p>
-                            <p class="text-muted mb-0">
-                                <a href="mailto:{{ hr_contact.email if hr_contact else 'testhr@company.com' }}" class="text-light">
-                                    {{ hr_contact.email if hr_contact else 'testhr@company.com' }}
-                                </a>
-                            </p>
-                        </div>
-                        <div class="ms-auto">
-                            <button class="btn btn-outline-light btn-sm" onclick="messageHR()">
-                                <i class="fab fa-whatsapp me-1"></i> WhatsApp
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Offboarding Tasks Section -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-0">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-tasks me-2"></i>Offboarding Tasks
-                    </h5>
-                </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
                                     <th>Task</th>
                                     <th>Status</th>
-                                    <th>Risk Level</th>
                                     <th>Due Date</th>
-                                    <th>Assigned To</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="offboardingTasks">
-                                <!-- Tasks will be dynamically added here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Exit Checklist Section -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-0">
-                    <h5 class="mb-0 text-light">
-                        <i class="fas fa-clipboard-check me-2"></i>Exit Checklist
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-light mb-3">HR Tasks</h6>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="hr1">
-                                <label class="form-check-label text-light" for="hr1">
-                                    Conduct exit interview
-                                </label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="hr2">
-                                <label class="form-check-label text-light" for="hr2">
-                                    Process final paycheck
-                                </label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="hr3">
-                                <label class="form-check-label text-light" for="hr3">
-                                    Prepare experience letter
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-light mb-3">IT Tasks</h6>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="it1">
-                                <label class="form-check-label text-light" for="it1">
-                                    Revoke system access
-                                </label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="it2">
-                                <label class="form-check-label text-light" for="it2">
-                                    Collect company assets
-                                </label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="it3">
-                                <label class="form-check-label text-light" for="it3">
-                                    Disable email account
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-muted">Progress: <span id="checklistProgress">0</span>/6 completed</span>
-                                <button class="btn btn-primary btn-sm" onclick="saveChecklist()">Save Progress</button>
-                            </div>
-                            <div class="progress mt-2" style="height: 10px;">
-                                <div class="progress-bar bg-primary" id="checklistProgressBar" style="width: 0%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Submissions Section -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-dark bg-opacity-25">
-                    <h2 class="h5 mb-0"><i class="bi bi-table me-2"></i>Recent Submissions</h2>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Department</th>
-                                    <th>Exit Date</th>
-                                    <th>Reason</th>
-                                    <th>Satisfaction</th>
-                                    <th>Rehire</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for feedback in exit_feedbacks %}
-                                <tr>
-                                    <td>{{ feedback.name }}</td>
-                                    <td>General</td>
-                                    <td>{{ feedback.created_at.strftime('%b %d, %Y') }}</td>
-                                    <td>{{ feedback.reason[:50] + '...' if feedback.reason|length > 50 else feedback.reason }}</td>
-                                    <td><span class="badge bg-{{ 'success' if feedback.sentiment == 'Positive' else 'warning' if feedback.sentiment == 'Neutral' else 'danger' }}">{{ feedback.sentiment or 'Neutral' }}</span></td>
-                                    <td><span class="badge bg-success">Yes</span></td>
-                                    <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-primary view-exit-btn" data-exit-id="{{ feedback.id }}">View</button>
+                                {% for task in employee.checklist.tasks %}
+                                <tr class="task-item" data-status="{{ 'completed' if task.is_completed else 'pending' }}" data-task-id="{{ task.id }}">
+                                    <td class="ps-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input task-checkbox" type="checkbox" 
+                                                   id="exitTask{{ task.id }}" 
+                                                   data-task-id="{{ task.id }}" 
+                                                   {{ 'checked' if task.is_completed else '' }}>
+                                            <label class="form-check-label" for="exitTask{{ task.id }}">
+                                                {{ task.task_name }}
+                                            </label>
+                                        </div>
                                     </td>
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted">No exit interviews found</td>
+                                    <td>
+                                        {% if task.is_completed %}
+                                            <span class="badge bg-success bg-opacity-25 text-success">
+                                                <i class="fas fa-check-circle me-1"></i> Completed
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-25 text-muted">
+                                                <i class="far fa-clock me-1"></i> Pending
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if task.due_date %}
+                                            <span>{{ task.due_date.strftime('%b %d') }}</span>
+                                        {% else %}
+                                            <span>TBD</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-dark">
+                                                <li>
+                                                    <a class="dropdown-item task-action" href="#" data-task-id="{{ task.id }}" data-completed="{{ 'false' if task.is_completed else 'true' }}" data-action="toggle-completion">
+                                                        <i class="fas fa-{{ 'undo' if task.is_completed else 'check' }} me-2"></i>{{ 'Mark as Incomplete' if task.is_completed else 'Mark as Complete' }}
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-tasks fa-3x text-muted mb-3"></i>
+                    {% if employee and employee.status != 'Offboarding' %}
+                        <h5 class="text-light mb-2">Employee Not in Offboarding</h5>
+                        <p class="text-muted">This employee is not currently in the offboarding process</p>
+                    {% else %}
+                        <h5 class="text-light mb-2">No Offboarding Tasks</h5>
+                        <p class="text-muted">Select an employee in offboarding to view their tasks</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="text-muted small">Showing 1 to 3 of 24 entries</div>
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination pagination-sm mb-0">
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
-                                </li>
-                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                <li class="page-item">
-                                    <a class="page-link" href="#">Next</a>
-                                </li>
-                            </ul>
-                        </nav>
+        <!-- Feedback Tab -->
+        <div class="tab-pane fade" id="feedback" role="tabpanel">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">Exit Feedback</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center py-5">
+                        <i class="fas fa-comment fa-3x text-muted mb-3"></i>
+                        <h5 class="text-light mb-2">Feedback Collection</h5>
+                        <p class="text-muted">View and analyze exit interview feedback</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab (HR only) -->
+        {% if session.get('role') in ['hr', 'admin', 'manager'] %}
+        <div class="tab-pane fade" id="analytics" role="tabpanel">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">Exit Analytics</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Reasons for Leaving (Real Data) -->
+                    <div class="mb-4">
+                        <h6 class="text-light mb-3">Top Reasons for Leaving</h6>
+                        <div class="row g-2">
+                            {% set reason_counts = {} %}
+                            {% for feedback in exit_feedbacks %}
+                                {% set reason = feedback.reason or 'Other' %}
+                                {% if reason_counts.get(reason) %}
+                                    {% set _ = reason_counts.update({reason: reason_counts[reason] + 1}) %}
+                                {% else %}
+                                    {% set _ = reason_counts.update({reason: 1}) %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% set total_feedbacks = exit_feedbacks|length %}
+                            {% if total_feedbacks > 0 %}
+                                {% for reason, count in reason_counts.items() %}
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-between align-items-center p-2 bg-dark bg-opacity-50 rounded">
+                                        <span class="text-light">{{ reason[:20] }}{% if reason|length > 20 %}...{% endif %}</span>
+                                        <span class="badge bg-primary">{{ ((count / total_feedbacks) * 100)|round|int }}%</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="col-12">
+                                    <p class="text-muted text-center">No exit feedback data available</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Department Breakdown (Real Data) -->
+                    <div class="mb-4">
+                        <h6 class="text-light mb-3">Department Breakdown</h6>
+                        <div class="row g-2">
+                            {% set dept_counts = {} %}
+                            {% for employee in offboarding_employees %}
+                                {% set dept = employee.department or 'Unassigned' %}
+                                {% if dept_counts.get(dept) %}
+                                    {% set _ = dept_counts.update({dept: dept_counts[dept] + 1}) %}
+                                {% else %}
+                                    {% set _ = dept_counts.update({dept: 1}) %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if dept_counts %}
+                                {% for dept, count in dept_counts.items() %}
+                                <div class="col-md-4">
+                                    <div class="text-center p-3 bg-dark bg-opacity-50 rounded">
+                                        <h5 class="text-primary mb-1">{{ dept[:10] }}{% if dept|length > 10 %}...{% endif %}</h5>
+                                        <small class="text-muted">{{ count }} exit{{ 's' if count != 1 else '' }}</small>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="col-12">
+                                    <p class="text-muted text-center">No offboarding employees data available</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Advanced Section (Hidden by default) -->
+    <div id="advancedSection" style="display: none;" class="mt-4">
+        <div class="card bg-dark bg-opacity-25 border-secondary">
+            <div class="card-header bg-transparent border-secondary">
+                <h6 class="text-light mb-0">Advanced Analytics</h6>
+            </div>
+            <div class="card-body">
+                <!-- Employee Specific Details -->
+                {% if employee %}
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-light mb-3">Employee Information</h6>
+                        <p class="text-muted mb-2"><strong>Department:</strong> {{ employee.department or 'Not Assigned' }}</p>
+                        <p class="text-muted mb-2"><strong>Position:</strong> {{ employee.position or 'Not Assigned' }}</p>
+                        <p class="text-muted mb-2"><strong>Exit Date:</strong> {{ employee.exit_date.strftime('%B %d, %Y') if employee.exit_date else 'Not Set' }}</p>
+                        <p class="text-muted mb-2"><strong>Status:</strong> {{ employee.status }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-light mb-3">Offboarding Details</h6>
+                        {% if employee.checklist %}
+                        <p class="text-muted mb-2"><strong>Checklist Created:</strong> {{ employee.checklist.created_at.strftime('%B %d, %Y') if employee.checklist.created_at else 'N/A' }}</p>
+                        <p class="text-muted mb-2"><strong>Total Tasks:</strong> {{ employee.checklist.tasks | length }}</p>
+                        <p class="text-muted mb-2"><strong>Completed:</strong> {{ employee.checklist.tasks | selectattr('is_completed', 'equalto', true) | list | length }}</p>
+                        <p class="text-muted mb-2"><strong>Progress:</strong> {{ "%.0f"|format(employee.checklist.get_progress()) }}%</p>
+                        {% else %}
+                        <p class="text-muted mb-2"><strong>Checklist:</strong> Not Created</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-light mb-3">Detailed Metrics</h6>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-light small">Avg. Exit Time</span>
+                                <span class="text-light-50 small">
+                                    {% set exit_times = [] %}
+                                    {% for emp in offboarding_employees %}
+                                        {% if emp.exit_date and emp.hire_date %}
+                                            {% set days = (emp.exit_date - emp.hire_date).days %}
+                                            {% set _ = exit_times.append(days) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if exit_times %}
+                                        {% set avg_time = (exit_times | sum / exit_times | length) | round(1) %}
+                                        {{ avg_time }} days
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% set exit_progress = 0 %}
+{% if exit_times %}
+    {% set exit_progress = ((avg_time / 365) * 100) | round %}
+{% endif %}
+<div class="progress bg-dark bg-opacity-50" style="height: 6px;">
+    <div class="progress-bar bg-warning" style="width: {{ exit_progress }}%"></div>
+</div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-light small">Process Efficiency</span>
+                                <span class="text-light-50 small">
+                                    {% set completed_tasks = 0 %}
+                                    {% set total_tasks = 0 %}
+                                    {% for emp in offboarding_employees %}
+                                        {% if emp.checklist %}
+                                            {% set completed_tasks = completed_tasks + emp.checklist.completed_tasks %}
+                                            {% set total_tasks = total_tasks + emp.checklist.total_tasks %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if total_tasks > 0 %}
+                                        {{ ((completed_tasks / total_tasks) * 100) | round }}%
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% set efficiency_progress = 0 %}
+{% if total_tasks > 0 %}
+    {% set efficiency_progress = ((completed_tasks / total_tasks) * 100) | round %}
+{% endif %}
+<div class="progress bg-dark bg-opacity-50" style="height: 6px;">
+    <div class="progress-bar bg-success" style="width: {{ efficiency_progress }}%"></div>
+</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-light mb-3">Trend Analysis</h6>
+                        <div class="text-center py-3">
+                            {% if exit_feedbacks %}
+                                <small class="text-muted">
+                                    {{ exit_feedbacks|length }} exit{{ 's' if exit_feedbacks|length != 1 else '' }} in last {{ exit_feedbacks|length }} records
+                                </small>
+                            {% else %}
+                                <small class="text-muted">No exit trend data available</small>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -632,133 +410,138 @@
     </div>
 </div>
 
-{% endblock %}
-
-<!-- ... existing code ... -->
-
-{% block extra_js %}
+<!-- JavaScript -->
 <script>
-// ... existing code ...
-
-// Initialize offboarding tasks
-const tasks = [
-    { id: 1, title: 'Laptop/Asset Return', status: 'pending', risk: 'high', dueDate: '2023-11-19', completed: false, assignedTo: 'it' },
-    { id: 2, title: 'ID Card Return', status: 'pending', risk: 'medium', dueDate: '2023-11-18', completed: false, assignedTo: 'hr' },
-    { id: 3, title: 'Email Account Closure', status: 'pending', risk: 'high', dueDate: '2023-11-17', completed: false, assignedTo: 'it' },
-    { id: 4, title: 'System Access Revocation', status: 'in-progress', risk: 'high', dueDate: '2023-11-18', completed: false, assignedTo: 'it' },
-    { id: 5, title: 'Exit Interview', status: 'pending', risk: 'low', dueDate: '2023-11-19', completed: false, assignedTo: 'hr' },
-    { id: 6, title: 'Final Clearance', status: 'pending', risk: 'medium', dueDate: '2023-11-20', completed: false, assignedTo: 'finance' },
-    { id: 7, title: 'Experience Letter', status: 'completed', risk: 'low', dueDate: '2023-11-15', completed: true, assignedTo: 'hr' }
-];
-
-// Render tasks
-const taskList = document.getElementById('offboardingTasks');
-if (taskList) {
-    tasks.forEach(task => {
-        const taskRow = document.createElement('tr');
-        taskRow.innerHTML = `
-            <td>${task.title}</td>
-            <td>
-                <span class="badge bg-${task.status === 'pending' ? 'warning' : task.status === 'in-progress' ? 'primary' : 'success'} bg-opacity-25 text-${task.status === 'pending' ? 'warning' : task.status === 'in-progress' ? 'primary' : 'success'}">
-                    ${task.status === 'pending' ? '<i class="fas fa-clock me-1"></i> Pending' : task.status === 'in-progress' ? '<i class="fas fa-spinner me-1"></i> In Progress' : '<i class="fas fa-check-circle me-1"></i> Completed'}
-                </span>
-            </td>
-            <td>
-                <span class="badge bg-${task.risk === 'high' ? 'danger' : task.risk === 'medium' ? 'warning' : 'success'} bg-opacity-25 text-${task.risk === 'high' ? 'danger' : task.risk === 'medium' ? 'warning' : 'success'}">
-                    ${task.risk === 'high' ? '<i class="fas fa-exclamation-triangle me-1"></i> High' : task.risk === 'medium' ? '<i class="fas fa-exclamation-circle me-1"></i> Medium' : '<i class="fas fa-check-circle me-1"></i> Low'}
-                </span>
-            </td>
-            <td>${task.dueDate}</td>
-            <td>${task.assignedTo}</td>
-            <td class="text-end">
-                <button class="btn btn-sm btn-outline-primary view-task-btn" data-task-id="${task.id}">View</button>
-            </td>
-        `;
-        taskList.appendChild(taskRow);
-    });
-} else {
-    console.warn('Offboarding tasks table not found');
-}
-
-// Checklist functionality
-function updateChecklistProgress() {
-    const checkboxes = document.querySelectorAll('.form-check-input');
-    const checked = document.querySelectorAll('.form-check-input:checked');
-    const progress = checked.length;
-    const total = checkboxes.length;
-    const percentage = total > 0 ? (progress / total) * 100 : 0;
-    
-    document.getElementById('checklistProgress').textContent = progress;
-    document.getElementById('checklistProgressBar').style.width = percentage + '%';
-}
-
-// Add event listeners to checkboxes
-document.addEventListener('DOMContentLoaded', function() {
-    const checkboxes = document.querySelectorAll('.form-check-input');
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateChecklistProgress);
-    });
-    
-    // Initialize progress on page load
-    updateChecklistProgress();
-});
-
-function saveChecklist() {
-    // Update progress before saving
-    updateChecklistProgress();
-    
-    // Here you can add functionality to save the checklist state
-    alert('Checklist progress saved!');
-}
-
-function messageHR() {
-    // Get HR phone number from the template
-    const hrPhone = '{{ hr_contact.phone if hr_contact else "" }}';
-    
-    if (!hrPhone) {
-        alert('HR contact phone number is not available');
-        return;
-    }
-    
-    // Format phone number (remove any spaces, dashes, parentheses)
-    const cleanPhone = hrPhone.replace(/[\s\-()]/g, '');
-    
-    // Ensure phone number starts with country code (add +91 for India if not present)
-    let formattedPhone = cleanPhone;
-    if (!cleanPhone.startsWith('+')) {
-        if (cleanPhone.length === 10) {
-            formattedPhone = '+91' + cleanPhone; // India country code
-        } else if (!cleanPhone.startsWith('91')) {
-            formattedPhone = '+91' + cleanPhone;
+    // Toggle advanced mode
+    function toggleAdvancedMode() {
+        const advancedSection = document.getElementById('advancedSection');
+        const button = event.target.closest('button');
+        
+        if (advancedSection.style.display === 'none') {
+            advancedSection.style.display = 'block';
+            button.innerHTML = '<i class="fas fa-times me-1"></i>Simple';
         } else {
-            formattedPhone = '+' + cleanPhone;
+            advancedSection.style.display = 'none';
+            button.innerHTML = '<i class="fas fa-cog me-1"></i>Advanced';
         }
     }
-    
-    // Create WhatsApp message
-    const message = encodeURIComponent('Hi,\n\nI have a question regarding my exit process.\n\nThank you.');
-    
-    // Open WhatsApp chat
-    window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
-}
 
-// Handle employee selection dropdown
-document.addEventListener('DOMContentLoaded', function() {
-    const employeeSelect = document.getElementById('offboardingEmployeeSelect');
-    if (employeeSelect) {
-        employeeSelect.addEventListener('change', function() {
-            const selectedEmployeeId = this.value;
-            if (selectedEmployeeId) {
-                // Reload page with selected employee (could be enhanced with AJAX)
-                window.location.href = `/exit?employee_id=${selectedEmployeeId}`;
+    // Task management functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle task completion toggle
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('task-action')) {
+                e.preventDefault();
+                const taskId = e.target.dataset.taskId;
+                const completed = e.target.dataset.completed === 'true';
+                const action = e.target.dataset.action;
+                
+                if (action === 'toggle-completion') {
+                    toggleTaskCompletion(taskId, completed);
+                }
             }
         });
-    }
-});
 
-// ... existing code ...
+        // Handle checkbox changes
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('task-checkbox')) {
+                const taskId = e.target.dataset.taskId;
+                const completed = e.target.checked;
+                toggleTaskCompletion(taskId, completed);
+            }
+        });
+
+        // Update progress bar based on completed tasks
+        updateProgressBar();
+    });
+
+    function toggleTaskCompletion(taskId, completed) {
+        fetch(`/api/onboarding/tasks/${taskId}/toggle`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ completed: completed })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI
+                const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+                const checkbox = document.querySelector(`#exitTask${taskId}`);
+                const statusBadge = taskRow.querySelector('.badge');
+                
+                if (completed) {
+                    checkbox.checked = true;
+                    statusBadge.className = 'badge bg-success bg-opacity-25 text-success';
+                    statusBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i> Completed';
+                    taskRow.dataset.status = 'completed';
+                } else {
+                    checkbox.checked = false;
+                    statusBadge.className = 'badge bg-secondary bg-opacity-25 text-muted';
+                    statusBadge.innerHTML = '<i class="far fa-clock me-1"></i> Pending';
+                    taskRow.dataset.status = 'pending';
+                }
+                
+                // Update progress
+                updateProgressBar();
+                
+                // Show success message
+                showNotification('Task status updated successfully', 'success');
+            } else {
+                showNotification('Error updating task status', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error updating task status', 'error');
+        });
+    }
+
+    function updateProgressBar() {
+        const totalTasks = document.querySelectorAll('.task-item').length;
+        const completedTasks = document.querySelectorAll('.task-item[data-status="completed"]').length;
+        const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        
+        const progressBar = document.getElementById('exitProgressBar');
+        const progressText = document.getElementById('progressPercentage');
+        
+        if (progressBar && progressText) {
+            progressBar.style.width = progressPercentage + '%';
+            progressBar.setAttribute('aria-valuenow', progressPercentage);
+            progressText.textContent = progressPercentage + '%';
+        }
+        
+        // Update completion badge
+        const completionBadge = document.querySelector('.badge.bg-primary');
+        if (completionBadge) {
+            completionBadge.textContent = `${completedTasks}/${totalTasks} Complete`;
+        }
+    }
+
+    function showNotification(message, type) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 3000);
+    }
+
+    // Initialize progress bar animation
+    setTimeout(() => {
+        updateProgressBar();
+    }, 500);
 </script>
-    opacity: 0.7;
-}
-</style>
 {% endblock %}
