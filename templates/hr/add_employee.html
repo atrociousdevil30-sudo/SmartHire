@@ -122,14 +122,6 @@
                                     <span id="aiStatusText">Generating checklist with AI...</span>
                                 </div>
                                 <div id="checklistTasks">
-                                    <p class="text-muted small mb-0">Add, remove, or modify onboarding tasks for this employee.</p>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-primary" id="addTaskBtn">
-                                    <i class="fas fa-plus me-1"></i> Add Task
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div id="checklistTasks">
                                     <div class="task-item mb-3 p-3 border border-secondary rounded">
                                         <div class="d-flex align-items-center">
                                             <input type="checkbox" class="form-check-input me-3" name="task_enabled[]" value="1" checked>
@@ -420,12 +412,44 @@
         
         // Remove task
         checklistTasks.addEventListener('click', function(e) {
-            if (e.target.classList.contains('remove-task') || e.target.closest('.remove-task')) {
-                const taskItem = e.target.closest('.task-item');
-                if (checklistTasks.children.length > 1) {
-                    taskItem.remove();
+            const removeButton = e.target.closest('.remove-task');
+            if (removeButton) {
+                e.preventDefault();
+                const taskItem = removeButton.closest('.task-item');
+                const allTasks = checklistTasks.querySelectorAll('.task-item');
+                
+                if (allTasks.length > 1) {
+                    // Add fade out animation
+                    taskItem.style.opacity = '0';
+                    taskItem.style.transition = 'opacity 0.3s ease';
+                    
+                    setTimeout(() => {
+                        taskItem.remove();
+                    }, 300);
                 } else {
-                    alert('At least one task is required for onboarding.');
+                    // Show warning message
+                    const warningDiv = document.createElement('div');
+                    warningDiv.className = 'alert alert-warning alert-dismissible fade show mt-2';
+                    warningDiv.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        At least one task is required for onboarding.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    
+                    // Remove existing warnings
+                    const existingWarning = checklistTasks.querySelector('.alert-warning');
+                    if (existingWarning) {
+                        existingWarning.remove();
+                    }
+                    
+                    checklistTasks.appendChild(warningDiv);
+                    
+                    // Auto-remove warning after 3 seconds
+                    setTimeout(() => {
+                        if (warningDiv.parentNode) {
+                            warningDiv.remove();
+                        }
+                    }, 3000);
                 }
             }
         });
