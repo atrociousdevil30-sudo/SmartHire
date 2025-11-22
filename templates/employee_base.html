@@ -95,13 +95,6 @@
                     </a>
                 </li>
                 
-                <!-- Sound Toggle -->
-                <li class="nav-item">
-                    <button class="btn btn-link nav-link text-light" id="soundToggle" onclick="toggleSound()" title="Toggle sound notifications">
-                        <i class="bi bi-bell"></i>
-                    </button>
-                </li>
-                
                 <!-- Employee HUB -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if request.endpoint in ['onboarding_tasks', 'employee_pre_offboarding', 'offboarding_tasks', 'employee_mood_tracking'] %}active{% endif %} text-light" 
@@ -394,75 +387,6 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/employee-portal.js') }}"></script>
 <script>
-// Global sound notification system for all employee pages
-let soundEnabled = true;
-
-function playNotificationSound() {
-    if (!soundEnabled) return;  // Don't play if disabled
-    
-    try {
-        // Create audio context for notification sound
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Create a pleasant notification sound (beep sequence)
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Set frequency for a pleasant notification sound
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-        
-        // Set volume (not too loud)
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-        
-        // Play sound
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.3);
-        
-        console.log('Notification sound played');
-    } catch (error) {
-        console.log('Audio notification not supported:', error);
-    }
-}
-
-// Toggle sound on/off
-function toggleSound() {
-    soundEnabled = !soundEnabled;
-    localStorage.setItem('soundEnabled', soundEnabled);
-    
-    const soundToggle = document.getElementById('soundToggle');
-    if (soundToggle) {
-        soundToggle.innerHTML = soundEnabled ? 
-            '<i class="bi bi-bell"></i>' : 
-            '<i class="bi bi-bell-slash"></i>';
-        soundToggle.title = soundEnabled ? 'Disable sound' : 'Enable sound';
-    }
-    
-    // Show feedback
-    showToast(soundEnabled ? 'Sound enabled' : 'Sound disabled', 'info');
-}
-
-// Load sound preference
-function loadSoundPreference() {
-    const saved = localStorage.getItem('soundEnabled');
-    if (saved !== null) {
-        soundEnabled = saved === 'true';
-    }
-    
-    // Update toggle button
-    const soundToggle = document.getElementById('soundToggle');
-    if (soundToggle) {
-        soundToggle.innerHTML = soundEnabled ? 
-            '<i class="bi bi-bell"></i>' : 
-            '<i class="bi bi-bell-slash"></i>';
-        soundToggle.title = soundEnabled ? 'Disable sound' : 'Enable sound';
-    }
-}
-
 // Check for new messages periodically
 let lastUnreadCount = parseInt('{{ unread_messages_count or 0 }}') || 0;
 
@@ -471,9 +395,6 @@ function checkForNewMessages() {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success' && data.unread_count > lastUnreadCount) {
-                // New messages arrived - play sound
-                playNotificationSound();
-                
                 // Update badge
                 updateMessagesBadge(data.unread_count);
                 
@@ -513,9 +434,6 @@ if ('Notification' in window && Notification.permission === 'default') {
         }
     });
 }
-
-// Load sound preference on page load
-loadSoundPreference();
 </script>
 <script>
     // Initialize Bootstrap dropdowns

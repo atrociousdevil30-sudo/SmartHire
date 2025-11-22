@@ -597,5 +597,94 @@
             var advancedTab = new bootstrap.Tab(document.getElementById('advanced-tab'));
             advancedTab.show();
         }
+
+        // Real-time task updates
+        let lastUpdateTime = null;
+        let updateInterval = null;
+        
+        function checkForUpdates() {
+            const selectedEmployee = document.getElementById('employeeSelect').value;
+            if (!selectedEmployee) return;
+            
+            fetch(`/api/hr/onboarding/tasks/${selectedEmployee}/updates`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Check if there are new updates
+                        if (data.last_updated && lastUpdateTime && data.last_updated > lastUpdateTime) {
+                            // Show notification
+                            showUpdateNotification(data.updates.length);
+                            
+                            // Auto-refresh the page after a short delay
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        }
+                        
+                        lastUpdateTime = data.last_updated;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking for updates:', error);
+                });
+        }
+        
+        function showUpdateNotification(updateCount) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = 'alert alert-info alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+            notification.style.zIndex = '9999';
+            notification.innerHTML = `
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>${updateCount}</strong> task update${updateCount > 1 ? 's' : ''} detected. Refreshing...
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 3000);
+        }
+        
+        function startRealTimeUpdates() {
+            // Check for updates every 10 seconds
+            updateInterval = setInterval(checkForUpdates, 10000);
+            
+            // Initial check
+            checkForUpdates();
+        }
+        
+        function stopRealTimeUpdates() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+        
+        // Start real-time updates when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            startRealTimeUpdates();
+        });
+        
+        // Stop updates when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            stopRealTimeUpdates();
+        });
+        
+        // Manual refresh button
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Refreshing...';
+            
+            checkForUpdates();
+            
+            // Force page refresh after checking
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        });
     </script>
 {% endblock %}

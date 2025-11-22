@@ -2306,6 +2306,65 @@ def onboarding_tasks():
         task_type='onboarding'
     ).all()
     
+    # If no onboarding tasks exist, create sample tasks for testing
+    if not onboarding_tasks and user.status == 'Onboarding':
+        sample_tasks = [
+            {
+                'title': 'Complete Personal Information Form',
+                'description': 'Fill out your personal details and emergency contact information',
+                'priority': 'high',
+                'task_type': 'onboarding'
+            },
+            {
+                'title': 'Upload Government ID Documents',
+                'description': 'Upload your Aadhaar card and PAN card for verification',
+                'priority': 'high',
+                'task_type': 'onboarding'
+            },
+            {
+                'title': 'Watch Company Orientation Video',
+                'description': 'Complete the mandatory company orientation and safety training',
+                'priority': 'medium',
+                'task_type': 'onboarding'
+            },
+            {
+                'title': 'Review Employee Handbook',
+                'description': 'Read and acknowledge the employee handbook and company policies',
+                'priority': 'medium',
+                'task_type': 'onboarding'
+            },
+            {
+                'title': 'Sign Employment Agreement',
+                'description': 'Review and sign your employment agreement and confidentiality terms',
+                'priority': 'high',
+                'task_type': 'onboarding'
+            }
+        ]
+        
+        for task_data in sample_tasks:
+            new_task = Task(
+                title=task_data['title'],
+                description=task_data['description'],
+                priority=task_data['priority'],
+                task_type=task_data['task_type'],
+                status='pending',
+                assigned_to=user.id,
+                assigned_by=1,  # Assuming HR user ID is 1
+                department='HR',
+                due_date=datetime.utcnow() + timedelta(days=7),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.session.add(new_task)
+        
+        db.session.commit()
+        
+        # Fetch the newly created tasks
+        onboarding_tasks = Task.query.filter_by(
+            assigned_to=user.id, 
+            task_type='onboarding'
+        ).all()
+    
     # Create compatible task objects for template
     compatible_tasks = []
     for task in onboarding_tasks:
@@ -5799,6 +5858,21 @@ def employee_toggle_onboarding_task(task_id):
         task.updated_at = datetime.utcnow()
         db.session.commit()
         
+        # Notify HR users about the task update
+        hr_users = User.query.filter_by(role='hr', is_active=True).all()
+        for hr_user in hr_users:
+            message = Message(
+                sender_id=user.id,
+                recipient_id=hr_user.id,
+                subject=f'Onboarding Task Updated: {task.title}',
+                content=f'Employee {user.full_name} has {"completed" if task.status == "completed" else "reopened"} the onboarding task "{task.title}".\n\nTask Status: {task.status.title()}\nUpdated: {datetime.utcnow().strftime("%Y-%m-%d %H:%M")}',
+                priority='low',
+                status='unread'
+            )
+            db.session.add(message)
+        
+        db.session.commit()
+        
         return jsonify({
             'status': 'success', 
             'message': 'Task updated successfully',
@@ -5808,6 +5882,47 @@ def employee_toggle_onboarding_task(task_id):
     except Exception as e:
         db.session.rollback()
         app.logger.error(f'Error toggling onboarding task: {str(e)}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/hr/onboarding/tasks/<int:employee_id>/updates', methods=['GET'])
+@login_required('hr')
+def hr_onboarding_task_updates(employee_id):
+    """Get real-time updates for employee onboarding tasks"""
+    try:
+        # Verify employee exists
+        employee = User.query.get_or_404(employee_id)
+        
+        # Get latest task updates
+        onboarding_tasks = Task.query.filter_by(
+            assigned_to=employee.id, 
+            task_type='onboarding'
+        ).order_by(Task.updated_at.desc()).all()
+        
+        # Return recent updates (last 10 tasks updated in last 24 hours)
+        recent_cutoff = datetime.utcnow() - timedelta(hours=24)
+        recent_tasks = [task for task in onboarding_tasks if task.updated_at >= recent_cutoff]
+        
+        updates = []
+        for task in recent_tasks[:10]:  # Limit to 10 most recent
+            updates.append({
+                'id': task.id,
+                'title': task.title,
+                'status': task.status,
+                'updated_at': task.updated_at.isoformat(),
+                'completed_at': task.completed_at.isoformat() if task.completed_at else None,
+                'employee_name': employee.full_name,
+                'priority': task.priority
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'updates': updates,
+            'total_tasks': len(onboarding_tasks),
+            'completed_tasks': len([t for t in onboarding_tasks if t.status == 'completed']),
+            'last_updated': max([t.updated_at for t in onboarding_tasks]).isoformat() if onboarding_tasks else None
+        })
+    except Exception as e:
+        app.logger.error(f'Error fetching task updates: {str(e)}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/employee/onboarding/tasks/<int:task_id>/report-issue', methods=['POST'])
