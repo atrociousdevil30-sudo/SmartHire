@@ -184,19 +184,44 @@ class SmartHireTour {
 
     // Force restart a tour (even if already completed)
     forceRestartTour(page) {
+        console.log(`Tour: forceRestartTour called for page: ${page}`);
         this.tourSteps = this.getTourSteps(page);
+        console.log(`Tour: Got ${this.tourSteps.length} steps for ${page}`);
         if (this.tourSteps.length === 0) return;
 
+        // Validate that tour elements exist
+        const missingElements = [];
+        this.tourSteps.forEach((step, index) => {
+            const element = document.querySelector(step.target);
+            if (!element) {
+                missingElements.push(`Step ${index + 1}: ${step.target}`);
+            }
+        });
+
+        if (missingElements.length > 0) {
+            console.warn('Tour: Missing elements detected:', missingElements);
+            // Still try to start the tour, but with awareness that some steps may be skipped
+        }
+
+        console.log('Tour: Setting active state and current step to 0');
         this.isActive = true;
         this.currentStep = 0;
+        console.log(`Tour: Before createTourOverlay - isActive: ${this.isActive}, currentStep: ${this.currentStep}`);
         this.createTourOverlay();
+        console.log(`Tour: After createTourOverlay - isActive: ${this.isActive}, currentStep: ${this.currentStep}`);
         this.showCurrentStep();
     }
 
     // Create tour overlay and tooltip
     createTourOverlay() {
-        // Remove existing tour elements
-        this.endTour();
+        console.log('Tour: createTourOverlay called');
+        // Remove existing tour elements only if they exist
+        if (this.tourOverlay || this.tourTooltip) {
+            console.log('Tour: Removing existing tour elements');
+            this.endTour();
+        } else {
+            console.log('Tour: No existing tour elements to remove');
+        }
 
         // Create overlay
         this.tourOverlay = document.createElement('div');
@@ -345,29 +370,54 @@ class SmartHireTour {
         this.tourTooltip = document.createElement('div');
         this.tourTooltip.className = 'tour-tooltip';
         document.body.appendChild(this.tourTooltip);
+        
+        console.log('Tour: Overlay and tooltip created successfully');
     }
 
     // Show current tour step
     showCurrentStep() {
+        console.log(`Tour: Showing step ${this.currentStep + 1}/${this.tourSteps.length}`);
+        
         if (!this.isActive || this.currentStep >= this.tourSteps.length) {
+            console.log('Tour: Completing tour - end of steps or inactive');
             this.completeTour();
             return;
         }
 
         const step = this.tourSteps[this.currentStep];
+        console.log(`Tour: Step details:`, step);
+        
         const targetElement = document.querySelector(step.target);
+        console.log(`Tour: Target element for "${step.target}":`, targetElement);
 
         if (!targetElement) {
-            this.nextStep();
+            console.warn(`Tour: Element not found for step ${this.currentStep + 1}: ${step.target}`);
+            // Try to find the element with a short delay
+            setTimeout(() => {
+                const retryElement = document.querySelector(step.target);
+                if (retryElement) {
+                    console.log(`Tour: Element found on retry, proceeding with step ${this.currentStep + 1}`);
+                    this.highlightTarget(retryElement);
+                    this.positionTooltip(retryElement, step);
+                    this.updateTooltipContent(step);
+                } else {
+                    console.error(`Tour: Element still not found, skipping step ${this.currentStep + 1}`);
+                    this.nextStep();
+                }
+            }, 500);
             return;
         }
 
+        console.log(`Tour: Element found, highlighting and positioning tooltip for step ${this.currentStep + 1}`);
+        
         // Highlight target element
         this.highlightTarget(targetElement);
 
         // Position and show tooltip
         this.positionTooltip(targetElement, step);
         this.updateTooltipContent(step);
+        
+        console.log(`Tour: Step ${this.currentStep + 1} should now be visible`);
     }
 
     // Highlight the target element
@@ -391,8 +441,12 @@ class SmartHireTour {
 
     // Position tooltip relative to target
     positionTooltip(target, step) {
+        console.log(`Tour: Positioning tooltip for "${step.target}"`);
         const rect = target.getBoundingClientRect();
+        console.log(`Tour: Element rect:`, rect);
+        
         const tooltip = this.tourTooltip;
+        console.log(`Tour: Tooltip element:`, tooltip);
         
         // Reset classes
         tooltip.className = 'tour-tooltip';
@@ -426,6 +480,8 @@ class SmartHireTour {
                 tooltip.classList.add('bottom');
         }
 
+        console.log(`Tour: Calculated position - top: ${top}, left: ${left}`);
+
         // Adjust if tooltip goes outside viewport
         if (left < 10) left = 10;
         if (left + tooltip.offsetWidth > window.innerWidth - 10) {
@@ -436,9 +492,13 @@ class SmartHireTour {
             top = window.innerHeight - tooltip.offsetHeight - 10;
         }
 
+        console.log(`Tour: Final position - top: ${top}, left: ${left}`);
+
         tooltip.style.top = top + 'px';
         tooltip.style.left = left + 'px';
         tooltip.style.display = 'block';
+        
+        console.log(`Tour: Tooltip positioned and displayed`);
     }
 
     // Update tooltip content

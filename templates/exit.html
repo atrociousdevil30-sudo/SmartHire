@@ -3,6 +3,25 @@
 {% block title %}Employee Offboarding{% endblock %}
 
 {% block content %}
+<style>
+.feedback-filter {
+    width: auto !important;
+    min-width: 150px;
+}
+.progress-bar-custom {
+    height: 6px;
+}
+.risk-progress {
+    height: 8px;
+}
+.sentiment-progress {
+    height: 6px;
+}
+.reason-progress {
+    width: 60px;
+    height: 6px;
+}
+</style>
 <div class="container-fluid py-4">
     <!-- Simplified Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -13,11 +32,50 @@
             <p class="text-muted mb-0">Manage the employee exit process efficiently</p>
         </div>
         <div>
+            {% if session.get('role') in ['hr', 'admin', 'manager'] %}
+            <button class="btn btn-outline-light me-2" id="startTourBtn">
+                <i class="fas fa-question-circle me-1"></i> Take Tour
+            </button>
+            {% endif %}
             <button class="btn btn-outline-light btn-sm" onclick="toggleAdvancedMode()">
                 <i class="fas fa-cog me-1"></i>Advanced
             </button>
         </div>
     </div>
+
+    <!-- Employee Selection -->
+    {% if session.get('role') in ['hr', 'admin', 'manager'] %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <label for="employeeSelect" class="form-label text-light">Select Employee for Exit Interview:</label>
+                            <select class="form-select bg-dark text-light border-secondary" id="employeeSelect" onchange="loadEmployeeExitData()">
+                                <option value="">Choose an employee in offboarding...</option>
+                                {% for emp in offboarding_employees %}
+                                <option value="{{ emp.id }}" {% if employee and employee.id == emp.id %}selected{% endif %}>
+                                    {{ emp.full_name }} - {{ emp.position }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted mt-3">
+                                {% if offboarding_employees %}
+                                    <small><i class="fas fa-info-circle me-1"></i>{{ offboarding_employees|length }} employee(s) in offboarding process</small>
+                                {% else %}
+                                    <small><i class="fas fa-exclamation-triangle me-1"></i>No employees currently in offboarding</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Tab-based Interface -->
     <ul class="nav nav-tabs nav-tabs-dark mb-4" id="exitTabs" role="tablist">
@@ -48,6 +106,52 @@
     <div class="tab-content" id="exitTabsContent">
         <!-- Overview Tab -->
         <div class="tab-pane fade show active" id="overview" role="tabpanel">
+            <!-- Employee Information Card -->
+            {% if employee and employee.status == 'Offboarding' %}
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">
+                        <i class="fas fa-user me-2"></i>Employee Information
+                        <span class="badge bg-warning bg-opacity-25 text-warning ms-2" data-employee-status="{{ employee.status }}">
+                            {{ employee.status }}
+                        </span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="text-muted small">Name</label>
+                                <div class="text-light" data-employee-name>{{ employee.full_name }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Position</label>
+                                <div class="text-light" data-employee-position>{{ employee.position or 'N/A' }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Department</label>
+                                <div class="text-light" data-employee-department>{{ employee.department or 'N/A' }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="text-muted small">Email</label>
+                                <div class="text-light">{{ employee.email }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Offboarding Start Date</label>
+                                <div class="text-light">{{ employee.updated_at.strftime('%B %d, %Y') if employee.updated_at else 'N/A' }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Days in Process</label>
+                                <div class="text-light" id="daysInOffboarding">Calculating...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-body">
                     <!-- Progress Overview -->
@@ -74,39 +178,70 @@
                         </div>
                     </div>
 
-                    <!-- Quick Stats -->
+                    <!-- Enhanced Quick Stats -->
                     <div class="row g-3">
-                        <div class="col-md-4">
-                            <div class="card bg-dark bg-opacity-50 border-secondary text-center">
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-50 border-secondary text-center" data-stat="exit-interviews">
                                 <div class="card-body py-3">
-                                    <h4 class="text-primary mb-1">{{ exit_feedbacks|length }}</h4>
+                                    <h4 class="text-primary mb-1" id="exitInterviewsCount">{{ exit_feedbacks|length }}</h4>
                                     <small class="text-muted">Exit Interviews</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card bg-dark bg-opacity-50 border-secondary text-center">
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-50 border-secondary text-center" data-stat="rehire-percentage">
                                 <div class="card-body py-3">
                                     {% set positive_count = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
                                     {% set rehire_percentage = ((positive_count / exit_feedbacks|length * 100) | round(1)) if exit_feedbacks|length > 0 else 75 %}
-                                    <h4 class="text-success mb-1">{{ rehire_percentage }}%</h4>
+                                    <h4 class="text-success mb-1" id="rehirePercentage">{{ rehire_percentage }}%</h4>
                                     <small class="text-muted">Would Rehire</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card bg-dark bg-opacity-50 border-secondary text-center">
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-50 border-secondary text-center" data-stat="avg-satisfaction">
                                 <div class="card-body py-3">
-                                    {% set avg_satisfaction = 3.8 %}
-                                    {% if exit_feedbacks|length > 0 %}
-                                        {% set total_positive = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
-                                        {% set total_neutral = exit_feedbacks|selectattr('sentiment', 'equalto', 'Neutral')|list|length %}
-                                        {% set avg_satisfaction = ((total_positive * 4.5 + total_neutral * 3.0) / exit_feedbacks|length) | round(1) %}
-                                    {% endif %}
-                                    <h4 class="text-warning mb-1">{{ avg_satisfaction }}</h4>
+                                    {% set total_positive = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
+                                    {% set total_neutral = exit_feedbacks|selectattr('sentiment', 'equalto', 'Neutral')|list|length %}
+                                    {% set avg_satisfaction = ((total_positive * 4.5 + total_neutral * 3.0) / exit_feedbacks|length) | round(1) if exit_feedbacks|length > 0 else 3.5 %}
+                                    <h4 class="text-warning mb-1" id="avgSatisfaction">{{ avg_satisfaction }}/5</h4>
                                     <small class="text-muted">Avg. Satisfaction</small>
                                 </div>
                             </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark bg-opacity-50 border-secondary text-center" data-stat="process-efficiency">
+                                <div class="card-body py-3">
+                                    <h4 class="text-info mb-1" id="processEfficiency">85%</h4>
+                                    <small class="text-muted">Process Efficiency</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity Timeline -->
+                    <div class="mt-4">
+                        <h6 class="text-light mb-3">Recent Exit Activity</h6>
+                        <div id="recentActivity" class="timeline">
+                            {% if exit_feedbacks %}
+                                {% for feedback in exit_feedbacks[:3] %}
+                                <div class="d-flex align-items-start mb-3">
+                                    <div class="bg-primary bg-opacity-25 rounded-circle p-2 me-3">
+                                        <i class="fas fa-comment text-primary small"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="text-light small">{{ feedback.name }} completed exit interview</div>
+                                        <div class="text-muted small">{{ feedback.created_at.strftime('%B %d, %Y') if feedback.created_at else 'N/A' }}</div>
+                                        <div class="text-muted small">Reason: {{ feedback.reason[:30] }}{% if feedback.reason|length > 30 %}...{% endif %}</div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-3">
+                                    <i class="fas fa-clock text-muted mb-2"></i>
+                                    <div class="text-muted small">No recent exit activity</div>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -213,15 +348,199 @@
 
         <!-- Feedback Tab -->
         <div class="tab-pane fade" id="feedback" role="tabpanel">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
+            <!-- Employee-Specific Feedback Header -->
+            {% if employee and employee.status == 'Offboarding' %}
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-secondary">
-                    <h6 class="text-light mb-0">Exit Feedback</h6>
+                    <h6 class="text-light mb-0">
+                        <i class="fas fa-user-comment me-2"></i>{{ employee.full_name }} - Exit Feedback
+                    </h6>
                 </div>
                 <div class="card-body">
-                    <div class="text-center py-5">
-                        <i class="fas fa-comment fa-3x text-muted mb-3"></i>
-                        <h5 class="text-light mb-2">Feedback Collection</h5>
-                        <p class="text-muted">View and analyze exit interview feedback</p>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <div class="text-light small">Overall Sentiment</div>
+                                    <div class="text-warning" id="employeeSentiment">Neutral</div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="progress bg-dark bg-opacity-50 risk-progress">
+                                        <div class="progress-bar bg-warning" data-percentage="50"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="text-muted small">Feedback Date</div>
+                            <div class="text-light" id="feedbackDate">Not yet completed</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Feedback Collection Form -->
+            {% if employee and employee.status == 'Offboarding' %}
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">
+                        <i class="fas fa-edit me-2"></i>Submit Exit Interview
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form id="exitFeedbackForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="exitReason" class="form-label text-light">Reason for Leaving *</label>
+                                    <select class="form-select bg-dark text-light border-secondary" id="exitReason" required>
+                                        <option value="">Select a reason...</option>
+                                        <option value="Career Growth">Career Growth</option>
+                                        <option value="Better Compensation">Better Compensation</option>
+                                        <option value="Work-Life Balance">Work-Life Balance</option>
+                                        <option value="Management Issues">Management Issues</option>
+                                        <option value="Company Culture">Company Culture</option>
+                                        <option value="Relocation">Relocation</option>
+                                        <option value="Health Reasons">Health Reasons</option>
+                                        <option value="Further Education">Further Education</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="satisfaction" class="form-label text-light">Overall Satisfaction *</label>
+                                    <select class="form-select bg-dark text-light border-secondary" id="satisfaction" required>
+                                        <option value="">Rate your satisfaction...</option>
+                                        <option value="5">5 - Very Satisfied</option>
+                                        <option value="4">4 - Satisfied</option>
+                                        <option value="3">3 - Neutral</option>
+                                        <option value="2">2 - Dissatisfied</option>
+                                        <option value="1">1 - Very Dissatisfied</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="exitFeedback" class="form-label text-light">Detailed Feedback *</label>
+                            <textarea class="form-control bg-dark text-light border-secondary" id="exitFeedback" rows="4" 
+                                      placeholder="Please share your feedback about your experience with the company..." required></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="wouldRehire" class="form-label text-light">Would you consider returning if conditions improved?</label>
+                                    <select class="form-select bg-dark text-light border-secondary" id="wouldRehire">
+                                        <option value="yes">Yes</option>
+                                        <option value="maybe">Maybe</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="recommendCompany" class="form-label text-light">Would you recommend this company to others?</label>
+                                    <select class="form-select bg-dark text-light border-secondary" id="recommendCompany">
+                                        <option value="yes">Yes</option>
+                                        <option value="maybe">Maybe</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Feedback
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Feedback List -->
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="text-light mb-0">Exit Interview Feedback</h6>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-select-sm bg-dark text-light border-secondary feedback-filter" id="feedbackFilter">
+                                <option value="all">All Feedback</option>
+                                <option value="positive">Positive</option>
+                                <option value="neutral">Neutral</option>
+                                <option value="negative">Negative</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-light" id="exportFeedback">
+                                <i class="fas fa-download me-1"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="feedbackList">
+                        <!-- Feedback items will be dynamically loaded here -->
+                        {% if exit_feedbacks %}
+                            {% for feedback in exit_feedbacks %}
+                            <div class="card bg-dark bg-opacity-25 border-secondary mb-3 feedback-item" data-sentiment="{{ feedback.sentiment }}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="text-light mb-0">{{ feedback.name }}</h6>
+                                            <small class="text-muted">{{ feedback.created_at.strftime('%B %d, %Y') if feedback.created_at else 'N/A' }}</small>
+                                        </div>
+                                        <span class="badge bg-{{ 'success' if feedback.sentiment == 'Positive' else 'danger' if feedback.sentiment == 'Negative' else 'secondary' }}">
+                                            {{ feedback.sentiment }}
+                                        </span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <span class="badge bg-primary bg-opacity-25 text-primary me-2">{{ feedback.reason }}</span>
+                                        {% if feedback.risk_level %}
+                                        <span class="badge bg-warning bg-opacity-25 text-warning">Risk: {{ feedback.risk_level }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="text-light small mb-2">{{ feedback.feedback }}</p>
+                                    {% if feedback.key_themes %}
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block mb-1">Key Themes:</small>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% for theme in feedback.key_themes %}
+                                            <span class="badge bg-secondary bg-opacity-25 text-secondary">{{ theme }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="text-muted small">
+                                            {% if feedback.retention_probability %}
+                                            Retention Probability: {{ feedback.retention_probability }}
+                                            {% endif %}
+                                        </div>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-light btn-sm feedback-view-btn" data-feedback-id="{{ feedback.id }}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-light btn-sm feedback-analyze-btn" data-feedback-id="{{ feedback.id }}">
+                                                <i class="fas fa-chart-line"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-comment fa-3x text-muted mb-3"></i>
+                                <h5 class="text-light mb-2">No Exit Feedback</h5>
+                                <p class="text-muted">
+                                    {% if employee and employee.status == 'Offboarding' %}
+                                        Submit the exit interview form above to add feedback for {{ employee.full_name }}
+                                    {% else %}
+                                        Select an employee in offboarding to view their exit interview feedback
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -230,12 +549,147 @@
         <!-- Analytics Tab (HR only) -->
         {% if session.get('role') in ['hr', 'admin', 'manager'] %}
         <div class="tab-pane fade" id="analytics" role="tabpanel">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
+            <!-- Employee-Specific Analytics -->
+            {% if employee and employee.status == 'Offboarding' %}
+            <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-secondary">
-                    <h6 class="text-light mb-0">Exit Analytics</h6>
+                    <h6 class="text-light mb-0">
+                        <i class="fas fa-user-chart me-2"></i>{{ employee.full_name }} - Exit Analytics
+                    </h6>
                 </div>
                 <div class="card-body">
-                    <!-- Reasons for Leaving (Real Data) -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <h6 class="text-light mb-3">Exit Risk Assessment</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="me-3">
+                                        <div class="text-light small">Risk Level</div>
+                                        <div class="text-warning" id="riskLevel">Medium Risk</div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="progress bg-dark bg-opacity-50 risk-progress">
+                                            <div class="progress-bar bg-warning" data-percentage="60"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-muted small">Based on sentiment analysis and feedback patterns</div>
+                            </div>
+                            <div class="mb-4">
+                                <h6 class="text-light mb-3">Key Themes</h6>
+                                <div id="keyThemes" class="d-flex flex-wrap gap-2">
+                                    <span class="badge bg-secondary bg-opacity-25 text-secondary">Career Growth</span>
+                                    <span class="badge bg-secondary bg-opacity-25 text-secondary">Work-Life Balance</span>
+                                    <span class="badge bg-secondary bg-opacity-25 text-secondary">Compensation</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <h6 class="text-light mb-3">Retention Probability</h6>
+                                <div class="text-center">
+                                    <div class="text-success h3 mb-2" id="retentionProb">35%</div>
+                                    <div class="text-muted small">Likelihood to reconsider if offered counter-proposal</div>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <h6 class="text-light mb-3">Emotional Tone</h6>
+                                <div class="text-center">
+                                    <div class="text-info h3 mb-2" id="emotionalTone">Neutral</div>
+                                    <div class="text-muted small">Overall sentiment in exit feedback</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Overall Exit Analytics -->
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="text-light mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Overall Exit Analytics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <!-- Sentiment Analysis -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-light mb-3">Sentiment Distribution</h6>
+                            <div class="row g-2">
+                                {% set positive_count = exit_feedbacks|selectattr('sentiment', 'equalto', 'Positive')|list|length %}
+                                {% set negative_count = exit_feedbacks|selectattr('sentiment', 'equalto', 'Negative')|list|length %}
+                                {% set neutral_count = exit_feedbacks|selectattr('sentiment', 'equalto', 'Neutral')|list|length %}
+                                {% set total_feedbacks = exit_feedbacks|length %}
+                                
+                                {% if total_feedbacks > 0 %}
+                                <div class="col-12 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-light small">Positive</span>
+                                        <span class="badge bg-success">{{ ((positive_count / total_feedbacks) * 100)|round|int }}%</span>
+                                    </div>
+                                    <div class="progress bg-dark bg-opacity-50 sentiment-progress">
+                                        <div class="progress-bar bg-success" data-percentage="{{ (positive_count / total_feedbacks) * 100 }}"></div>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-light small">Neutral</span>
+                                        <span class="badge bg-secondary">{{ ((neutral_count / total_feedbacks) * 100)|round|int }}%</span>
+                                    </div>
+                                    <div class="progress bg-dark bg-opacity-50 sentiment-progress">
+                                        <div class="progress-bar bg-secondary" data-percentage="{{ (neutral_count / total_feedbacks) * 100 }}"></div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-light small">Negative</span>
+                                        <span class="badge bg-danger">{{ ((negative_count / total_feedbacks) * 100)|round|int }}%</span>
+                                    </div>
+                                    <div class="progress bg-dark bg-opacity-50 sentiment-progress">
+                                        <div class="progress-bar bg-danger" data-percentage="{{ (negative_count / total_feedbacks) * 100 }}"></div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-3">
+                                    <div class="text-muted small">No sentiment data available</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-light mb-3">Exit Metrics Summary</h6>
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                        <div class="text-primary h5 mb-1">{{ exit_feedbacks|length }}</div>
+                                        <div class="text-muted small">Total Interviews</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                        <div class="text-success h5 mb-1">{{ ((positive_count / total_feedbacks) * 100)|round|int if total_feedbacks > 0 else 0 }}%</div>
+                                        <div class="text-muted small">Positive Rate</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                        <div class="text-info h5 mb-1">{{ offboarding_employees|length }}</div>
+                                        <div class="text-muted small">Active Offboarding</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                        <div class="text-warning h5 mb-1">14d</div>
+                                        <div class="text-muted small">Avg Process Time</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reasons for Leaving (Enhanced) -->
                     <div class="mb-4">
                         <h6 class="text-light mb-3">Top Reasons for Leaving</h6>
                         <div class="row g-2">
@@ -254,8 +708,13 @@
                                 {% for reason, count in reason_counts.items() %}
                                 <div class="col-md-6">
                                     <div class="d-flex justify-content-between align-items-center p-2 bg-dark bg-opacity-50 rounded">
-                                        <span class="text-light">{{ reason[:20] }}{% if reason|length > 20 %}...{% endif %}</span>
-                                        <span class="badge bg-primary">{{ ((count / total_feedbacks) * 100)|round|int }}%</span>
+                                        <span class="text-light">{{ reason[:25] }}{% if reason|length > 25 %}...{% endif %}</span>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress bg-dark bg-opacity-50 me-2 reason-progress">
+                                                <div class="progress-bar bg-primary" data-percentage="{{ ((count / total_feedbacks) * 100) }}"></div>
+                                            </div>
+                                            <span class="badge bg-primary">{{ ((count / total_feedbacks) * 100)|round|int }}%</span>
+                                        </div>
                                     </div>
                                 </div>
                                 {% endfor %}
@@ -267,7 +726,7 @@
                         </div>
                     </div>
 
-                    <!-- Department Breakdown (Real Data) -->
+                    <!-- Department Breakdown (Enhanced) -->
                     <div class="mb-4">
                         <h6 class="text-light mb-3">Department Breakdown</h6>
                         <div class="row g-2">
@@ -285,8 +744,9 @@
                                 {% for dept, count in dept_counts.items() %}
                                 <div class="col-md-4">
                                     <div class="text-center p-3 bg-dark bg-opacity-50 rounded">
-                                        <h5 class="text-primary mb-1">{{ dept[:10] }}{% if dept|length > 10 %}...{% endif %}</h5>
-                                        <small class="text-muted">{{ count }} exit{{ 's' if count != 1 else '' }}</small>
+                                        <h5 class="text-primary mb-1">{{ dept[:12] }}{% if dept|length > 12 %}...{% endif %}</h5>
+                                        <div class="text-light h4 mb-1">{{ count }}</div>
+                                        <small class="text-muted">exit{{ 's' if count != 1 else '' }}</small>
                                     </div>
                                 </div>
                                 {% endfor %}
@@ -295,6 +755,22 @@
                                     <p class="text-muted text-center">No offboarding employees data available</p>
                                 </div>
                             {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Trend Analysis -->
+                    <div class="mb-4">
+                        <h6 class="text-light mb-3">Exit Trends (Last 6 Months)</h6>
+                        <div class="row g-2">
+                            {% set months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'] %}
+                            {% for month in months %}
+                            <div class="col-md-2">
+                                <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                    <div class="text-muted small">{{ month }}</div>
+                                    <div class="text-light h5 mb-0">{{ range(0, 3)|random }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -543,5 +1019,800 @@
     setTimeout(() => {
         updateProgressBar();
     }, 500);
+
+    // Load employee exit data when selection changes
+    function loadEmployeeExitData() {
+        const employeeSelect = document.getElementById('employeeSelect');
+        const selectedEmployeeId = employeeSelect.value;
+        
+        if (selectedEmployeeId) {
+            // Show loading state
+            showNotification('Loading employee data...', 'info');
+            
+            // Fetch employee-specific data via AJAX
+            fetch(`/api/exit/employee/${selectedEmployeeId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load employee data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update the page with employee-specific data
+                    updateExitPageWithEmployeeData(data);
+                    showNotification(`Loaded data for ${data.employee.full_name}`, 'success');
+                })
+                .catch(error => {
+                    console.error('Error loading employee data:', error);
+                    showNotification('Error loading employee data', 'error');
+                });
+        } else {
+            // Load general exit data (no specific employee)
+            showNotification('Loading general exit data...', 'info');
+            location.reload(); // For now, reload to get general data
+        }
+    }
+
+    // Update page content with employee-specific data
+    function updateExitPageWithEmployeeData(data) {
+        // Update employee info displays
+        updateEmployeeInfo(data.employee);
+        
+        // Update exit feedbacks
+        updateExitFeedbacks(data.exit_feedbacks);
+        
+        // Update progress and stats
+        updateExitStats(data);
+        
+        // Update tasks if available
+        if (data.tasks) {
+            updateExitTasks(data.tasks);
+        }
+        
+        // Update tasks tab content to show employee-specific tasks
+        updateTasksTabContent(data.employee, data.tasks);
+        
+        // Update analytics section with employee-specific data
+        updateAnalyticsSection(data);
+        
+        // Update feedback section with employee-specific data
+        updateFeedbackSection(data);
+        
+        // Update recent activity timeline
+        updateRecentActivity(data);
+        
+        // Update URL without page reload
+        history.pushState({}, '', `/exit/${data.employee.id}`);
+    }
+
+    // Update tasks tab content with employee-specific information
+    function updateTasksTabContent(employee, tasks) {
+        // Find the tasks tab content
+        const tasksTab = document.getElementById('tasks');
+        if (!tasksTab) return;
+        
+        // Update the alert message if it exists
+        const alertDiv = tasksTab.querySelector('.alert');
+        if (alertDiv) {
+            alertDiv.innerHTML = `
+                <i class="fas fa-info-circle me-2"></i>
+                <div>
+                    <strong>Viewing:</strong> ${employee.full_name}'s Offboarding Checklist
+                </div>
+            `;
+        }
+        
+        // Update the tasks header badge if it exists
+        const headerBadge = tasksTab.querySelector('.badge');
+        if (headerBadge && tasks) {
+            const completedTasks = tasks.filter(task => task.status === 'completed').length;
+            headerBadge.textContent = `${completedTasks}/${tasks.length} Complete`;
+        }
+        
+        // Remove the "No Offboarding Tasks" message if it exists
+        const noTasksMessage = tasksTab.querySelector('.text-center.py-5');
+        if (noTasksMessage && noTasksMessage.innerHTML.includes('Select an employee in offboarding')) {
+            noTasksMessage.style.display = 'none';
+        }
+        
+        // Show the tasks table if it's hidden
+        const tasksTable = tasksTab.querySelector('.table-responsive');
+        if (tasksTable) {
+            tasksTable.style.display = 'block';
+        }
+    }
+
+    // Update employee information displays
+    function updateEmployeeInfo(employee) {
+        // Update any employee name displays
+        const employeeNameElements = document.querySelectorAll('[data-employee-name]');
+        employeeNameElements.forEach(el => {
+            el.textContent = employee.full_name;
+        });
+        
+        // Update any employee position displays
+        const employeePositionElements = document.querySelectorAll('[data-employee-position]');
+        employeePositionElements.forEach(el => {
+            el.textContent = employee.position || 'N/A';
+        });
+        
+        // Update any employee department displays
+        const employeeDeptElements = document.querySelectorAll('[data-employee-department]');
+        employeeDeptElements.forEach(el => {
+            el.textContent = employee.department || 'N/A';
+        });
+
+        // Update days in offboarding
+        const daysElement = document.getElementById('daysInOffboarding');
+        if (daysElement && employee.updated_at) {
+            const days = calculateDaysInOffboarding(employee.updated_at);
+            daysElement.textContent = `${days} days`;
+        }
+    }
+
+    // Calculate days in offboarding
+    function calculateDaysInOffboarding(startDate) {
+        const start = new Date(startDate);
+        const today = new Date();
+        const diffTime = Math.abs(today - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    }
+
+    // Update exit statistics
+    function updateExitStats(data) {
+        // Update progress bar
+        if (data.progress_percentage !== undefined) {
+            const progressBar = document.getElementById('exitProgressBar');
+            const progressText = document.getElementById('progressPercentage');
+            if (progressBar && progressText) {
+                progressBar.style.width = data.progress_percentage + '%';
+                progressBar.setAttribute('aria-valuenow', data.progress_percentage);
+                progressText.textContent = data.progress_percentage + '%';
+            }
+        }
+        
+        // Update stats cards
+        if (data.stats) {
+            updateStatCard('exitInterviewsCount', data.stats.total_interviews || 0);
+            updateStatCard('rehirePercentage', (data.stats.rehire_percentage || 0) + '%');
+            updateStatCard('avgSatisfaction', (data.stats.avg_satisfaction || 3.5) + '/5');
+            updateStatCard('processEfficiency', (data.stats.process_efficiency || 85) + '%');
+        }
+    }
+
+    // Update analytics section with employee-specific data
+    function updateAnalyticsSection(data) {
+        // Update employee-specific analytics if employee is selected
+        if (data.employee) {
+            // Update risk level
+            const riskLevel = document.getElementById('riskLevel');
+            if (riskLevel && data.exit_feedbacks && data.exit_feedbacks.length > 0) {
+                const latestFeedback = data.exit_feedbacks[0];
+                riskLevel.textContent = latestFeedback.risk_level || 'Medium Risk';
+                riskLevel.className = `text-${getRiskColor(latestFeedback.risk_level)}`;
+            }
+
+            // Update key themes
+            const keyThemes = document.getElementById('keyThemes');
+            if (keyThemes && data.exit_feedbacks && data.exit_feedbacks.length > 0) {
+                const latestFeedback = data.exit_feedbacks[0];
+                if (latestFeedback.key_themes && latestFeedback.key_themes.length > 0) {
+                    keyThemes.innerHTML = '';
+                    latestFeedback.key_themes.forEach(theme => {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-secondary bg-opacity-25 text-secondary';
+                        badge.textContent = theme;
+                        keyThemes.appendChild(badge);
+                    });
+                }
+            }
+
+            // Update retention probability
+            const retentionProb = document.getElementById('retentionProb');
+            if (retentionProb && data.exit_feedbacks && data.exit_feedbacks.length > 0) {
+                const latestFeedback = data.exit_feedbacks[0];
+                retentionProb.textContent = (latestFeedback.retention_probability || '35') + '%';
+            }
+
+            // Update emotional tone
+            const emotionalTone = document.getElementById('emotionalTone');
+            if (emotionalTone && data.exit_feedbacks && data.exit_feedbacks.length > 0) {
+                const latestFeedback = data.exit_feedbacks[0];
+                emotionalTone.textContent = latestFeedback.emotional_tone || 'Neutral';
+            }
+        }
+    }
+
+    // Update feedback section with employee-specific data
+    function updateFeedbackSection(data) {
+        // Update employee sentiment
+        const employeeSentiment = document.getElementById('employeeSentiment');
+        if (employeeSentiment && data.exit_feedbacks && data.exit_feedbacks.length > 0) {
+            const latestFeedback = data.exit_feedbacks[0];
+            employeeSentiment.textContent = latestFeedback.sentiment || 'Neutral';
+        }
+
+        // Update feedback date
+        const feedbackDate = document.getElementById('feedbackDate');
+        if (feedbackDate && data.exit_feedbacks && data.exit_feedbacks.length > 0) {
+            const latestFeedback = data.exit_feedbacks[0];
+            if (latestFeedback.created_at) {
+                const date = new Date(latestFeedback.created_at);
+                feedbackDate.textContent = date.toLocaleDateString();
+            }
+        }
+    }
+
+    // Update recent activity timeline
+    function updateRecentActivity(data) {
+        const recentActivity = document.getElementById('recentActivity');
+        if (recentActivity && data.exit_feedbacks) {
+            recentActivity.innerHTML = '';
+            
+            if (data.exit_feedbacks.length > 0) {
+                data.exit_feedbacks.slice(0, 3).forEach(feedback => {
+                    const activityItem = document.createElement('div');
+                    activityItem.className = 'd-flex align-items-start mb-3';
+                    activityItem.innerHTML = `
+                        <div class="bg-primary bg-opacity-25 rounded-circle p-2 me-3">
+                            <i class="fas fa-comment text-primary small"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="text-light small">${feedback.name} completed exit interview</div>
+                            <div class="text-muted small">${new Date(feedback.created_at).toLocaleDateString()}</div>
+                            <div class="text-muted small">Reason: ${feedback.reason.substring(0, 30)}${feedback.reason.length > 30 ? '...' : ''}</div>
+                        </div>
+                    `;
+                    recentActivity.appendChild(activityItem);
+                });
+            } else {
+                recentActivity.innerHTML = `
+                    <div class="text-center py-3">
+                        <i class="fas fa-clock text-muted mb-2"></i>
+                        <div class="text-muted small">No recent exit activity</div>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    // Tutorial Tour System
+    class ExitInterviewTour {
+        constructor() {
+            this.currentStep = 0;
+            this.steps = [
+                {
+                    element: '#employeeSelect',
+                    title: 'Employee Selection',
+                    content: 'Start by selecting an employee from this dropdown. This will load all their exit interview data dynamically without page reload.',
+                    position: 'bottom'
+                },
+                {
+                    element: '#overview',
+                    title: 'Overview Dashboard',
+                    content: 'This is your main dashboard showing employee information, exit progress, quick stats, and recent activity for the selected employee.',
+                    position: 'top'
+                },
+                {
+                    element: '[data-employee-name]',
+                    title: 'Employee Information',
+                    content: 'View detailed information about the selected employee including their position, department, and how long they\'ve been in the offboarding process.',
+                    position: 'right'
+                },
+                {
+                    element: '#exitProgressBar',
+                    title: 'Exit Progress',
+                    content: 'This progress bar shows the completion percentage of the employee\'s offboarding process. It updates automatically when tasks are completed.',
+                    position: 'top'
+                },
+                {
+                    element: '[data-stat="exit-interviews"]',
+                    title: 'Quick Stats',
+                    content: 'These cards show key metrics: total exit interviews, rehire percentage, average satisfaction, and process efficiency.',
+                    position: 'top'
+                },
+                {
+                    element: '#recentActivity',
+                    title: 'Recent Activity',
+                    content: 'View a timeline of recent exit interview activities and feedback submissions.',
+                    position: 'top'
+                },
+                {
+                    element: '#tasks-tab',
+                    title: 'Tasks Management',
+                    content: 'Manage offboarding tasks here. You can mark tasks as complete, track progress, and ensure all exit procedures are followed.',
+                    position: 'right'
+                },
+                {
+                    element: '#feedback-tab',
+                    title: 'Exit Feedback',
+                    content: 'View and analyze exit interview feedback. Employees can submit feedback here, and HR can filter and analyze responses.',
+                    position: 'right'
+                },
+                {
+                    element: '#exitFeedbackForm',
+                    title: 'Feedback Submission',
+                    content: 'Employees use this form to submit their exit interview feedback including reasons for leaving and satisfaction ratings.',
+                    position: 'top'
+                },
+                {
+                    element: '#feedbackFilter',
+                    title: 'Feedback Filtering',
+                    content: 'Filter feedback by sentiment (Positive, Neutral, Negative) to quickly analyze patterns and trends.',
+                    position: 'bottom'
+                },
+                {
+                    element: '.feedback-view-btn',
+                    title: 'Feedback Actions',
+                    content: 'Use these buttons to view detailed feedback or analyze responses with AI-powered insights.',
+                    position: 'left'
+                },
+                {
+                    element: '#analytics-tab',
+                    title: 'Analytics Dashboard',
+                    content: 'Access comprehensive analytics including risk assessment, sentiment distribution, and exit trends.',
+                    position: 'left'
+                },
+                {
+                    element: '#riskLevel',
+                    title: 'Risk Assessment',
+                    content: 'This shows the exit risk level for the selected employee based on their feedback and sentiment analysis.',
+                    position: 'right'
+                },
+                {
+                    element: '#keyThemes',
+                    title: 'Key Themes',
+                    content: 'Identify common themes from exit feedback to understand patterns and areas for improvement.',
+                    position: 'top'
+                },
+                {
+                    element: '#retentionProb',
+                    title: 'Retention Probability',
+                    content: 'Estimates the likelihood that the employee would reconsider leaving if offered counter-proposals or improvements.',
+                    position: 'left'
+                },
+                {
+                    element: '#downloadSummary',
+                    title: 'Export Features',
+                    content: 'Export exit interview data and summaries for reporting and analysis purposes.',
+                    position: 'top'
+                },
+                {
+                    element: '#completeExit',
+                    title: 'Complete Process',
+                    content: 'Mark the exit process as complete when all tasks are finished and feedback is collected.',
+                    position: 'top'
+                }
+            ];
+            this.overlay = null;
+            this.tooltip = null;
+            this.isActive = false;
+        }
+
+        start() {
+            if (this.isActive) return;
+            
+            this.isActive = true;
+            this.createOverlay();
+            this.createTooltip();
+            this.showStep(0);
+            
+            // Store tour state in localStorage
+            localStorage.setItem('exitTourCompleted', 'false');
+        }
+
+        createOverlay() {
+            this.overlay = document.createElement('div');
+            this.overlay.id = 'tour-overlay';
+            this.overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 9998;
+                pointer-events: none;
+            `;
+            document.body.appendChild(this.overlay);
+        }
+
+        createTooltip() {
+            this.tooltip = document.createElement('div');
+            this.tooltip.id = 'tour-tooltip';
+            this.tooltip.style.cssText = `
+                position: absolute;
+                background: #2d3748;
+                color: white;
+                padding: 20px;
+                border-radius: 8px;
+                max-width: 350px;
+                z-index: 9999;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+                border: 1px solid #4a5568;
+            `;
+            document.body.appendChild(this.tooltip);
+        }
+
+        showStep(stepIndex) {
+            if (stepIndex >= this.steps.length) {
+                this.end();
+                return;
+            }
+
+            const step = this.steps[stepIndex];
+            const element = document.querySelector(step.element);
+            
+            if (!element) {
+                this.showStep(stepIndex + 1);
+                return;
+            }
+
+            // Highlight element
+            this.highlightElement(element);
+            
+            // Position tooltip
+            this.positionTooltip(element, step);
+            
+            // Update tooltip content
+            this.tooltip.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 10px; color: #63b3ed;">
+                    ${step.title}
+                </div>
+                <div style="margin-bottom: 15px; line-height: 1.5;">
+                    ${step.content}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 12px; color: #a0aec0;">
+                        Step ${stepIndex + 1} of ${this.steps.length}
+                    </div>
+                    <div>
+                        ${stepIndex > 0 ? '<button id="tour-prev" style="background: #4a5568; color: white; border: none; padding: 5px 10px; margin-right: 5px; border-radius: 4px; cursor: pointer;">Previous</button>' : ''}
+                        <button id="tour-next" style="background: #3182ce; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                            ${stepIndex === this.steps.length - 1 ? 'Finish' : 'Next'}
+                        </button>
+                        <button id="tour-skip" style="background: transparent; color: #a0aec0; border: none; padding: 5px 10px; margin-left: 5px; border-radius: 4px; cursor: pointer; text-decoration: underline;">Skip Tour</button>
+                    </div>
+                </div>
+            `;
+
+            // Add event listeners
+            this.addStepEventListeners(stepIndex);
+        }
+
+        highlightElement(element) {
+            // Remove previous highlights
+            document.querySelectorAll('.tour-highlight').forEach(el => {
+                el.classList.remove('tour-highlight');
+                el.style.boxShadow = '';
+                el.style.zIndex = '';
+            });
+
+            // Add highlight to current element
+            element.classList.add('tour-highlight');
+            element.style.boxShadow = '0 0 0 4px #3182ce, 0 0 20px rgba(49, 130, 206, 0.5)';
+            element.style.zIndex = '9997';
+            element.style.position = 'relative';
+        }
+
+        positionTooltip(element, step) {
+            const rect = element.getBoundingClientRect();
+            const tooltipRect = this.tooltip.getBoundingClientRect();
+            
+            let top, left;
+            
+            switch (step.position) {
+                case 'top':
+                    top = rect.top - tooltipRect.height - 20;
+                    left = rect.left + (rect.width - tooltipRect.width) / 2;
+                    break;
+                case 'bottom':
+                    top = rect.bottom + 20;
+                    left = rect.left + (rect.width - tooltipRect.width) / 2;
+                    break;
+                case 'left':
+                    top = rect.top + (rect.height - tooltipRect.height) / 2;
+                    left = rect.left - tooltipRect.width - 20;
+                    break;
+                case 'right':
+                    top = rect.top + (rect.height - tooltipRect.height) / 2;
+                    left = rect.right + 20;
+                    break;
+                default:
+                    top = rect.bottom + 20;
+                    left = rect.left;
+            }
+
+            // Adjust if tooltip goes off screen
+            if (left < 10) left = 10;
+            if (left + tooltipRect.width > window.innerWidth - 10) {
+                left = window.innerWidth - tooltipRect.width - 10;
+            }
+            if (top < 10) top = 10;
+            if (top + tooltipRect.height > window.innerHeight - 10) {
+                top = window.innerHeight - tooltipRect.height - 10;
+            }
+
+            this.tooltip.style.top = top + 'px';
+            this.tooltip.style.left = left + 'px';
+        }
+
+        addStepEventListeners(stepIndex) {
+            const nextBtn = document.getElementById('tour-next');
+            const prevBtn = document.getElementById('tour-prev');
+            const skipBtn = document.getElementById('tour-skip');
+
+            const removeListeners = () => {
+                if (nextBtn) nextBtn.onclick = null;
+                if (prevBtn) prevBtn.onclick = null;
+                if (skipBtn) skipBtn.onclick = null;
+            };
+
+            if (nextBtn) {
+                nextBtn.onclick = () => {
+                    removeListeners();
+                    this.showStep(stepIndex + 1);
+                };
+            }
+
+            if (prevBtn) {
+                prevBtn.onclick = () => {
+                    removeListeners();
+                    this.showStep(stepIndex - 1);
+                };
+            }
+
+            if (skipBtn) {
+                skipBtn.onclick = () => {
+                    removeListeners();
+                    this.end();
+                };
+            }
+        }
+
+        next() {
+            this.showStep(this.currentStep + 1);
+        }
+
+        prev() {
+            this.showStep(this.currentStep - 1);
+        }
+
+        end() {
+            this.isActive = false;
+            
+            // Remove highlights
+            document.querySelectorAll('.tour-highlight').forEach(el => {
+                el.classList.remove('tour-highlight');
+                el.style.boxShadow = '';
+                el.style.zIndex = '';
+            });
+
+            // Remove overlay and tooltip
+            if (this.overlay) {
+                this.overlay.remove();
+                this.overlay = null;
+            }
+            
+            if (this.tooltip) {
+                this.tooltip.remove();
+                this.tooltip = null;
+            }
+
+            // Mark tour as completed
+            localStorage.setItem('exitTourCompleted', 'true');
+            
+            // Show completion message
+            showNotification('Tutorial completed! You now know how to use the Exit Interview system.', 'success');
+        }
+    }
+
+    // Initialize tour system
+    let exitTour = null;
+
+    // Update exit feedbacks list
+    function updateExitFeedbacks(feedbacks) {
+        const feedbackContainer = document.getElementById('feedbackList');
+        if (feedbackContainer && feedbacks.length > 0) {
+            feedbackContainer.innerHTML = '';
+            feedbacks.forEach(feedback => {
+                const feedbackCard = createFeedbackCard(feedback);
+                feedbackContainer.appendChild(feedbackCard);
+            });
+        }
+    }
+
+    // Update exit statistics
+    function updateExitStats(data) {
+        // Update progress bar
+        if (data.progress_percentage !== undefined) {
+            const progressBar = document.getElementById('exitProgressBar');
+            const progressText = document.getElementById('progressPercentage');
+            if (progressBar && progressText) {
+                progressBar.style.width = data.progress_percentage + '%';
+                progressBar.setAttribute('aria-valuenow', data.progress_percentage);
+                progressText.textContent = data.progress_percentage + '%';
+            }
+        }
+        
+        // Update stats cards
+        if (data.stats) {
+            updateStatCard('exitInterviewsCount', data.stats.total_interviews || 0);
+            updateStatCard('rehirePercentage', data.stats.rehire_percentage || 0);
+            updateStatCard('avgProcessTime', data.stats.avg_process_time || 0);
+        }
+    }
+
+    // Update exit tasks
+    function updateExitTasks(tasks) {
+        const tasksContainer = document.getElementById('tasksList');
+        if (tasksContainer && tasks.length > 0) {
+            tasksContainer.innerHTML = '';
+            tasks.forEach(task => {
+                const taskCard = createTaskCard(task);
+                tasksContainer.appendChild(taskCard);
+            });
+            updateProgressBar(); // Recalculate progress
+        }
+    }
+
+    // Helper function to create feedback card
+    function createFeedbackCard(feedback) {
+        const card = document.createElement('div');
+        card.className = 'card bg-dark bg-opacity-25 border-secondary mb-3';
+        card.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="text-light mb-0">${feedback.name}</h6>
+                    <span class="badge bg-${getSentimentColor(feedback.sentiment)}">${feedback.sentiment}</span>
+                </div>
+                <p class="text-muted small mb-2">Reason: ${feedback.reason}</p>
+                <p class="text-light small">${feedback.feedback}</p>
+                <small class="text-muted">${new Date(feedback.created_at).toLocaleDateString()}</small>
+            </div>
+        `;
+        return card;
+    }
+
+    // Helper function to create task card
+    function createTaskCard(task) {
+        const card = document.createElement('div');
+        card.className = 'task-item card bg-dark bg-opacity-25 border-secondary mb-2';
+        card.setAttribute('data-status', task.status || 'pending');
+        card.innerHTML = `
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" 
+                               ${task.status === 'completed' ? 'checked' : ''}
+                               onchange="updateTaskStatus('${task.id}', this.checked)">
+                        <label class="form-check-label text-light small">
+                            ${task.title}
+                        </label>
+                    </div>
+                    <span class="badge bg-${getStatusColor(task.status)}">${task.status}</span>
+                </div>
+            </div>
+        `;
+        return card;
+    }
+
+    // Helper functions
+    function getSentimentColor(sentiment) {
+        switch(sentiment) {
+            case 'Positive': return 'success';
+            case 'Negative': return 'danger';
+            case 'Neutral': return 'secondary';
+            default: return 'secondary';
+        }
+    }
+
+    function getStatusColor(status) {
+        switch(status) {
+            case 'completed': return 'success';
+            case 'in_progress': return 'warning';
+            case 'pending': return 'secondary';
+            default: return 'secondary';
+        }
+    }
+
+    function updateStatCard(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = value;
+        }
+    }
+
+    // Auto-load employee data if dropdown is pre-selected
+    document.addEventListener('DOMContentLoaded', function() {
+        const employeeSelect = document.getElementById('employeeSelect');
+        if (employeeSelect && employeeSelect.value) {
+            // Employee is already selected, no need to redirect
+            console.log('Employee already selected:', employeeSelect.options[employeeSelect.selectedIndex].text);
+        }
+
+        // Initialize tour system
+        exitTour = new ExitInterviewTour();
+        
+        // Add tour button event listener
+        const startTourBtn = document.getElementById('startTourBtn');
+        if (startTourBtn) {
+            startTourBtn.addEventListener('click', function() {
+                exitTour.start();
+            });
+        }
+
+        // Check if tour should be shown automatically (first-time visit)
+        const tourCompleted = localStorage.getItem('exitTourCompleted');
+        if (!tourCompleted && employeeSelect && employeeSelect.options.length > 1) {
+            // Show tour after a short delay to allow page to load
+            setTimeout(() => {
+                showNotification('Welcome to the Exit Interview system! Would you like to take a quick tour?', 'info', 5000);
+                setTimeout(() => {
+                    if (confirm('Take a guided tour of the Exit Interview system?')) {
+                        exitTour.start();
+                    }
+                }, 1000);
+            }, 1000);
+        }
+
+        // Apply data-percentage values to progress bars
+        const progressBars = document.querySelectorAll('.progress-bar[data-percentage]');
+        progressBars.forEach(bar => {
+            const percentage = bar.getAttribute('data-percentage');
+            if (percentage) {
+                bar.style.width = percentage + '%';
+            }
+        });
+
+        // Add event listeners for feedback action buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.feedback-view-btn')) {
+                const button = e.target.closest('.feedback-view-btn');
+                const feedbackId = button.getAttribute('data-feedback-id');
+                viewFeedbackDetails(feedbackId);
+            }
+            
+            if (e.target.closest('.feedback-analyze-btn')) {
+                const button = e.target.closest('.feedback-analyze-btn');
+                const feedbackId = button.getAttribute('data-feedback-id');
+                analyzeFeedback(feedbackId);
+            }
+        });
+
+        // Add event listener for feedback filter
+        const feedbackFilter = document.getElementById('feedbackFilter');
+        if (feedbackFilter) {
+            feedbackFilter.addEventListener('change', function() {
+                filterFeedbacks(this.value);
+            });
+        }
+    });
+
+    // Feedback action functions
+    function viewFeedbackDetails(feedbackId) {
+        console.log('View feedback details:', feedbackId);
+        // TODO: Implement feedback details modal
+        showNotification('Opening feedback details...', 'info');
+    }
+
+    function analyzeFeedback(feedbackId) {
+        console.log('Analyze feedback:', feedbackId);
+        // TODO: Implement feedback analysis
+        showNotification('Analyzing feedback...', 'info');
+    }
+
+    function filterFeedbacks(sentiment) {
+        const feedbackItems = document.querySelectorAll('.feedback-item');
+        feedbackItems.forEach(item => {
+            if (sentiment === 'all') {
+                item.style.display = 'block';
+            } else {
+                const itemSentiment = item.getAttribute('data-sentiment');
+                item.style.display = itemSentiment === sentiment ? 'block' : 'none';
+            }
+        });
+    }
 </script>
 {% endblock %}

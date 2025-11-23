@@ -868,6 +868,14 @@ function toggleFabMenu() {
 
 // Start Onboarding Tour with fallback
 function startOnboardingTour() {
+    // Debug: Check if tour elements exist
+    console.log('Starting tour debug...');
+    const tourElements = ['#employeeSelect', '#refreshBtn', '#tasks-tab', '#progress-tab', '#details-tab', '.task-filters', '.createKTSession'];
+    tourElements.forEach(selector => {
+        const element = document.querySelector(selector);
+        console.log(`Element ${selector}: ${element ? 'FOUND' : 'NOT FOUND'}`);
+    });
+    
     // Check if tourManager is available
     if (typeof tourManager !== 'undefined' && tourManager && tourManager.forceRestartTour) {
         tourManager.forceRestartTour('onboarding');
@@ -894,12 +902,13 @@ function startOnboardingTour() {
 // Manual tour fallback
 function showManualTour() {
     const steps = [
-        { element: '#employeeSelect', message: 'Select an employee to manage their onboarding' },
-        { element: '.employee-info-card', message: 'View employee details and progress' },
-        { element: '.progress-overview', message: 'Track overall onboarding completion' },
-        { element: '.checklist-section', message: 'Manage onboarding tasks and checklist items' },
-        { element: '.task-filters', message: 'Filter tasks by status' },
-        { element: '.createKTSession', message: 'Create knowledge transfer sessions' }
+        { element: '#employeeSelect', message: 'Start by choosing an employee from this dropdown to load their onboarding checklist' },
+        { element: '#refreshBtn', message: 'Click refresh to update the employee list and reload latest data' },
+        { element: '#tasks-tab', message: 'Manage individual onboarding tasks here - mark complete, set due dates' },
+        { element: '#progress-tab', message: 'View progress charts and completion percentages' },
+        { element: '#details-tab', message: 'See employee details, hire date, and timeline information' },
+        { element: '.task-filters', message: 'Filter tasks: All, Pending, Completed, Overdue, or Due Today' },
+        { element: '.createKTSession', message: 'Schedule knowledge transfer sessions for smooth transitions' }
     ];
     
     let currentStep = 0;
