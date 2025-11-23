@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Documents - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" data-employee-id="{{ employee.id }}">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-light">
+                    <i class="fas fa-user me-2 text-primary"></i>{{ employee.full_name }} - Documents
+                </h2>
+                <div>
+                    <a href="{{ url_for('view_employee', employee_id=employee.id) }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Profile
+                    </a>
+                    <a href="{{ url_for('hr_generated_documents') }}" class="btn btn-outline-info">
+                        <i class="fas fa-folder me-2"></i>All Documents
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Info Card -->
+    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h5 class="text-light mb-1">{{ employee.full_name }}</h5>
+                    <p class="text-muted mb-0">{{ employee.position or 'Not specified' }} • {{ employee.department or 'Not specified' }}</p>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted">Employee ID</small>
+                    <p class="text-light mb-0">EMP{{ employee.id:04d }}</p>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted">Status</small>
+                    <p class="mb-0">
+                        <span class="badge bg-{{ 
+                            'success' if employee.status == 'Active' else
+                            'warning' if employee.status == 'Onboarding' else
+                            'info' if employee.status == 'Offboarding' else
+                            'danger' if employee.status == 'Terminated' else
+                            'secondary'
+                        }}">{{ employee.status }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Document Generation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="text-light mb-3">
+                <i class="fas fa-magic me-2 text-primary"></i>Quick Document Generation
+            </h4>
+        </div>
+        
+        <!-- Onboarding Documents -->
+        {% if employee.status in ['Onboarding', 'Active'] %}
+        <div class="col-lg-6">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="text-light mb-0">
+                        <i class="fas fa-user-plus me-2 text-success"></i>Onboarding Documents
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-success" onclick="generateDocument('offer_letter')">
+                            <i class="fas fa-file-contract me-2"></i>Generate Offer Letter
+                        </button>
+                        <button class="btn btn-outline-info" onclick="generateDocument('nda')">
+                            <i class="fas fa-shield-alt me-2"></i>Generate NDA
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="generateDocument('joining_letter')">
+                            <i class="fas fa-handshake me-2"></i>Generate Joining Letter
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="generateDocument('welcome_letter')">
+                            <i class="fas fa-envelope-open-text me-2"></i>Generate Welcome Letter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Offboarding Documents -->
+        {% if employee.status in ['Offboarding', 'Terminated'] %}
+        <div class="col-lg-6">
+            <div class="card bg-dark bg-opacity-25 border-secondary h-100">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="text-light mb-0">
+                        <i class="fas fa-user-minus me-2 text-danger"></i>Offboarding Documents
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-danger" onclick="generateDocument('relieving_letter')">
+                            <i class="fas fa-file-signature me-2"></i>Generate Relieving Letter
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="generateDocument('experience_letter')">
+                            <i class="fas fa-certificate me-2"></i>Generate Experience Letter
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="generateDocument('no_dues_certificate')">
+                            <i class="fas fa-receipt me-2"></i>Generate No Dues Certificate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Generated Documents History -->
+    <div class="card bg-dark bg-opacity-25 border-secondary">
+        <div class="card-header bg-transparent border-secondary">
+            <h5 class="text-light mb-0">
+                <i class="fas fa-history me-2 text-info"></i>Document Generation History
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if documents %}
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Document</th>
+                            <th>Type</th>
+                            <th>Generated</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in documents %}
+                        <tr>
+                            <td class="text-light">
+                                <i class="fas fa-file-alt me-2 text-primary"></i>{{ doc.document_name }}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ doc.template.template_type|title }}</span>
+                            </td>
+                            <td>{{ doc.generated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <span class="badge bg-{{ 
+                                    'success' if doc.status == 'generated' else
+                                    'info' if doc.status == 'downloaded' else
+                                    'warning' if doc.status == 'acknowledged' else
+                                    'secondary'
+                                }}">{{ doc.status|title }}</span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('download_generated_document', doc_id=doc.id) }}" 
+                                       class="btn btn-outline-success" title="Download">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <button data-doc-id="{{ doc.id }}" 
+        class="btn btn-outline-primary preview-doc-btn" title="Preview">
+    <i class="fas fa-eye"></i>
+</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                <h5 class="text-light mb-2">No Documents Generated Yet</h5>
+                <p class="text-muted">Use the quick generation buttons above to create documents for this employee.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Document Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header bg-transparent border-secondary">
+                <h5 class="modal-title text-light">
+                    <i class="fas fa-eye me-2 text-primary"></i>Document Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent" class="bg-dark bg-opacity-50 p-3 rounded" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
+                    <!-- Document content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer bg-transparent border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="modalDownloadBtn">
+                    <i class="fas fa-download me-2"></i>Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentDocumentId = null;
+
+// Get employee ID from data attribute
+const employeeId = parseInt(document.querySelector('[data-employee-id]').dataset.employeeId || '0');
+
+// Generate document
+function generateDocument(templateCode) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+    
+    fetch(`/hr/generate_document/${employeeId}/${templateCode}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            button.innerHTML = '<i class="fas fa-check me-2"></i>Generated!';
+            button.classList.remove('btn-outline-success', 'btn-outline-info', 'btn-outline-primary', 'btn-outline-warning', 'btn-outline-danger', 'btn-outline-secondary');
+            button.classList.add('btn-success');
+            
+            // Show success message
+            showNotification(data.message, 'success');
+            
+            // Refresh page after 2 seconds to show updated history
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            throw new Error(data.message || 'Generation failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        button.innerHTML = originalText;
+        button.disabled = false;
+        showNotification('Error generating document: ' + error.message, 'danger');
+    });
+}
+
+// Preview document
+function previewDocument(docId) {
+    fetch(`/hr/documents/${docId}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('previewContent').innerHTML = html;
+            currentDocumentId = docId;
+            
+            const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error loading document preview', 'danger');
+        });
+}
+
+// Show notification
+function showNotification(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Modal download button
+document.addEventListener('DOMContentLoaded', function() {
+    // Preview document button listener
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.preview-doc-btn')) {
+            const docId = e.target.closest('.preview-doc-btn').dataset.docId;
+            previewDocument(docId);
+        }
+    });
+    
+    document.getElementById('modalDownloadBtn').addEventListener('click', function() {
+        if (currentDocumentId) {
+            window.open(`/documents/download/${currentDocumentId}`, '_blank');
+        }
+    });
+});
+</script>
+{% endblock %}

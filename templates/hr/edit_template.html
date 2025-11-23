@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Template - SmartHire AI{% endblock %}
+
+{% block head %}
+<!-- Quill Rich Text Editor CSS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<style>
+.ql-container {
+    min-height: 400px;
+}
+.placeholder-sidebar {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+}
+.placeholder-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin: 5px 0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.placeholder-item:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+}
+.placeholder-code {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #007bff;
+    font-weight: bold;
+}
+.template-form {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-file-edit me-2"></i>Edit Document Template</h2>
+                <a href="{{ url_for('hr_templates') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Templates
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="card template-form">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Template: {{ template.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="templateForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="name" class="form-label">Template Name *</label>
+                                <input type="text" class="form-control" id="name" name="name" required
+                                       value="{{ template.name }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="template_type" class="form-label">Document Type *</label>
+                                <select class="form-select" id="template_type" name="template_type" required>
+                                    <option value="">Select Type...</option>
+                                    <option value="onboarding" {% if template.template_type == 'onboarding' %}selected{% endif %}>Onboarding</option>
+                                    <option value="offboarding" {% if template.template_type == 'offboarding' %}selected{% endif %}>Offboarding</option>
+                                    <option value="offer" {% if template.template_type == 'offer' %}selected{% endif %}>Offer Letter</option>
+                                    <option value="termination" {% if template.template_type == 'termination' %}selected{% endif %}>Termination</option>
+                                    <option value="welcome" {% if template.template_type == 'welcome' %}selected{% endif %}>Welcome Email</option>
+                                    <option value="policy" {% if template.template_type == 'policy' %}selected{% endif %}>Policy Document</option>
+                                    <option value="other" {% if template.template_type == 'other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="2">{{ template.description or '' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Template Content *</label>
+                            <div class="border rounded">
+                                <div id="editor" style="height: 400px;"></div>
+                            </div>
+                            <input type="hidden" id="content" name="content" required>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Insert placeholders from the sidebar to personalize documents for each employee.
+                            </small>
+                        </div>
+
+                        <!-- Template Info -->
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle me-2"></i>Template Information</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small><strong>Created:</strong> {{ template.created_at.strftime('%Y-%m-%d %H:%M') }}</small><br>
+                                    <small><strong>By:</strong> {{ template.creator.full_name }}</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small><strong>Last Updated:</strong> {{ template.updated_at.strftime('%Y-%m-%d %H:%M') }}</small><br>
+                                    <small><strong>Type:</strong> {{ template.template_type|title }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Validation Messages -->
+                        <div id="validationMessages" class="alert alert-warning d-none">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Template Validation</h6>
+                            <div id="validationContent"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary me-2" onclick="previewTemplate()">
+                                    <i class="fas fa-eye me-2"></i>Preview Template
+                                </button>
+                                <button type="button" class="btn btn-outline-info" onclick="validateTemplate()">
+                                    <i class="fas fa-check-circle me-2"></i>Validate
+                                </button>
+                            </div>
+                            <div>
+                                <a href="{{ url_for('hr_templates') }}" class="btn btn-outline-secondary me-2">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-save me-2"></i>Update Template
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar - Placeholders -->
+        <div class="col-lg-4">
+            <div class="card placeholder-sidebar sticky-top" style="top: 20px;">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-code me-2"></i>Available Placeholders</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        Click on any placeholder to insert it into your template:
+                    </p>
+                    
+                    <div class="placeholder-item" onclick="insertPlaceholder('employee_name')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-user me-2 text-primary"></i>Employee Name</span>
+                            <span class="placeholder-code">{{'{{'}}employee_name{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-item" onclick="insertPlaceholder('designation')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-briefcase me-2 text-success"></i>Designation</span>
+                            <span class="placeholder-code">{{'{{'}}designation{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-item" onclick="insertPlaceholder('joining_date')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-calendar me-2 text-warning"></i>Joining Date</span>
+                            <span class="placeholder-code">{{'{{'}}joining_date{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-item" onclick="insertPlaceholder('employee_id')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-id-badge me-2 text-info"></i>Employee ID</span>
+                            <span class="placeholder-code">{{'{{'}}employee_id{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-item" onclick="insertPlaceholder('company_name')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-building me-2 text-danger"></i>Company Name</span>
+                            <span class="placeholder-code">{{'{{'}}company_name{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-item" onclick="insertPlaceholder('hr_name')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-user-tie me-2 text-secondary"></i>HR Name</span>
+                            <span class="placeholder-code">{{'{{'}}hr_name{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-item" onclick="insertPlaceholder('department')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-sitemap me-2 text-primary"></i>Department</span>
+                            <span class="placeholder-code">{{'{{'}}department{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-item" onclick="insertPlaceholder('phone')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-phone me-2 text-success"></i>Phone</span>
+                            <span class="placeholder-code">{{'{{'}}phone{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-item" onclick="insertPlaceholder('email')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-envelope me-2 text-info"></i>Email</span>
+                            <span class="placeholder-code">{{'{{'}}email{{'}}'}}</span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="alert alert-info small">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Pro Tips:</h6>
+                        <ul class="mb-0">
+                            <li>Use placeholders to personalize documents</li>
+                            <li>Templates support rich text formatting</li>
+                            <li>Save time by creating reusable templates</li>
+                            <li>Test templates with sample data before use</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Template Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent" style="min-height: 300px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Quill Rich Text Editor JS -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script>
+// Initialize Quill editor
+var quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+        toolbar: [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            ['blockquote', 'code-block'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'align': [] }],
+            ['link', 'image'],
+            ['clean']
+        ]
+    }
+});
+
+// Set existing content
+quill.root.innerHTML = `{{ template.content|safe }}`;
+
+// Update hidden input when form is submitted
+document.getElementById('templateForm').addEventListener('submit', function(e) {
+    document.getElementById('content').value = quill.root.innerHTML;
+});
+
+// Insert placeholder function
+function insertPlaceholder(placeholder) {
+    let range = quill.getSelection();
+    let position = range ? range.index : quill.getLength();
+    quill.insertText(position, '{{' + placeholder + '}}');
+    quill.setSelection(position + placeholder.length + 4);
+}
+
+// Validate template function
+function validateTemplate() {
+    const content = quill.root.innerHTML;
+    const placeholders = content.match(/\{\{(\w+)\}\}/g) || [];
+    
+    const validationDiv = document.getElementById('validationMessages');
+    const validationContent = document.getElementById('validationContent');
+    
+    if (placeholders.length === 0) {
+        validationContent.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>No placeholders found. Consider adding placeholders to personalize documents.';
+        validationDiv.classList.remove('d-none', 'alert-success');
+        validationDiv.classList.add('alert-warning');
+    } else {
+        validationContent.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>Found ${placeholders.length} placeholders:
+            <div class="mt-2">
+                ${placeholders.map(p => `<span class="badge bg-primary me-1">${p}</span>`).join('')}
+            </div>
+        `;
+        validationDiv.classList.remove('d-none', 'alert-warning');
+        validationDiv.classList.add('alert-success');
+    }
+}
+
+// Preview template function
+function previewTemplate() {
+    const content = quill.root.innerHTML;
+    const previewContent = document.getElementById('previewContent');
+    
+    // Replace placeholders with sample data for preview
+    let preview = content
+        .replace(/\{\{employee_name\}\}/g, 'John Doe')
+        .replace(/\{\{designation\}\}/g, 'Software Engineer')
+        .replace(/\{\{joining_date\}\}/g, '2024-01-15')
+        .replace(/\{\{employee_id\}\}/g, 'EMP001')
+        .replace(/\{\{company_name\}\}/g, 'SmartHire Inc.')
+        .replace(/\{\{hr_name\}\}/g, 'Jane Smith')
+        .replace(/\{\{department\}\}/g, 'Engineering')
+        .replace(/\{\{phone\}\}/g, '+1-234-567-8900')
+        .replace(/\{\{email\}\}/g, 'john.doe@example.com');
+    
+    previewContent.innerHTML = preview;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

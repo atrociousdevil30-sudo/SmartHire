@@ -381,6 +381,9 @@ function checkInterviewStatus() {
                 interviewStatus = 'ready';
                 document.getElementById('waitingForHRContainer').classList.add('d-none');
                 document.getElementById('interviewReadyContainer').classList.remove('d-none');
+            } else if (data.interview_status === 'requested') {
+                // Still waiting for HR
+                interviewStatus = 'waiting_for_hr';
             }
         })
         .catch(error => console.error('Error:', error));

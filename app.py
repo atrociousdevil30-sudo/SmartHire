@@ -300,19 +300,59 @@ class Employee(db.Model):
 class Candidate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
     job_desc = db.Column(db.Text, nullable=True)
     resume_text = db.Column(db.Text, nullable=True)
     score = db.Column(db.Float, nullable=True)
     summary = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    interviews = db.relationship('Interview', backref='candidate', lazy=True)
+    # Remove the conflicting relationship - will be defined in Interview model
+    
+    def extract_contact_info(self):
+        """Extract email and phone from resume text"""
+        import re
+        
+        if not self.resume_text:
+            return
+            
+        # Extract email
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        emails = re.findall(email_pattern, self.resume_text)
+        if emails and not self.email:
+            self.email = emails[0]  # Take the first email found
+            
+        # Extract phone numbers (multiple formats)
+        phone_patterns = [
+            r'\b\d{3}-\d{3}-\d{4}\b',  # 123-456-7890
+            r'\b\(\d{3}\)\s*\d{3}-\d{4}\b',  # (123) 456-7890
+            r'\b\d{3}\.\d{3}\.\d{4}\b',  # 123.456.7890
+            r'\b\d{10}\b',  # 1234567890
+            r'\b\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b'  # International format
+        ]
+        
+        for pattern in phone_patterns:
+            phones = re.findall(pattern, self.resume_text)
+            if phones and not self.phone:
+                # Clean up the phone number format
+                phone = re.sub(r'[^\d+]', '', phones[0])
+                if len(phone) >= 10:  # Ensure it's a valid phone number
+                    self.phone = phones[0]
+                break
 
 class Interview(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    candidate_id = db.Column(db.Integer, db.ForeignKey('candidate.id'), nullable=False)
+    candidate_id = db.Column(db.Integer, db.ForeignKey('candidate.id'), nullable=True)  # For external candidates
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # For internal employees
     responses = db.Column(db.JSON, nullable=True)
     summary = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='pending')  # pending, requested, ready, in_progress, completed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships with explicit names to avoid conflicts
+    candidate_ref = db.relationship('Candidate', backref='candidate_interviews')
+    user_ref = db.relationship('User', backref='employee_interviews', foreign_keys=[user_id])
 
 class ExitFeedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -516,6 +556,46 @@ def inject_user():
         user = User.query.get(session['user_id'])
         return {'user': user}
     return {'user': None}
+
+class DocumentTemplate(db.Model):
+    """Document templates for HR with placeholder support"""
+    __tablename__ = 'document_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    code = db.Column(db.String(50), unique=True, nullable=False)  # e.g., "offer_letter", "nda"
+    description = db.Column(db.Text, nullable=True)
+    template_type = db.Column(db.String(50), nullable=False)  # 'onboarding', 'offboarding', 'offer', 'termination'
+    content = db.Column(db.Text, nullable=False)  # HTML content with placeholders
+    placeholders = db.Column(db.Text, nullable=True)  # JSON list of required placeholders
+    is_active = db.Column(db.Boolean, default=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    creator = db.relationship('User', backref='created_templates')
+    generated_documents = db.relationship('GeneratedDocument', backref='template', lazy=True, cascade='all, delete-orphan')
+
+
+class GeneratedDocument(db.Model):
+    """Generated documents from templates"""
+    __tablename__ = 'generated_documents'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('document_templates.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    document_name = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)  # Filled HTML content
+    file_path = db.Column(db.String(500), nullable=True)  # Generated PDF path
+    status = db.Column(db.String(20), default='draft')  # 'draft', 'generated', 'downloaded'
+    generated_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    employee = db.relationship('User', foreign_keys=[employee_id], backref='generated_documents')
+    generator = db.relationship('User', foreign_keys=[generated_by], backref='documents_generated')
+
 
 # Create database tables
 with app.app_context():
@@ -1262,6 +1342,22 @@ def update_employee_status(employee_id):
     return redirect(url_for('list_employees'))
 
 
+@app.route('/hr/employees/<int:employee_id>/documents')
+@login_required('hr')
+def hr_employee_documents(employee_id):
+    """Employee documents quick generation page"""
+    user = User.query.get(session['user_id'])
+    employee = User.query.get_or_404(employee_id)
+    
+    # Get all generated documents for this employee
+    documents = GeneratedDocument.query.filter_by(employee_id=employee_id).order_by(GeneratedDocument.generated_at.desc()).all()
+    
+    return render_template('hr/employee_documents_quick.html', 
+                         user=user, 
+                         employee=employee, 
+                         documents=documents)
+
+
 @app.route('/hr/employees/<int:employee_id>/pre-offboarding', methods=['GET', 'POST'])
 @login_required('hr')
 def hr_pre_offboarding(employee_id):
@@ -1346,10 +1442,18 @@ def hr_dashboard():
     recent_interviews = Interview.query.order_by(Interview.created_at.desc()).limit(10).all()
     interview_results = []
     for interview in recent_interviews:
-        candidate = interview.candidate if interview.candidate else None
+        candidate = interview.candidate_ref if interview.candidate_ref else None
+        
+        # Extract contact info if not already extracted
+        if candidate and candidate.resume_text and (not candidate.email or not candidate.phone):
+            candidate.extract_contact_info()
+            db.session.commit()
+        
         interview_results.append({
             'id': interview.id,
             'candidate_name': candidate.name if candidate else 'Unknown Candidate',
+            'email': candidate.email if candidate and candidate.email else 'N/A',
+            'phone': candidate.phone if candidate and candidate.phone else 'N/A',
             'role': candidate.job_desc[:50] + '...' if candidate and candidate.job_desc else 'N/A',
             'score': round(candidate.score, 1) if candidate and candidate.score else 'N/A',
             'recommendation': 'Proceed to Next Round' if (candidate and candidate.score and candidate.score >= 7.5) else 'Hold for Review' if (candidate and candidate.score and candidate.score >= 6.0) else 'Reject',
@@ -1420,10 +1524,10 @@ def hr_dashboard():
     # Recent interview results
     recent_interviews_db = Interview.query.order_by(Interview.created_at.desc()).limit(5).all()
     for interview in recent_interviews_db:
-        if interview.candidate:
+        if interview.candidate_ref:
             recent_activities.append({
                 'type': 'interview',
-                'title': f"Interview with {interview.candidate.name}",
+                'title': f"Interview with {interview.candidate_ref.name}",
                 'date': interview.created_at.strftime('%Y-%m-%d'),
                 'priority': 'normal'
             })
@@ -1547,6 +1651,287 @@ def hr_dashboard():
                          recent_activities=recent_activities[:5],  # Top 5 recent activities
                          strategic_insights=strategic_insights)
 
+
+# Document Template Management Routes
+@app.route('/hr/templates')
+@login_required('hr')
+def hr_templates():
+    """List all document templates"""
+    user = User.query.get(session['user_id'])
+    templates = DocumentTemplate.query.filter_by(is_active=True).order_by(DocumentTemplate.created_at.desc()).all()
+    
+    # Group templates by type
+    template_types = {}
+    for template in templates:
+        if template.template_type not in template_types:
+            template_types[template.template_type] = []
+        template_types[template.template_type].append(template)
+    
+    return render_template('hr/templates.html', user=user, template_types=template_types)
+
+
+@app.route('/hr/templates/new', methods=['GET', 'POST'])
+@login_required('hr')
+def hr_create_template():
+    """Create a new document template"""
+    user = User.query.get(session['user_id'])
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        template_type = request.form.get('template_type')
+        content = request.form.get('content')
+        
+        # Extract placeholders from content
+        import re
+        placeholders = re.findall(r'\{\{(\w+)\}\}', content)
+        
+        template = DocumentTemplate(
+            name=name,
+            description=description,
+            template_type=template_type,
+            content=content,
+            placeholders=json.dumps(placeholders),
+            created_by=user.id
+        )
+        
+        db.session.add(template)
+        db.session.commit()
+        
+        flash('Template created successfully!', 'success')
+        return redirect(url_for('hr_templates'))
+    
+    return render_template('hr/create_template.html', user=user)
+
+
+@app.route('/hr/templates/<int:template_id>/edit', methods=['GET', 'POST'])
+@login_required('hr')
+def hr_edit_template(template_id):
+    """Edit an existing document template"""
+    user = User.query.get(session['user_id'])
+    template = DocumentTemplate.query.get_or_404(template_id)
+    
+    if request.method == 'POST':
+        template.name = request.form.get('name')
+        template.description = request.form.get('description')
+        template.template_type = request.form.get('template_type')
+        template.content = request.form.get('content')
+        
+        # Extract placeholders from content
+        import re
+        placeholders = re.findall(r'\{\{(\w+)\}\}', template.content)
+        template.placeholders = json.dumps(placeholders)
+        
+        db.session.commit()
+        
+        flash('Template updated successfully!', 'success')
+        return redirect(url_for('hr_templates'))
+    
+    return render_template('hr/edit_template.html', user=user, template=template)
+
+
+@app.route('/hr/templates/<int:template_id>/delete', methods=['POST'])
+@login_required('hr')
+def hr_delete_template(template_id):
+    """Delete a document template"""
+    template = DocumentTemplate.query.get_or_404(template_id)
+    template.is_active = False
+    db.session.commit()
+    
+    flash('Template deleted successfully!', 'success')
+    return redirect(url_for('hr_templates'))
+
+
+@app.route('/hr/templates/<int:template_id>/generate', methods=['GET', 'POST'])
+@login_required('hr')
+def hr_generate_document(template_id):
+    """Generate a document from template"""
+    user = User.query.get(session['user_id'])
+    template = DocumentTemplate.query.get_or_404(template_id)
+    
+    if request.method == 'POST':
+        employee_id = request.form.get('employee_id')
+        employee = User.query.get(employee_id)
+        
+        if not employee:
+            flash('Employee not found!', 'error')
+            return redirect(url_for('hr_generate_document', template_id=template_id))
+        
+        # Prepare placeholder values
+        placeholder_values = {
+            'employee_name': employee.full_name,
+            'designation': employee.position or 'N/A',
+            'joining_date': employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else 'N/A',
+            'employee_id': employee.employee_id or 'N/A',
+            'company_name': 'SmartHire Inc.',  # Could be made configurable
+            'hr_name': user.full_name,
+            'department': employee.department or 'N/A',
+            'phone': employee.phone,
+            'email': employee.email
+        }
+        
+        # Replace placeholders in template content
+        content = template.content
+        for placeholder, value in placeholder_values.items():
+            content = content.replace(f'{{{{{placeholder}}}}}', str(value))
+        
+        # Create generated document record
+        generated_doc = GeneratedDocument(
+            template_id=template.id,
+            employee_id=employee.id,
+            document_name=f"{template.name} - {employee.full_name}",
+            content=content,
+            generated_by=user.id
+        )
+        
+        db.session.add(generated_doc)
+        db.session.commit()
+        
+        flash('Document generated successfully!', 'success')
+        return redirect(url_for('hr_view_generated_document', doc_id=generated_doc.id))
+    
+    # Get list of employees for selection
+    employees = User.query.filter_by(role='employee').order_by(User.full_name).all()
+    
+    return render_template('hr/generate_document.html', 
+                         user=user, 
+                         template=template, 
+                         employees=employees)
+
+
+# Enhanced Document Generation with Template Codes
+@app.route('/hr/generate_document/<int:employee_id>/<string:template_code>', methods=['POST'])
+@login_required('hr')
+def generate_document_by_code(employee_id, template_code):
+    """Generate document using template code"""
+    from jinja2 import Template
+    from datetime import datetime
+    import os
+    
+    employee = User.query.get_or_404(employee_id)
+    template_obj = DocumentTemplate.query.filter_by(code=template_code).first_or_404()
+    
+    # Prepare context for placeholders
+    context = {
+        "today": datetime.today().strftime("%d-%m-%Y"),
+        "employee_name": employee.full_name,
+        "employee_address": getattr(employee, 'address', 'Not specified'),
+        "designation": getattr(employee, 'position', 'Not specified'),
+        "company_name": "SmartHire AI Solutions",
+        "joining_date": employee.hire_date.strftime("%d-%m-%Y") if employee.hire_date else "To be announced",
+        "ctc": getattr(employee, 'salary', 'Not specified'),
+        "hr_name": "HR Manager",
+        "department": getattr(employee, 'department', 'Not specified'),
+        "employee_id": f"EMP{employee.id:04d}",
+        "phone": getattr(employee, 'phone', 'Not specified'),
+        "email": employee.email,
+    }
+    
+    # Render HTML with Jinja2 Template
+    template = Template(template_obj.content)
+    rendered_html = template.render(**context)
+    
+    # Create directory for generated documents
+    file_dir = os.path.join("static", "generated_docs")
+    os.makedirs(file_dir, exist_ok=True)
+    
+    # Generate filename
+    timestamp = int(datetime.utcnow().timestamp())
+    filename = f"{template_code}_{employee.id}_{timestamp}.html"
+    file_path = os.path.join(file_dir, filename)
+    
+    # Save HTML file
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(rendered_html)
+    
+    # Save record in DB
+    doc = GeneratedDocument(
+        template_id=template_obj.id,
+        employee_id=employee.id,
+        document_name=f"{template_obj.name} - {employee.full_name}",
+        content=rendered_html,
+        file_path=file_path,
+        status='generated',
+        generated_by=session['user_id']
+    )
+    db.session.add(doc)
+    db.session.commit()
+    
+    return jsonify({
+        "status": "success",
+        "message": f"{template_obj.name} generated successfully",
+        "document_id": doc.id,
+        "download_url": url_for('download_generated_document', doc_id=doc.id, _external=False)
+    })
+
+
+@app.route('/hr/documents/<int:doc_id>')
+@login_required('hr')
+def hr_view_generated_document(doc_id):
+    """View a generated document"""
+    user = User.query.get(session['user_id'])
+    document = GeneratedDocument.query.get_or_404(doc_id)
+    
+    return render_template('hr/view_document.html', user=user, document=document)
+
+
+@app.route('/hr/documents')
+@login_required('hr')
+def hr_generated_documents():
+    """List all generated documents"""
+    user = User.query.get(session['user_id'])
+    documents = GeneratedDocument.query.order_by(GeneratedDocument.generated_at.desc()).all()
+    
+    return render_template('hr/generated_documents.html', user=user, documents=documents)
+
+
+@app.route('/documents/download/<int:doc_id>')
+@login_required(['hr', 'employee'])
+def download_generated_document(doc_id):
+    """Download generated document"""
+    from flask import send_file
+    
+    document = GeneratedDocument.query.get_or_404(doc_id)
+    
+    # Check permissions: HR can download any, employees can only download their own
+    if session.get('user_role') == 'employee' and document.employee_id != session.get('user_id'):
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if document.file_path and os.path.exists(document.file_path):
+        return send_file(document.file_path, as_attachment=True, 
+                        download_name=document.document_name + '.html')
+    else:
+        # If file doesn't exist, return content as HTML file
+        from io import BytesIO
+        from flask import Response
+        
+        response = Response(document.content, mimetype='text/html')
+        response.headers['Content-Disposition'] = f'attachment; filename="{document.document_name}.html"'
+        return response
+
+
+# API Routes for Document Management
+@app.route('/api/documents/<int:doc_id>/mark-downloaded', methods=['POST'])
+@login_required('hr')
+def mark_document_downloaded(doc_id):
+    """Mark a generated document as downloaded"""
+    try:
+        document = GeneratedDocument.query.get_or_404(doc_id)
+        document.status = 'downloaded'
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Document marked as downloaded'
+        })
+    except Exception as e:
+        logger.error(f"Error marking document as downloaded: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to update document status'
+        }), 500
+
+
 # Employee Dashboard
 @app.route('/employee/dashboard')
 @login_required('employee')
@@ -1567,12 +1952,24 @@ def employee_dashboard():
     
     # Check user status and get appropriate checklist
     if user.status == 'Onboarding':
-        # Legacy check - onboarding checklist system has been removed
-        onboarding_progress = 20  # Default progress
+        # Get real onboarding tasks
+        onboarding_tasks_for_progress = Task.query.filter_by(
+            assigned_to=user.id, 
+            task_type='onboarding'
+        ).all()
+        
+        # Calculate real progress based on actual tasks
+        total_onboarding_tasks = len(onboarding_tasks_for_progress)
+        completed_onboarding_tasks = len([task for task in onboarding_tasks_for_progress if task.status == 'completed'])
+        
+        if total_onboarding_tasks > 0:
+            onboarding_progress = int((completed_onboarding_tasks / total_onboarding_tasks) * 100)
+        else:
+            onboarding_progress = 0
         
         # Calculate actual onboarding days from hire date
         current_day = 1
-        total_days = 10  # Extended to 10 business days (2 weeks) for more realistic onboarding
+        total_days = 30  # Default 30-day onboarding period
         if user.hire_date:
             # Convert hire_date to datetime for proper comparison
             hire_datetime = datetime.combine(user.hire_date, datetime.min.time())
@@ -1661,8 +2058,9 @@ def employee_dashboard():
             'current_day': current_day if user.status == 'Onboarding' else 0,
             'total_days': total_days if user.status == 'Onboarding' else 0,
             'percentage': onboarding_progress if user.status == 'Onboarding' else 0,
-            'tasks_completed': int(onboarding_progress / 10) if user.status == 'Onboarding' and onboarding_progress else 0,
-            'total_tasks': 10 if user.status == 'Onboarding' else 0
+            'tasks_completed': completed_onboarding_tasks if user.status == 'Onboarding' else 0,
+            'total_tasks': total_onboarding_tasks if user.status == 'Onboarding' else 0,
+            'tasks': onboarding_tasks_for_progress if user.status == 'Onboarding' else []
         } if user.status == 'Onboarding' else None,
         'offboarding_progress': {
             'current_day': current_day if user.status == 'Offboarding' else 0,
@@ -1765,6 +2163,106 @@ def employee_dashboard():
                          buddy_mentor=buddy_mentor,
                          current_user=user,  # For compatibility with existing templates
                          title=f'{user.full_name}\'s Dashboard')
+
+# Employee Documents
+@app.route('/employee/documents')
+@login_required('employee')
+def employee_documents():
+    """Employee documents page"""
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    # Get documents generated for this employee
+    documents = GeneratedDocument.query.filter_by(employee_id=user.id).order_by(GeneratedDocument.created_at.desc()).all()
+    
+    # Format documents for display
+    formatted_documents = []
+    for doc in documents:
+        formatted_documents.append({
+            'id': doc.id,
+            'template_name': doc.template_name,
+            'template_type': doc.template_type,
+            'content': doc.content,
+            'status': doc.status,
+            'created_at': doc.created_at,
+            'generated_by_name': doc.generated_by_name
+        })
+    
+    return render_template('employee_documents.html', 
+                         documents=formatted_documents,
+                         user=user,
+                         title='My Documents')
+
+@app.route('/employee/documents/<int:doc_id>/view')
+@login_required('employee')
+def view_employee_document(doc_id):
+    """View document content"""
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    document = GeneratedDocument.query.filter_by(id=doc_id, employee_id=user.id).first()
+    
+    if not document:
+        return jsonify({'success': False, 'message': 'Document not found'}), 404
+    
+    return jsonify({
+        'success': True,
+        'content': document.content,
+        'template_name': document.template_name
+    })
+
+@app.route('/employee/documents/<int:doc_id>/download')
+@login_required('employee')
+def download_employee_document(doc_id):
+    """Download document as PDF"""
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    document = GeneratedDocument.query.filter_by(id=doc_id, employee_id=user.id).first()
+    
+    if not document:
+        return jsonify({'success': False, 'message': 'Document not found'}), 404
+    
+    # Update status to downloaded
+    document.status = 'downloaded'
+    document.downloaded_at = datetime.utcnow()
+    db.session.commit()
+    
+    # Generate PDF (simplified version - in production, use proper PDF library)
+    from flask import Response
+    
+    # Create a simple text representation for now
+    content = f"""
+    Document: {document.template_name}
+    Type: {document.template_type}
+    Generated: {document.created_at.strftime('%Y-%m-%d %H:%M')}
+    
+    {document.content}
+    """
+    
+    response = Response(content, mimetype='text/plain')
+    response.headers['Content-Disposition'] = f'attachment; filename="{document.template_name}.txt"'
+    
+    return response
+
+@app.route('/employee/documents/<int:doc_id>/acknowledge', methods=['POST'])
+@login_required('employee')
+def acknowledge_employee_document(doc_id):
+    """Acknowledge document receipt"""
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    document = GeneratedDocument.query.filter_by(id=doc_id, employee_id=user.id).first()
+    
+    if not document:
+        return jsonify({'success': False, 'message': 'Document not found'}), 404
+    
+    # Update status to acknowledged
+    document.status = 'acknowledged'
+    document.acknowledged_at = datetime.utcnow()
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Document acknowledged successfully'})
 
 @app.route('/employee/messages')
 @login_required('employee')
@@ -3077,10 +3575,16 @@ def get_candidates_list():
 
         candidates_list = []
         for candidate in candidates:
+            # Extract contact info if not already extracted
+            if candidate.resume_text and (not candidate.email or not candidate.phone):
+                candidate.extract_contact_info()
+                db.session.commit()
+            
             candidates_list.append({
                 'id': candidate.id,
                 'name': candidate.name,
                 'email': candidate.email or 'N/A',
+                'phone': candidate.phone or 'N/A',
                 'job_desc': candidate.job_desc or 'N/A',
                 'score': round(float(candidate.score), 1) if (
                     candidate.score) else None,
@@ -3184,6 +3688,10 @@ def onboarding():
             score=score,
             summary=summary
         )
+        
+        # Extract email and phone from resume text
+        candidate.extract_contact_info()
+        
         db.session.add(candidate)
         db.session.commit()
         
@@ -3485,6 +3993,68 @@ def employee_interview():
     
     return render_template('employee_interview.html', unread_messages_count=unread_messages_count)
 
+@app.route('/api/notifications/send', methods=['POST'])
+@login_required('employee')
+def send_ready_notification():
+    """Send notification from employee to HR"""
+    try:
+        user_id = session.get('user_id')
+        user = User.query.get(user_id)
+        
+        data = request.get_json()
+        message_content = data.get('content', 'I am ready for the interview')
+        message_type = data.get('message_type', 'interview_ready')
+        priority = data.get('priority', 'normal')
+        
+        # Get all HR users
+        hr_users = User.query.filter_by(role='hr', is_active=True).all()
+        
+        if not hr_users:
+            return jsonify({
+                'status': 'error',
+                'message': 'No HR users available to notify'
+            }), 404
+        
+        # Create notifications for all HR users
+        notifications_sent = 0
+        for hr_user in hr_users:
+            notification = Message(
+                sender_id=user_id,
+                recipient_id=hr_user.id,
+                subject=f'Employee Ready for Interview - {user.full_name}',
+                content=f'{user.full_name} ({user.email}) has sent the following message:\n\n"{message_content}"\n\nPlease start their interview session when ready.\n\nSent: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")}',
+                priority=priority,
+                status='unread'
+            )
+            db.session.add(notification)
+            notifications_sent += 1
+        
+        # Also create an interview request record
+        interview_request = Interview(
+            user_id=user_id,
+            status='requested',
+            created_at=datetime.utcnow(),
+            summary=f'Employee {user.full_name} is ready for interview. Message: "{message_content}"'
+        )
+        db.session.add(interview_request)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Notification sent to {notifications_sent} HR user(s)',
+            'notifications_sent': notifications_sent,
+            'request_id': interview_request.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error sending notification: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to send notification'
+        }), 500
+
 @app.route('/api/employee/interview/status', methods=['GET'])
 @login_required('employee')
 def check_interview_status():
@@ -3492,19 +4062,43 @@ def check_interview_status():
     try:
         user_id = session['user_id']
         
-        # Get the most recent interview for this user
+        # Get the most recent interview request for this user
         recent_interview = Interview.query.filter_by(
-            candidate_id=None
+            user_id=user_id
         ).order_by(Interview.created_at.desc()).first()
         
         if recent_interview:
-            return jsonify({
-                'status': 'success',
-                'interview_status': 'active',
-                'interview_id': recent_interview.id,
-                'created_at': recent_interview.created_at.isoformat(),
-                'has_summary': bool(recent_interview.summary)
-            })
+            if recent_interview.status == 'requested':
+                return jsonify({
+                    'status': 'success',
+                    'interview_status': 'requested',
+                    'interview_id': recent_interview.id,
+                    'created_at': recent_interview.created_at.isoformat(),
+                    'message': 'Interview requested, waiting for HR'
+                })
+            elif recent_interview.status == 'ready':
+                return jsonify({
+                    'status': 'success',
+                    'interview_status': 'ready',
+                    'interview_id': recent_interview.id,
+                    'created_at': recent_interview.created_at.isoformat(),
+                    'message': 'Interview ready to start'
+                })
+            elif recent_interview.status == 'in_progress':
+                return jsonify({
+                    'status': 'success',
+                    'interview_status': 'in_progress',
+                    'interview_id': recent_interview.id,
+                    'created_at': recent_interview.created_at.isoformat(),
+                    'message': 'Interview in progress'
+                })
+            else:
+                return jsonify({
+                    'status': 'success',
+                    'interview_status': recent_interview.status,
+                    'interview_id': recent_interview.id,
+                    'created_at': recent_interview.created_at.isoformat()
+                })
         else:
             return jsonify({
                 'status': 'success',
@@ -3516,6 +4110,93 @@ def check_interview_status():
         return jsonify({
             'status': 'error',
             'message': 'Failed to check interview status'
+        }), 500
+
+@app.route('/api/hr/interview/requests', methods=['GET'])
+@login_required('hr')
+def get_interview_requests():
+    """Get pending interview requests for HR"""
+    try:
+        # Get all interview requests that are pending (for employees)
+        pending_requests = Interview.query.filter_by(status='requested').filter(Interview.user_id.isnot(None)).order_by(Interview.created_at.desc()).all()
+        
+        requests_data = []
+        for request in pending_requests:
+            if request.user_id:
+                employee = User.query.get(request.user_id)
+                if employee:
+                    requests_data.append({
+                        'id': request.id,
+                        'employee_id': employee.id,
+                        'employee_name': employee.full_name,
+                        'employee_email': employee.email,
+                        'employee_position': employee.position or 'Not specified',
+                        'created_at': request.created_at.isoformat(),
+                        'message': request.summary or 'Employee is ready for interview',
+                        'status': request.status
+                    })
+        
+        return jsonify({
+            'status': 'success',
+            'requests': requests_data,
+            'total_requests': len(requests_data)
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error fetching interview requests: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch interview requests'
+        }), 500
+
+@app.route('/api/hr/interview/<int:interview_id>/start', methods=['POST'])
+@login_required('hr')
+def start_employee_interview(interview_id):
+    """HR starts an interview session"""
+    try:
+        hr_user_id = session.get('user_id')
+        
+        # Get the interview request
+        interview = Interview.query.get_or_404(interview_id)
+        
+        # Verify interview is in requested status
+        if interview.status != 'requested':
+            return jsonify({
+                'status': 'error',
+                'message': 'Interview is not in requested status'
+            }), 400
+        
+        # Update interview status
+        interview.status = 'ready'
+        interview.updated_at = datetime.utcnow()
+        
+        # Notify the employee that interview is ready
+        if interview.user_id:
+            notification = Message(
+                sender_id=hr_user_id,
+                recipient_id=interview.user_id,
+                subject='Interview Ready - Join Now',
+                content=f'Your interview session has been started by HR. Please join the interview session now.\n\nInterview ID: {interview.id}\nStarted: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")}',
+                priority='high',
+                status='unread'
+            )
+            db.session.add(notification)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Interview started successfully',
+            'interview_id': interview.id,
+            'status': 'ready'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error starting interview: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to start interview'
         }), 500
 
 @app.route('/api/employee/interview/submit', methods=['POST'])
@@ -3571,7 +4252,7 @@ def get_interview_details(interview_id):
     """Get full details for a specific interview and its candidate for review."""
     try:
         interview = Interview.query.get_or_404(interview_id)
-        candidate = interview.candidate
+        candidate = interview.candidate_ref
 
         if not candidate:
             return jsonify({
@@ -4560,6 +5241,23 @@ def extract_email(text):
     email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
     return email_match.group(0) if email_match else ''
 
+def extract_phone(text):
+    """Extract phone number from resume text"""
+    phone_patterns = [
+        r'\b\d{3}-\d{3}-\d{4}\b',  # 123-456-7890
+        r'\b\(\d{3}\)\s*\d{3}-\d{4}\b',  # (123) 456-7890
+        r'\b\d{3}\.\d{3}\.\d{4}\b',  # 123.456.7890
+        r'\b\d{10}\b',  # 1234567890
+        r'\b\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b'  # International format
+    ]
+    
+    for pattern in phone_patterns:
+        phone_match = re.search(pattern, text)
+        if phone_match:
+            return phone_match.group(0)
+    
+    return ''
+
 def extract_name(text):
     # Look for name at the beginning of the document
     first_line = text.split('\n')[0].strip()
@@ -4698,7 +5396,7 @@ def analyze_resume():
         resume_data = {
             'name': extract_name(text),
             'email': extract_email(text),
-            'phone': '',
+            'phone': extract_phone(text),
             'skills': extract_skills(text),
             'experience': extract_experience(text),
             'education': extract_education(text),

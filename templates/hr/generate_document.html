@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Document - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-light"><i class="fas fa-file-export me-2 text-primary"></i>Generate Document</h2>
+                <div>
+                    <a href="{{ url_for('hr_templates') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Templates
+                    </a>
+                    <a href="{{ url_for('hr_generated_documents') }}" class="btn btn-outline-info">
+                        <i class="fas fa-folder me-2"></i>Generated Documents
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Template Info Card -->
+        <div class="col-lg-4">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light"><i class="fas fa-file-alt me-2 text-primary"></i>Template Information</h6>
+                </div>
+                <div class="card-body">
+                    <h5 class="text-primary">{{ template.name }}</h5>
+                    <p class="text-muted">{{ template.description or 'No description available' }}</p>
+                    
+                    <div class="row small text-light">
+                        <div class="col-6">
+                            <strong>Type:</strong><br>
+                            <span class="badge bg-info">{{ template.template_type|title }}</span>
+                        </div>
+                        <div class="col-6">
+                            <strong>Created:</strong><br>
+                            {{ template.created_at.strftime('%Y-%m-%d') }}
+                        </div>
+                    </div>
+                    
+                    <hr class="border-secondary">
+                    
+                    <h6 class="text-light"><i class="fas fa-code me-2 text-info"></i>Required Placeholders</h6>
+                    {% if template.placeholders %}
+                        {% set placeholders = template.placeholders|from_json %}
+                        {% if placeholders %}
+                            {% for placeholder in placeholders %}
+                                <span class="badge bg-secondary me-1 mb-1">{{'{{'}}{{ placeholder }}{{'}}'}}</span>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">No placeholders found in this template.</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted small">No placeholders found in this template.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Instructions Card -->
+            <div class="card bg-dark bg-opacity-25 border-secondary mt-3">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light"><i class="fas fa-info-circle me-2 text-info"></i>Instructions</h6>
+                </div>
+                <div class="card-body">
+                    <ol class="small mb-0 text-light">
+                        <li>Select an employee from the dropdown below</li>
+                        <li>Review the placeholder values that will be used</li>
+                        <li>Click "Generate Document" to create the personalized document</li>
+                        <li>You can preview, download, or share the generated document</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generation Form -->
+        <div class="col-lg-8">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="mb-0 text-light"><i class="fas fa-magic me-2 text-success"></i>Generate Document</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="generateForm">
+                        <div class="mb-4">
+                            <label for="employee_id" class="form-label fw-bold text-light">
+                                <i class="fas fa-user me-2 text-primary"></i>Select Employee *
+                            </label>
+                            <select class="form-select form-select-lg bg-dark text-light border-secondary" id="employee_id" name="employee_id" required>
+                                <option value="">Choose an employee...</option>
+                                {% for employee in employees %}
+                                    <option value="{{ employee.id }}">
+                                        {{ employee.full_name }} - {{ employee.position or 'No Position' }} ({{ employee.department or 'No Department' }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Placeholder Preview (dynamically updated) -->
+                        <div id="placeholderPreview" class="d-none">
+                            <h6 class="text-light"><i class="fas fa-eye me-2 text-info"></i>Placeholder Values Preview</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-dark">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th class="text-light">Placeholder</th>
+                                            <th class="text-light">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="placeholderValues">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Important Notes</h6>
+                            <ul class="mb-0 small">
+                                <li>The generated document will automatically replace all placeholders with the selected employee's information</li>
+                                <li>Review the placeholder values before generating to ensure accuracy</li>
+                                <li>Generated documents will be saved and can be accessed later from the "Generated Documents" page</li>
+                                <li>You can generate multiple documents from the same template for different employees</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('hr_templates') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-magic me-2"></i>Generate Document
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template Preview Modal -->
+<div class="modal fade" id="templatePreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Template Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="templatePreview" style="min-height: 300px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Hidden template content for JavaScript -->
+<div id="templateContent" style="display: none;">{{ template.content|safe }}</div>
+
+<!-- Employee data as JSON in data attribute -->
+<div id="employeeData" style="display: none;" data-employees='{
+    {% for employee in employees %}
+    {{ employee.id }}: {
+        "full_name": "{{ employee.full_name|e }}",
+        "position": "{{ (employee.position or 'N/A')|e }}",
+        "hire_date": "{{ (employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else 'N/A')|e }}",
+        "employee_id": "{{ (employee.employee_id or 'N/A')|e }}",
+        "department": "{{ (employee.department or 'N/A')|e }}",
+        "phone": "{{ employee.phone|e }}",
+        "email": "{{ employee.email|e }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+}'></div>
+
+{% block scripts %}
+<script>
+// Employee data for placeholder preview
+const employeeData = JSON.parse(document.getElementById('employeeData').dataset.employees);
+
+// Template content
+const templateContent = document.getElementById('templateContent').innerHTML;
+
+// Update placeholder preview when employee is selected
+document.getElementById('employee_id').addEventListener('change', function() {
+    const employeeId = this.value;
+    const previewDiv = document.getElementById('placeholderPreview');
+    const placeholderValues = document.getElementById('placeholderValues');
+    
+    if (employeeId && employeeData[employeeId]) {
+        const employee = employeeData[employeeId];
+        
+        // Show placeholder values
+        const placeholders = [
+            { key: 'employee_name', value: employee.full_name },
+            { key: 'designation', value: employee.position },
+            { key: 'joining_date', value: employee.hire_date },
+            { key: 'employee_id', value: employee.employee_id },
+            { key: 'company_name', value: 'SmartHire Inc.' },
+            { key: 'hr_name', value: '{{ user.full_name }}' },
+            { key: 'department', value: employee.department },
+            { key: 'phone', value: employee.phone },
+            { key: 'email', value: employee.email }
+        ];
+        
+        placeholderValues.innerHTML = placeholders.map(p => `
+            <tr>
+                <td><code>{{'{{'}}${p.key}{{'}}'}}</code></td>
+                <td>${p.value}</td>
+            </tr>
+        `).join('');
+        
+        previewDiv.classList.remove('d-none');
+    } else {
+        previewDiv.classList.add('d-none');
+    }
+});
+
+// Preview template with selected employee data
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+    // You could add a confirmation dialog here if needed
+    const employeeId = document.getElementById('employee_id').value;
+    if (!employeeId) {
+        e.preventDefault();
+        alert('Please select an employee first.');
+        return false;
+    }
+    
+    // Optional: Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+});
+
+// Add preview button functionality
+function previewTemplate() {
+    const employeeId = document.getElementById('employee_id').value;
+    const templatePreview = document.getElementById('templatePreview');
+    
+    if (!employeeId || !employeeData[employeeId]) {
+        alert('Please select an employee first to preview the document.');
+        return;
+    }
+    
+    const employee = employeeData[employeeId];
+    
+    // Replace placeholders with actual employee data
+    let preview = templateContent
+        .replace(/\{\{employee_name\}\}/g, employee.full_name)
+        .replace(/\{\{designation\}\}/g, employee.position)
+        .replace(/\{\{joining_date\}\}/g, employee.hire_date)
+        .replace(/\{\{employee_id\}\}/g, employee.employee_id)
+        .replace(/\{\{company_name\}\}/g, 'SmartHire Inc.')
+        .replace(/\{\{hr_name\}\}/g, '{{ user.full_name }}')
+        .replace(/\{\{department\}\}/g, employee.department)
+        .replace(/\{\{phone\}\}/g, employee.phone)
+        .replace(/\{\{email\}\}/g, employee.email);
+    
+    templatePreview.innerHTML = preview;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('templatePreviewModal'));
+    modal.show();
+}
+
+// Add preview button to the form
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('generateForm');
+    const previewBtn = document.createElement('button');
+    previewBtn.type = 'button';
+    previewBtn.className = 'btn btn-outline-info me-2';
+    previewBtn.innerHTML = '<i class="fas fa-eye me-2"></i>Preview Document';
+    previewBtn.onclick = previewTemplate;
+    
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.parentNode.insertBefore(previewBtn, submitBtn);
+});
+</script>
+{% endblock %}

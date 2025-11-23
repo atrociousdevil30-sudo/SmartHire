@@ -195,6 +195,50 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
+                                <h6 class="text-light mb-3">Recent Interview Results</h6>
+                                <div class="list-group list-group-flush">
+                                    {% if interview_results %}
+                                        {% for interview in interview_results[:3] %}
+                                        <div class="list-group-item bg-transparent border-secondary">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <span class="text-light fw-bold">{{ interview.candidate_name }}</span>
+                                                        <span class="badge bg-{{ 'success' if interview.score >= 7.5 else 'warning' if interview.score >= 6.0 else 'danger' }} rounded-pill">
+                                                            {{ interview.score }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="small text-muted mb-1">
+                                                        <i class="bi bi-briefcase me-1"></i>{{ interview.role }}
+                                                    </div>
+                                                    {% if interview.phone != 'N/A' %}
+                                                    <div class="small text-info mb-1">
+                                                        <i class="bi bi-telephone me-1"></i>{{ interview.phone }}
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if interview.email != 'N/A' %}
+                                                    <div class="small text-muted mb-1">
+                                                        <i class="bi bi-envelope me-1"></i>{{ interview.email }}
+                                                    </div>
+                                                    {% endif %}
+                                                    <div class="small text-muted">
+                                                        <i class="bi bi-calendar me-1"></i>{{ interview.date }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                    <div class="list-group-item bg-transparent border-secondary">
+                                        <div class="text-center text-muted py-2">
+                                            <i class="bi bi-clipboard-data fa-2x mb-2"></i><br>
+                                            No interview results yet
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
                                 <h6 class="text-light mb-3">Upcoming Events & KPIs</h6>
                                 <div class="list-group list-group-flush">
                                     <!-- Employee Status Summary -->

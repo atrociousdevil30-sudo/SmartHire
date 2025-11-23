@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Document Templates - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-light"><i class="fas fa-file-alt me-2 text-primary"></i>Document Templates</h2>
+                <a href="{{ url_for('hr_create_template') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create New Template
+                </a>
+            </div>
+
+            <!-- Template Type Cards -->
+            {% if template_types %}
+                {% for template_type, templates in template_types.items() %}
+                <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+                    <div class="card-header bg-transparent border-secondary">
+                        <h5 class="mb-0 text-light">
+                            <i class="fas fa-folder me-2 text-primary"></i>
+                            {{ template_type|title }} Templates 
+                            <span class="badge bg-primary bg-opacity-25 text-primary ms-2">{{ templates|length }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for template in templates %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card bg-dark bg-opacity-50 border-secondary h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-primary">{{ template.name }}</h6>
+                                        <p class="card-text small text-muted">{{ template.description or 'No description' }}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">
+                                                <i class="fas fa-user me-1"></i>{{ template.creator.full_name }}
+                                                <br>
+                                                <i class="fas fa-calendar me-1"></i>{{ template.created_at.strftime('%Y-%m-%d') }}
+                                            </small>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('hr_generate_document', template_id=template.id) }}" 
+                                                   class="btn btn-outline-success" title="Generate Document">
+                                                    <i class="fas fa-file-export"></i>
+                                                </a>
+                                                <a href="{{ url_for('hr_edit_template', template_id=template.id) }}" 
+                                                   class="btn btn-outline-primary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <form method="POST" action="{{ url_for('hr_delete_template', template_id=template.id) }}" 
+                                                      class="d-inline" onsubmit="return confirm('Are you sure you want to delete this template?')">
+                                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="card bg-dark bg-opacity-25 border-secondary">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-light mb-2">No Document Templates Yet</h5>
+                        <p class="text-muted mb-4">Create your first document template to get started with automated document generation.</p>
+                        <a href="{{ url_for('hr_create_template') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Create Your First Template
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Template Usage Guide -->
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body">
+                    <h6 class="card-title text-primary">
+                        <i class="fas fa-info-circle me-2"></i>How to Use Templates
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="text-light"><i class="fas fa-plus text-success me-2"></i>Create Templates</h6>
+                            <p class="small text-muted">Design reusable document templates with placeholders for employee information.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-light"><i class="fas fa-file-export text-info me-2"></i>Generate Documents</h6>
+                            <p class="small text-muted">Select a template and employee to automatically generate personalized documents.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-light"><i class="fas fa-code text-warning me-2"></i>Available Placeholders</h6>
+                            <p class="small text-muted">
+                                <code class="text-light">{{'{{'}}employee_name{{'}}'}}</code>, 
+                                <code class="text-light">{{'{{'}}designation{{'}}'}}</code>, 
+                                <code class="text-light">{{'{{'}}joining_date{{'}}'}}</code>, 
+                                <code class="text-light">{{'{{'}}company_name{{'}}'}}</code>, 
+                                <code class="text-light">{{'{{'}}hr_name{{'}}'}}</code>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

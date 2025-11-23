@@ -33,25 +33,24 @@
             <div class="card bg-dark bg-opacity-25 border-secondary">
                 <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
                     <h6 class="text-light mb-0">Onboarding Progress</h6>
-                    <span class="text-primary">Day {{ employee['onboarding_progress']['current_day'] }} of {{ employee['onboarding_progress']['total_days'] }}</span>
+                    <span class="text-primary">Day {{ employee.onboarding_progress.current_day }} of {{ employee.onboarding_progress.total_days }}</span>
                 </div>
                 <div class="card-body">
                     <div class="progress mb-3" style="height: 20px;">
                         <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" 
-                             data-progress="{{ employee['onboarding_progress']['percentage'] }}" aria-valuenow="{{ employee['onboarding_progress']['percentage'] }}" aria-valuemin="0" aria-valuemax="100">{{ employee['onboarding_progress']['percentage'] }}%</div>
+                             data-progress="{{ employee.onboarding_progress.percentage }}" aria-valuenow="{{ employee.onboarding_progress.percentage }}" aria-valuemin="0" aria-valuemax="100">{{ employee.onboarding_progress.percentage }}%</div>
                     </div>
                     <div class="text-center small">
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 8 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Employment Paperwork</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 17 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Document Collection</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 25 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Welcome Email & Handbook</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 33 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> ID Card Creation</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 42 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Email Account Setup</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 50 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Development Environment</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 58 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Code Repository Access</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 67 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Technical Orientation</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 75 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Laptop & Equipment</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 83 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> Team Introduction</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['onboarding_progress']['percentage'] >= 92 %}check-circle text-success{% else %}clock text-muted{% endif %} me-1"></i> First Week Check-in</span>
+                        {% if employee.onboarding_progress and employee.onboarding_progress.tasks %}
+                            {% for task in employee.onboarding_progress.tasks %}
+                            <span class="me-3">
+                                <i class="bi bi-{% if task.status == 'completed' %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> 
+                                {{ task.title[:25] }}{% if task.title|length > 25 %}...{% endif %}
+                            </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">No onboarding tasks available</span>
+                        {% endif %}
                     </div>
                 </div>
             </div>

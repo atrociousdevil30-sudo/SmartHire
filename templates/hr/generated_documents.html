@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}Generated Documents - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-folder-open me-2"></i>Generated Documents</h2>
+                <a href="{{ url_for('hr_templates') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create New Document
+                </a>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ documents|length }}</h4>
+                                    <small>Total Documents</small>
+                                </div>
+                                <i class="fas fa-file-alt fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ documents|selectattr('status', 'equalto', 'generated')|list|length }}</h4>
+                                    <small>Generated</small>
+                                </div>
+                                <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ documents|selectattr('status', 'equalto', 'downloaded')|list|length }}</h4>
+                                    <small>Downloaded</small>
+                                </div>
+                                <i class="fas fa-download fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ documents|selectattr('status', 'equalto', 'draft')|list|length }}</h4>
+                                    <small>Drafts</small>
+                                </div>
+                                <i class="fas fa-edit fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Search Documents</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Search by name, employee...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Template Type</label>
+                            <select class="form-select" id="templateFilter">
+                                <option value="">All Types</option>
+                                <option value="onboarding">Onboarding</option>
+                                <option value="offboarding">Offboarding</option>
+                                <option value="offer">Offer Letter</option>
+                                <option value="termination">Termination</option>
+                                <option value="welcome">Welcome Email</option>
+                                <option value="policy">Policy Document</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="statusFilter">
+                                <option value="">All Status</option>
+                                <option value="draft">Draft</option>
+                                <option value="generated">Generated</option>
+                                <option value="downloaded">Downloaded</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                                <i class="fas fa-times me-2"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Table -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="fas fa-list me-2"></i>Documents List</h6>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="exportDocuments()">
+                                <i class="fas fa-download me-2"></i>Export
+                            </button>
+                            <button class="btn btn-outline-info" onclick="refreshList()">
+                                <i class="fas fa-sync me-2"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if documents %}
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="documentsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Document Name</th>
+                                    <th>Employee</th>
+                                    <th>Template</th>
+                                    <th>Generated By</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for document in documents %}
+                                <tr class="document-row" 
+                                    data-name="{{ document.document_name }}"
+                                    data-employee="{{ document.employee.full_name }}"
+                                    data-template="{{ document.template.template_type }}"
+                                    data-status="{{ document.status }}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-file-alt text-primary me-2"></i>
+                                            <div>
+                                                <div class="fw-bold">{{ document.document_name }}</div>
+                                                <small class="text-muted">{{ document.template.name }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-light rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                <i class="fas fa-user text-muted"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ document.employee.full_name }}</div>
+                                                <small class="text-muted">{{ document.employee.position or 'No Position' }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ document.template.template_type|title }}</span>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <div class="fw-bold">{{ document.generator.full_name }}</div>
+                                            <small class="text-muted">{{ document.generator.role|title }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <div class="fw-bold">{{ document.generated_at.strftime('%b %d, %Y') }}</div>
+                                            <small class="text-muted">{{ document.generated_at.strftime('%I:%M %p') }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if document.status == 'draft' %}
+                                            <span class="badge bg-warning">Draft</span>
+                                        {% elif document.status == 'generated' %}
+                                            <span class="badge bg-success">Generated</span>
+                                        {% elif document.status == 'downloaded' %}
+                                            <span class="badge bg-info">Downloaded</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('hr_view_generated_document', doc_id=document.id) }}" 
+                                               class="btn btn-outline-primary" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button data-doc-id="{{ document.id }}" 
+                                                    class="btn btn-outline-success download-btn" title="Download">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                            <button data-doc-id="{{ document.id }}" 
+                                                    class="btn btn-outline-info share-btn" title="Share">
+                                                <i class="fas fa-share"></i>
+                                            </button>
+                                            <button data-doc-id="{{ document.id }}" 
+                                                    class="btn btn-outline-danger delete-btn" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No Generated Documents</h4>
+                        <p class="text-muted">Start generating documents from your templates.</p>
+                        <a href="{{ url_for('hr_templates') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Generate Your First Document
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Share Modal -->
+<div class="modal fade" id="shareModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-share me-2"></i>Share Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Share via Email</label>
+                    <input type="email" class="form-control" id="shareEmail" placeholder="Enter email address">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Message (Optional)</label>
+                    <textarea class="form-control" id="shareMessage" rows="3" placeholder="Add a message..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="sendShare()">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentDocumentId = null;
+
+// Initialize event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', filterDocuments);
+    document.getElementById('templateFilter').addEventListener('change', filterDocuments);
+    document.getElementById('statusFilter').addEventListener('change', filterDocuments);
+    
+    // Button event listeners
+    document.querySelectorAll('.download-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            downloadDocument(this.dataset.docId);
+        });
+    });
+    
+    document.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            shareDocument(this.dataset.docId);
+        });
+    });
+    
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            deleteDocument(this.dataset.docId);
+        });
+    });
+});
+
+function filterDocuments() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const templateFilter = document.getElementById('templateFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll('.document-row');
+    
+    rows.forEach(row => {
+        const name = row.dataset.name.toLowerCase();
+        const employee = row.dataset.employee.toLowerCase();
+        const template = row.dataset.template;
+        const status = row.dataset.status;
+        
+        const matchesSearch = name.includes(searchTerm) || employee.includes(searchTerm);
+        const matchesTemplate = !templateFilter || template === templateFilter;
+        const matchesStatus = !statusFilter || status === statusFilter;
+        
+        if (matchesSearch && matchesTemplate && matchesStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('templateFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    filterDocuments();
+}
+
+function downloadDocument(docId) {
+    // Mark as downloaded and trigger download
+    fetch(`/api/documents/${docId}/mark-downloaded`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Document marked as downloaded');
+            // Redirect to view page for download
+            window.location.href = `/hr/documents/${docId}`;
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function shareDocument(docId) {
+    currentDocumentId = docId;
+    const modal = new bootstrap.Modal(document.getElementById('shareModal'));
+    modal.show();
+}
+
+function sendShare() {
+    const email = document.getElementById('shareEmail').value;
+    const message = document.getElementById('shareMessage').value;
+    
+    if (!email) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    // Here you would implement actual sharing functionality
+    alert(`Document ${currentDocumentId} would be shared to ${email}`);
+    
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('shareModal')).hide();
+    currentDocumentId = null;
+}
+
+function deleteDocument(docId) {
+    if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+        // Here you would implement actual delete functionality
+        alert(`Document ${docId} would be deleted`);
+        // For now, just refresh the page
+        location.reload();
+    }
+}
+
+function exportDocuments() {
+    // Export functionality - could export to CSV or PDF
+    const rows = document.querySelectorAll('.document-row:not([style*="display: none"])');
+    if (rows.length === 0) {
+        alert('No documents to export');
+        return;
+    }
+    
+    alert(`Would export ${rows.length} documents to CSV/PDF`);
+}
+
+function refreshList() {
+    location.reload();
+}
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'f':
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+                break;
+            case 'e':
+                e.preventDefault();
+                exportDocuments();
+                break;
+        }
+    }
+});
+
+// Add sorting functionality
+document.querySelectorAll('th').forEach(th => {
+    if (th.textContent.trim() !== 'Actions') {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+            sortTable(th.cellIndex);
+        });
+    }
+});
+
+function sortTable(columnIndex) {
+    const table = document.getElementById('documentsTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        const aText = a.cells[columnIndex].textContent.trim();
+        const bText = b.cells[columnIndex].textContent.trim();
+        return aText.localeCompare(bText);
+    });
+    
+    rows.forEach(row => tbody.appendChild(row));
+}
+</script>
+{% endblock %}

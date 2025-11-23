@@ -26,6 +26,14 @@
                 <i class="fas fa-cog me-2"></i>Setup
             </button>
         </li>
+        {% if session.role == 'hr' %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button" role="tab">
+                <i class="fas fa-user-clock me-2"></i>Requests
+                <span id="requestCount" class="badge bg-danger ms-1" style="display: none;">0</span>
+            </button>
+        </li>
+        {% endif %}
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="interview-tab" data-bs-toggle="tab" data-bs-target="#interview" type="button" role="tab">
                 <i class="fas fa-comments me-2"></i>Interview
@@ -99,6 +107,30 @@
                 </div>
             </div>
         </div>
+
+        <!-- Requests Tab (HR Only) -->
+        {% if session.role == 'hr' %}
+        <div class="tab-pane fade" id="requests" role="tabpanel">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                    <h5 class="text-light mb-0">Pending Interview Requests</h5>
+                    <button class="btn btn-outline-light btn-sm" onclick="refreshRequests()">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="requestsContainer">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mt-2">Loading interview requests...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Interview Tab -->
         <div class="tab-pane fade" id="interview" role="tabpanel">
@@ -210,6 +242,182 @@
 
 <!-- JavaScript -->
 <script>
+    let requestUpdateInterval = null;
+    let lastRequestCount = 0;
+
+    // Load interview requests
+    function loadInterviewRequests() {
+        fetch('/api/hr/interview/requests')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    displayRequests(data.requests);
+                    updateRequestCount(data.total_requests);
+                } else {
+                    showError('Failed to load interview requests');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading requests:', error);
+                showError('Error loading interview requests');
+            });
+    }
+
+    // Display interview requests
+    function displayRequests(requests) {
+        const container = document.getElementById('requestsContainer');
+        
+        if (requests.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-user-clock fa-3x text-muted mb-3"></i>
+                    <h5 class="text-light mb-2">No Pending Requests</h5>
+                    <p class="text-muted">No employees are currently waiting for interviews</p>
+                </div>
+            `;
+            return;
+        }
+
+        const requestsHtml = requests.map(request => `
+            <div class="card bg-dark bg-opacity-50 border-secondary mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-light mb-1">${request.employee_name}</h6>
+                            <p class="text-muted small mb-2">
+                                <i class="fas fa-envelope me-1"></i>${request.employee_email} | 
+                                <i class="fas fa-briefcase me-1"></i>${request.employee_position}
+                            </p>
+                            <p class="text-muted mb-2">${request.message}</p>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                Requested: ${new Date(request.created_at).toLocaleString()}
+                            </small>
+                        </div>
+                        <div class="ms-3">
+                            <button class="btn btn-success btn-sm" onclick="startInterview(${request.id}, '${request.employee_name}')">
+                                <i class="fas fa-play me-1"></i>Start Interview
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = requestsHtml;
+    }
+
+    // Update request count badge
+    function updateRequestCount(count) {
+        const badge = document.getElementById('requestCount');
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline-block';
+            
+            // Show notification if new requests arrived
+            if (count > lastRequestCount && lastRequestCount > 0) {
+                showNotification(`${count - lastRequestCount} new interview request(s) received`);
+            }
+        } else {
+            badge.style.display = 'none';
+        }
+        lastRequestCount = count;
+    }
+
+    // Start interview
+    function startInterview(requestId, employeeName) {
+        if (!confirm(`Start interview with ${employeeName}?`)) {
+            return;
+        }
+
+        fetch(`/api/hr/interview/${requestId}/start`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification(`Interview started for ${employeeName}`);
+                loadInterviewRequests(); // Refresh requests
+                switchToInterviewTab(); // Switch to interview tab
+            } else {
+                showError('Failed to start interview: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error starting interview:', error);
+            showError('Error starting interview');
+        });
+    }
+
+    // Refresh requests
+    function refreshRequests() {
+        loadInterviewRequests();
+    }
+
+    // Show notification
+    function showNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3';
+        notification.style.zIndex = '9999';
+        notification.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    // Show error
+    function showError(message) {
+        const error = document.createElement('div');
+        error.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3';
+        error.style.zIndex = '9999';
+        error.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(error);
+        
+        setTimeout(() => {
+            if (error.parentNode) {
+                error.remove();
+            }
+        }, 5000);
+    }
+
+    // Auto-refresh requests every 10 seconds
+    function startRequestUpdates() {
+        loadInterviewRequests(); // Initial load
+        requestUpdateInterval = setInterval(loadInterviewRequests, 10000);
+    }
+
+    function stopRequestUpdates() {
+        if (requestUpdateInterval) {
+            clearInterval(requestUpdateInterval);
+            requestUpdateInterval = null;
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('requests-tab')) {
+            startRequestUpdates();
+        }
+    });
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        stopRequestUpdates();
+    });
+
     // Switch to interview tab
     function switchToInterviewTab() {
         const interviewTab = new bootstrap.Tab(document.getElementById('interview-tab'));
