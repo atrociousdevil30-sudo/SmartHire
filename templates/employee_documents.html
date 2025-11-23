@@ -11,6 +11,9 @@
                     <i class="fas fa-file-alt me-2 text-primary"></i>My Documents
                 </h2>
                 <div>
+                    <a href="{{ url_for('employee_dashboard') }}" class="btn btn-success btn-lg me-3">
+                        <i class="fas fa-tachometer-alt me-2"></i>Back to Dashboard
+                    </a>
                     <button class="btn btn-outline-info btn-sm" onclick="refreshDocuments()">
                         <i class="fas fa-sync-alt me-1"></i>Refresh
                     </button>
@@ -148,8 +151,8 @@
                             </td>
                             <td>
                                 <div class="small">
-                                    <div class="text-light">{{ document.created_at.strftime('%Y-%m-%d') }}</div>
-                                    <div class="text-muted">{{ document.created_at.strftime('%H:%M') }}</div>
+                                    <div class="text-light">{{ document.generated_at.strftime('%Y-%m-%d') }}</div>
+                                    <div class="text-muted">{{ document.generated_at.strftime('%H:%M') }}</div>
                                 </div>
                             </td>
                             <td>
