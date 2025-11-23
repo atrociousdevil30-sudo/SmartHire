@@ -387,7 +387,7 @@
             {% endif %}
 
             <!-- Feedback Collection Form -->
-            {% if employee and employee.status == 'Offboarding' %}
+            {% if employee and employee.status == 'Offboarding' and session.get('role') == 'employee' %}
             <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
                 <div class="card-header bg-transparent border-secondary">
                     <h6 class="text-light mb-0">
