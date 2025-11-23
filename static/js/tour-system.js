@@ -109,6 +109,57 @@ class SmartHireTour {
                     position: 'bottom',
                     action: 'finish'
                 }
+            ],
+            onboarding: [
+                {
+                    target: '#employeeSelect',
+                    title: 'Select an Employee',
+                    content: 'Start by choosing an employee from this dropdown. This will load their specific onboarding checklist and show all their tasks and progress.',
+                    position: 'top',
+                    action: 'next'
+                },
+                {
+                    target: '#refreshBtn',
+                    title: 'Refresh Data',
+                    content: 'Click this refresh button to update the employee list and reload the latest onboarding data from the database.',
+                    position: 'left',
+                    action: 'next'
+                },
+                {
+                    target: '#tasks-tab',
+                    title: 'Tasks Tab',
+                    content: 'This is where you manage individual onboarding tasks. You can mark tasks complete, set due dates, and track progress.',
+                    position: 'bottom',
+                    action: 'next'
+                },
+                {
+                    target: '#progress-tab',
+                    title: 'Progress Overview',
+                    content: 'Click here to see visual progress charts, completion percentages, and overall onboarding status for the selected employee.',
+                    position: 'bottom',
+                    action: 'next'
+                },
+                {
+                    target: '#details-tab',
+                    title: 'Employee Details',
+                    content: 'View comprehensive employee information including hire date, contact details, and onboarding timeline.',
+                    position: 'bottom',
+                    action: 'next'
+                },
+                {
+                    target: '.task-filters',
+                    title: 'Filter Tasks',
+                    content: 'Use these filters to show specific tasks: All tasks, only pending items, completed tasks, overdue items, or tasks due today.',
+                    position: 'left',
+                    action: 'next'
+                },
+                {
+                    target: '.createKTSession',
+                    title: 'Knowledge Transfer',
+                    content: 'Click this button to schedule knowledge transfer sessions. This helps document and transfer critical information when employees join or leave.',
+                    position: 'bottom',
+                    action: 'finish'
+                }
             ]
         };
 
@@ -122,6 +173,17 @@ class SmartHireTour {
             return;
         }
 
+        this.tourSteps = this.getTourSteps(page);
+        if (this.tourSteps.length === 0) return;
+
+        this.isActive = true;
+        this.currentStep = 0;
+        this.createTourOverlay();
+        this.showCurrentStep();
+    }
+
+    // Force restart a tour (even if already completed)
+    forceRestartTour(page) {
         this.tourSteps = this.getTourSteps(page);
         if (this.tourSteps.length === 0) return;
 

@@ -59,7 +59,7 @@
                                     <small class="text-muted">Pending</small>
                                 </div>
                                 <div>
-                                    <h6 class="text-info mb-1">{{ (now - checklist.created_at).days if checklist.created_at else 0 }}</h6>
+                                    <h6 class="text-info mb-1">{{ ((now.date() - user.hire_date).days if user.hire_date else 0) }}</h6>
                                     <small class="text-muted">Days Since Start</small>
                                 </div>
                             </div>

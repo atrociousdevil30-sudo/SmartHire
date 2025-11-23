@@ -10,7 +10,7 @@
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center onboarding-header">
                 <div>
                     <h1 class="h3 mb-1 text-light">
                         <i class="fas fa-user-clock me-2"></i>Employee Onboarding
@@ -18,10 +18,10 @@
                     <p class="text-muted mb-0">Track and manage new hire onboarding tasks and progress</p>
                 </div>
                 <div>
-                    <button class="btn btn-outline-primary btn-sm me-2" onclick="tourManager.startTour('onboarding')">
+                    <button class="btn btn-outline-primary btn-sm me-2" onclick="startOnboardingTour()">
                         <i class="fas fa-play-circle me-1"></i>Start Tour
                     </button>
-                    <button class="btn btn-outline-info btn-sm me-2" onclick="createKTSession()">
+                    <button class="btn btn-outline-info btn-sm me-2 createKTSession" onclick="createKTSession()">
                         <i class="fas fa-brain me-1"></i>Create KT Session
                     </button>
                     <button class="btn btn-outline-light" id="refreshBtn">
@@ -76,7 +76,7 @@
                     <strong>Viewing:</strong> {{ selected_employee.full_name }}'s Onboarding Checklist
                 </div>
             </div>
-            <div class="card bg-dark bg-opacity-25 border-secondary">
+            <div class="card bg-dark bg-opacity-25 border-secondary progress-overview">
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-6 mb-3 mb-md-0">
@@ -146,7 +146,7 @@
     {% if selected_employee and selected_employee.status == 'Onboarding' and checklist %}
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
+            <div class="card bg-dark bg-opacity-25 border-secondary checklist-section">
                 <div class="card-body">
                     <!-- Task list content would go here -->
                     <h5 class="text-light">Onboarding Tasks</h5>
@@ -259,7 +259,7 @@
                             <h5 class="mb-0 text-light">
                                 <i class="fas fa-clipboard-list me-2"></i>Onboarding Tasks
                             </h5>
-                            <div class="dropdown">
+                            <div class="dropdown task-filters">
                                 <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-filter me-1"></i> Filter
                                 </button>
@@ -432,7 +432,7 @@
                 <!-- Details Tab -->
                 <div class="tab-pane fade" id="details" role="tabpanel">
                     {% if selected_employee %}
-                    <div class="card bg-dark bg-opacity-25 border-secondary">
+                    <div class="card bg-dark bg-opacity-25 border-secondary employee-info-card">
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
@@ -450,7 +450,7 @@
                                         </span>
                                     </p>
                                     <p><strong>Hire Date:</strong> {{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else 'N/A' }}</p>
-                                    <p><strong>Days Since Start:</strong> {{ (now() - checklist.created_at).days if checklist and checklist.created_at else 0 }}</p>
+                                    <p><strong>Days Since Start:</strong> {{ ((now().date() - selected_employee.hire_date).days if selected_employee.hire_date else 0) }}</p>
                                 </div>
                             </div>
                         </div>
@@ -483,7 +483,7 @@
                                     <p class="text-muted mb-2"><strong>Department:</strong> {{ selected_employee.department or 'Not Assigned' }}</p>
                                     <p class="text-muted mb-2"><strong>Position:</strong> {{ selected_employee.position or 'Not Assigned' }}</p>
                                     <p class="text-muted mb-2"><strong>Hire Date:</strong> {{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else 'N/A' }}</p>
-                                    <p class="text-muted mb-2"><strong>Days Since Start:</strong> {{ (now() - checklist.created_at).days if checklist and checklist.created_at else 0 }}</p>
+                                    <p class="text-muted mb-2"><strong>Days Since Start:</strong> {{ ((now().date() - selected_employee.hire_date).days if selected_employee.hire_date else 0) }}</p>
                                 </div>
                                 <div class="col-md-6">
                                     <h6 class="text-light mb-3">Checklist Details</h6>
@@ -864,6 +864,89 @@
 function toggleFabMenu() {
     const menu = document.getElementById('fabMenu');
     menu.classList.toggle('active');
+}
+
+// Start Onboarding Tour with fallback
+function startOnboardingTour() {
+    // Check if tourManager is available
+    if (typeof tourManager !== 'undefined' && tourManager && tourManager.forceRestartTour) {
+        tourManager.forceRestartTour('onboarding');
+    } else if (typeof tourManager !== 'undefined' && tourManager && tourManager.startTour) {
+        tourManager.startTour('onboarding');
+    } else {
+        // Fallback: Simple alert-based tour
+        alert('Tour System Loading...\n\nIf the tour doesn\'t start automatically, please refresh the page and try again.\n\nThe tour will guide you through:\n1. Employee Selection\n2. Progress Tracking\n3. Task Management\n4. Knowledge Transfer Sessions');
+        
+        // Try to load tour system manually
+        setTimeout(() => {
+            if (typeof tourManager !== 'undefined' && tourManager && tourManager.forceRestartTour) {
+                tourManager.forceRestartTour('onboarding');
+            } else if (typeof tourManager !== 'undefined' && tourManager && tourManager.startTour) {
+                tourManager.startTour('onboarding');
+            } else {
+                // Manual tour highlights as fallback
+                showManualTour();
+            }
+        }, 1000);
+    }
+}
+
+// Manual tour fallback
+function showManualTour() {
+    const steps = [
+        { element: '#employeeSelect', message: 'Select an employee to manage their onboarding' },
+        { element: '.employee-info-card', message: 'View employee details and progress' },
+        { element: '.progress-overview', message: 'Track overall onboarding completion' },
+        { element: '.checklist-section', message: 'Manage onboarding tasks and checklist items' },
+        { element: '.task-filters', message: 'Filter tasks by status' },
+        { element: '.createKTSession', message: 'Create knowledge transfer sessions' }
+    ];
+    
+    let currentStep = 0;
+    
+    function showStep(index) {
+        if (index >= steps.length) {
+            alert('Tour Complete! 🎉\n\nYou\'re now ready to use the Onboarding system effectively.');
+            return;
+        }
+        
+        const step = steps[index];
+        const element = document.querySelector(step.element);
+        
+        if (element) {
+            // Remove previous highlights
+            document.querySelectorAll('.manual-tour-highlight').forEach(el => {
+                el.classList.remove('manual-tour-highlight');
+            });
+            
+            // Highlight current element
+            element.classList.add('manual-tour-highlight');
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Show message
+            if (confirm(`Step ${index + 1}/${steps.length}: ${step.message}\n\nClick OK to continue, Cancel to skip.`)) {
+                showStep(index + 1);
+            } else {
+                showStep(index + 1);
+            }
+        } else {
+            showStep(index + 1);
+        }
+    }
+    
+    // Add CSS for manual highlighting
+    const style = document.createElement('style');
+    style.textContent = `
+        .manual-tour-highlight {
+            border: 3px solid #007bff !important;
+            border-radius: 8px !important;
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.5) !important;
+            transition: all 0.3s ease !important;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    showStep(0);
 }
 </script>
 {% endblock %}
