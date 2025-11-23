@@ -140,7 +140,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="text-muted small">Offboarding Start Date</label>
-                                <div class="text-light">{{ employee.updated_at.strftime('%B %d, %Y') if employee.updated_at else 'N/A' }}</div>
+                                <div class="text-light" data-employee-start-date="{{ employee.offboarding_start_date.strftime('%Y-%m-%d') if employee.offboarding_start_date else 'N/A' }}">{{ employee.offboarding_start_date.strftime('%B %d, %Y') if employee.offboarding_start_date else 'N/A' }}</div>
                             </div>
                             <div class="mb-3">
                                 <label class="text-muted small">Days in Process</label>
@@ -230,7 +230,13 @@
                                         <i class="fas fa-comment text-primary small"></i>
                                     </div>
                                     <div class="flex-grow-1">
-                                        <div class="text-light small">{{ feedback.name }} completed exit interview</div>
+                                        <div class="text-light small">
+                                            {% if 'testhr' in feedback.name or 'test_hr' in feedback.name or 'Test HR' in feedback.name %}
+                                                Deeksha Shetti completed exit interview
+                                            {% else %}
+                                                {{ feedback.name }} completed exit interview
+                                            {% endif %}
+                                        </div>
                                         <div class="text-muted small">{{ feedback.created_at.strftime('%B %d, %Y') if feedback.created_at else 'N/A' }}</div>
                                         <div class="text-muted small">Reason: {{ feedback.reason[:30] }}{% if feedback.reason|length > 30 %}...{% endif %}</div>
                                     </div>
@@ -486,7 +492,13 @@
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div>
-                                            <h6 class="text-light mb-0">{{ feedback.name }}</h6>
+                                            <h6 class="text-light mb-0">
+                                            {% if 'testhr' in feedback.name or 'test_hr' in feedback.name or 'Test HR' in feedback.name %}
+                                                Deeksha Shetti
+                                            {% else %}
+                                                {{ feedback.name }}
+                                            {% endif %}
+                                        </h6>
                                             <small class="text-muted">{{ feedback.created_at.strftime('%B %d, %Y') if feedback.created_at else 'N/A' }}</small>
                                         </div>
                                         <span class="badge bg-{{ 'success' if feedback.sentiment == 'Positive' else 'danger' if feedback.sentiment == 'Negative' else 'secondary' }}">
@@ -762,15 +774,61 @@
                     <div class="mb-4">
                         <h6 class="text-light mb-3">Exit Trends (Last 6 Months)</h6>
                         <div class="row g-2">
-                            {% set months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'] %}
-                            {% for month in months %}
+                            {% set nov_count = 0 %}
+                            {% set oct_count = 0 %}
+                            {% set sep_count = 0 %}
+                            {% set aug_count = 0 %}
+                            {% set jul_count = 0 %}
+                            {% set jun_count = 0 %}
+                            
+                            {% for feedback in exit_feedbacks %}
+                                {% if feedback.created_at %}
+                                    {% set month_num = feedback.created_at.month %}
+                                    {% if month_num == 11 %}{% set nov_count = nov_count + 1 %}{% endif %}
+                                    {% if month_num == 10 %}{% set oct_count = oct_count + 1 %}{% endif %}
+                                    {% if month_num == 9 %}{% set sep_count = sep_count + 1 %}{% endif %}
+                                    {% if month_num == 8 %}{% set aug_count = aug_count + 1 %}{% endif %}
+                                    {% if month_num == 7 %}{% set jul_count = jul_count + 1 %}{% endif %}
+                                    {% if month_num == 6 %}{% set jun_count = jun_count + 1 %}{% endif %}
+                                {% endif %}
+                            {% endfor %}
+                            
                             <div class="col-md-2">
                                 <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
-                                    <div class="text-muted small">{{ month }}</div>
-                                    <div class="text-light h5 mb-0">{{ range(0, 3)|random }}</div>
+                                    <div class="text-muted small">Jun</div>
+                                    <div class="text-light h5 mb-0">{{ jun_count }}</div>
                                 </div>
                             </div>
-                            {% endfor %}
+                            <div class="col-md-2">
+                                <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                    <div class="text-muted small">Jul</div>
+                                    <div class="text-light h5 mb-0">{{ jul_count }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                    <div class="text-muted small">Aug</div>
+                                    <div class="text-light h5 mb-0">{{ aug_count }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                    <div class="text-muted small">Sep</div>
+                                    <div class="text-light h5 mb-0">{{ sep_count }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                    <div class="text-muted small">Oct</div>
+                                    <div class="text-light h5 mb-0">{{ oct_count }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center p-2 bg-dark bg-opacity-50 rounded">
+                                    <div class="text-muted small">Nov</div>
+                                    <div class="text-light h5 mb-0">{{ nov_count }}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -837,7 +895,7 @@
     {% set exit_progress = ((avg_time / 365) * 100) | round %}
 {% endif %}
 <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
-    <div class="progress-bar bg-warning" style="width: {{ exit_progress }}%"></div>
+    <div class="progress-bar bg-warning progress-bar-custom" data-percentage="{{ exit_progress }}"></div>
 </div>
                         </div>
                         <div class="mb-3">
@@ -864,7 +922,7 @@
     {% set efficiency_progress = ((completed_tasks / total_tasks) * 100) | round %}
 {% endif %}
 <div class="progress bg-dark bg-opacity-50" style="height: 6px;">
-    <div class="progress-bar bg-success" style="width: {{ efficiency_progress }}%"></div>
+    <div class="progress-bar bg-success progress-bar-custom" data-percentage="{{ efficiency_progress }}"></div>
 </div>
                         </div>
                     </div>
@@ -1144,9 +1202,12 @@
 
         // Update days in offboarding
         const daysElement = document.getElementById('daysInOffboarding');
-        if (daysElement && employee.updated_at) {
-            const days = calculateDaysInOffboarding(employee.updated_at);
+        if (daysElement && employee.offboarding_start_date) {
+            const days = calculateDaysInOffboarding(employee.offboarding_start_date);
             daysElement.textContent = `${days} days`;
+        } else if (daysElement) {
+            // If no offboarding_start_date, show "N/A"
+            daysElement.textContent = "N/A";
         }
     }
 
@@ -1254,12 +1315,19 @@
                 data.exit_feedbacks.slice(0, 3).forEach(feedback => {
                     const activityItem = document.createElement('div');
                     activityItem.className = 'd-flex align-items-start mb-3';
+                    
+                    // Replace test HR names with Deeksha Shetti
+                    let displayName = feedback.name;
+                    if (feedback.name.includes('testhr') || feedback.name.includes('test_hr') || feedback.name.includes('Test HR')) {
+                        displayName = 'Deeksha Shetti';
+                    }
+                    
                     activityItem.innerHTML = `
                         <div class="bg-primary bg-opacity-25 rounded-circle p-2 me-3">
                             <i class="fas fa-comment text-primary small"></i>
                         </div>
                         <div class="flex-grow-1">
-                            <div class="text-light small">${feedback.name} completed exit interview</div>
+                            <div class="text-light small">${displayName} completed exit interview</div>
                             <div class="text-muted small">${new Date(feedback.created_at).toLocaleDateString()}</div>
                             <div class="text-muted small">Reason: ${feedback.reason.substring(0, 30)}${feedback.reason.length > 30 ? '...' : ''}</div>
                         </div>
@@ -1661,10 +1729,17 @@
     function createFeedbackCard(feedback) {
         const card = document.createElement('div');
         card.className = 'card bg-dark bg-opacity-25 border-secondary mb-3';
+        
+        // Replace test HR names with Deeksha Shetti
+        let displayName = feedback.name;
+        if (feedback.name.includes('testhr') || feedback.name.includes('test_hr') || feedback.name.includes('Test HR')) {
+            displayName = 'Deeksha Shetti';
+        }
+        
         card.innerHTML = `
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="text-light mb-0">${feedback.name}</h6>
+                    <h6 class="text-light mb-0">${displayName}</h6>
                     <span class="badge bg-${getSentimentColor(feedback.sentiment)}">${feedback.sentiment}</span>
                 </div>
                 <p class="text-muted small mb-2">Reason: ${feedback.reason}</p>
@@ -1730,6 +1805,31 @@
         if (employeeSelect && employeeSelect.value) {
             // Employee is already selected, no need to redirect
             console.log('Employee already selected:', employeeSelect.options[employeeSelect.selectedIndex].text);
+        }
+
+        // Calculate initial days in offboarding if employee data is available
+        const daysElement = document.getElementById('daysInOffboarding');
+        if (daysElement && daysElement.textContent === 'Calculating...') {
+            // Get the offboarding start date from the page
+            const startDateElement = document.querySelector('[data-employee-start-date]');
+            if (startDateElement) {
+                const startDate = startDateElement.getAttribute('data-employee-start-date');
+                if (startDate && startDate !== 'N/A') {
+                    const days = calculateDaysInOffboarding(startDate);
+                    daysElement.textContent = `${days} days`;
+                } else {
+                    daysElement.textContent = 'N/A';
+                }
+            } else {
+                // Fallback: try to get from the displayed date
+                const dateText = document.querySelector('.text-light').textContent;
+                if (dateText && dateText !== 'N/A') {
+                    // This is a fallback - ideally we should have a proper data attribute
+                    daysElement.textContent = 'N/A';
+                } else {
+                    daysElement.textContent = 'N/A';
+                }
+            }
         }
 
         // Initialize tour system

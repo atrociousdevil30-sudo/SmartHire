@@ -166,6 +166,7 @@ class User(db.Model):
     manager_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     employee_id = db.Column(db.String(20), nullable=True)
     exit_date = db.Column(db.Date, nullable=True)
+    offboarding_start_date = db.Column(db.DateTime, nullable=True)
     
     # Password reset fields
     reset_token = db.Column(db.String(255), nullable=True)
@@ -1326,9 +1327,12 @@ def update_employee_status(employee_id):
         # Update employee status
         employee.status = new_status
         
-        # If changing to Offboarding, set exit date if not already set
-        if new_status == 'Offboarding' and not employee.exit_date:
-            employee.exit_date = datetime.utcnow().date() + timedelta(days=14)  # Default 2 weeks notice
+        # If changing to Offboarding, set exit date and offboarding start date if not already set
+        if new_status == 'Offboarding':
+            if not employee.exit_date:
+                employee.exit_date = datetime.utcnow().date() + timedelta(days=14)  # Default 2 weeks notice
+            if not employee.offboarding_start_date:
+                employee.offboarding_start_date = datetime.utcnow()  # Set current time as offboarding start date
         
         # If changing to Active, clear exit date
         if new_status == 'Active':
@@ -5239,6 +5243,10 @@ def exit_interview(employee_id=None):
     if employee_id and session.get('role') == 'hr':
         target_employee = User.query.get(employee_id)
         if target_employee and target_employee.status == 'Offboarding':
+            # Set offboarding start date if not already set
+            if not target_employee.offboarding_start_date:
+                target_employee.offboarding_start_date = datetime.utcnow()
+                db.session.commit()
             employee = target_employee
         elif not target_employee:
             flash('Employee not found', 'error')
@@ -8727,6 +8735,7 @@ def get_employee_exit_data(employee_id):
                 'department': employee.department,
                 'email': employee.email,
                 'status': employee.status,
+                'offboarding_start_date': employee.offboarding_start_date.isoformat() if employee.offboarding_start_date else None,
                 'updated_at': employee.updated_at.isoformat() if employee.updated_at else None
             },
             'exit_feedbacks': [
