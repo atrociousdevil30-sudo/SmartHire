@@ -19,6 +19,9 @@
                         <div class="col-md-6">
                             <div class="d-flex flex-column align-items-md-end mt-3 mt-md-0">
                                 <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-info" id="startKTTour">
+                                        <i class="fas fa-question-circle me-1"></i> Guide Tour
+                                    </button>
                                     <button class="btn btn-sm btn-outline-light" id="exportKTReport">
                                         <i class="fas fa-download me-1"></i> Export KT Report
                                     </button>
@@ -201,7 +204,7 @@
                                         <small class="text-muted">({{ document.category }})</small>
                                     {% endif %}
                                 </div>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument({{ document.id }})">
+                                <button class="btn btn-sm btn-outline-danger" data-document-id="{{ document.id }}" onclick="deleteDocument(this)">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -244,7 +247,7 @@
                     <div class="mb-3">
                         <label class="form-label text-light small">Training Progress</label>
                         <div class="progress bg-dark bg-opacity-50" style="height: 20px;">
-                            <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" id="successorProgress" style="width: {{ kt_progress.successor_trained_percent }}%">{{ kt_progress.successor_trained_percent }}%</div>
+                            <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" id="successorProgress" data-progress="{{ kt_progress.successor_trained_percent }}" style="width: 0%">{{ kt_progress.successor_trained_percent }}%</div>
                         </div>
                     </div>
                     
@@ -319,7 +322,7 @@
                                             <td>{{ project.recipient_name }}</td>
                                             <td>
                                                 {% if project.documentation_path %}
-                                                    <button class="btn btn-sm btn-outline-primary" onclick="viewProjectDocs({{ project.id }}, '{{ project.project_name }}')">
+                                                    <button class="btn btn-sm btn-outline-primary" data-project-id="{{ project.id }}" data-project-name="{{ project.project_name }}" onclick="viewProjectDocs(this)">
                                                         <i class="fas fa-eye"></i> View
                                                     </button>
                                                 {% else %}
@@ -538,6 +541,346 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Knowledge Transfer Tutorial System
+    function startKTTour() {
+        // Create tour overlay
+        const tourOverlay = document.createElement('div');
+        tourOverlay.id = 'ktTourOverlay';
+        tourOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        // Create tour content
+        const tourContent = document.createElement('div');
+        tourContent.style.cssText = `
+            background: #2c3e50;
+            border: 2px solid #3498db;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: white;
+            position: relative;
+        `;
+        
+        tourContent.innerHTML = `
+            <button onclick="closeTour()" style="
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: #e74c3c;
+                border: none;
+                color: white;
+                font-size: 20px;
+                cursor: pointer;
+                border-radius: 50%;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            ">&times;</button>
+            
+            <h2 style="color: #3498db; margin-bottom: 20px;">
+                <i class="fas fa-brain"></i> Knowledge Transfer System Guide
+            </h2>
+            
+            <div class="tour-section" style="margin-bottom: 25px;">
+                <h3 style="color: #f39c12; margin-bottom: 10px;">
+                    <i class="fas fa-tasks"></i> What is Knowledge Transfer?
+                </h3>
+                <p style="line-height: 1.6;">
+                    Knowledge Transfer (KT) is the process of documenting and sharing critical information, 
+                    processes, and expertise when employees join or leave the organization. This ensures 
+                    business continuity and preserves valuable organizational knowledge.
+                </p>
+            </div>
+            
+            <div class="tour-section" style="margin-bottom: 25px;">
+                <h3 style="color: #f39c12; margin-bottom: 10px;">
+                    <i class="fas fa-chart-line"></i> Transfer Progress Overview
+                </h3>
+                <p style="line-height: 1.6;">
+                    The progress cards at the top show your personal KT completion status:
+                </p>
+                <ul style="margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Sessions Completed:</strong> Number of KT sessions you've attended</li>
+                    <li><strong>Documents Uploaded:</strong> Files you've shared for knowledge transfer</li>
+                    <li><strong>Successor Trained:</strong> Progress of training your replacement</li>
+                    <li><strong>Projects Handover:</strong> Projects you've successfully transferred</li>
+                </ul>
+            </div>
+            
+            <div class="tour-section" style="margin-bottom: 25px;">
+                <h3 style="color: #f39c12; margin-bottom: 10px;">
+                    <i class="fas fa-chalkboard-teacher"></i> Structured KT Sessions
+                </h3>
+                <p style="line-height: 1.6;">
+                    This table shows scheduled knowledge transfer sessions:
+                </p>
+                <ul style="margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Session Topic:</strong> What will be discussed</li>
+                    <li><strong>Attendees:</strong> Who participates in the session</li>
+                    <li><strong>Status:</strong> Scheduled, In Progress, or Completed</li>
+                    <li><strong>Actions:</strong> View documentation or mark as complete</li>
+                </ul>
+            </div>
+            
+            <div class="tour-section" style="margin-bottom: 25px;">
+                <h3 style="color: #f39c12; margin-bottom: 10px;">
+                    <i class="fas fa-file-alt"></i> Critical Process Documentation
+                </h3>
+                <p style="line-height: 1.6;">
+                    Upload and manage important documents that contain critical processes, 
+                    procedures, and institutional knowledge. These documents are essential 
+                    for training new team members and ensuring continuity.
+                </p>
+            </div>
+            
+            <div class="tour-section" style="margin-bottom: 25px;">
+                <h3 style="color: #f39c12; margin-bottom: 10px;">
+                    <i class="fas fa-user-graduate"></i> Successor Training
+                </h3>
+                <p style="line-height: 1.6;">
+                    Track the training progress of your successor or replacement. Mark completed 
+                    training modules to ensure proper knowledge transfer and skill development.
+                </p>
+            </div>
+            
+            <div class="tour-section" style="margin-bottom: 25px;">
+                <h3 style="color: #f39c12; margin-bottom: 10px;">
+                    <i class="fas fa-project-diagram"></i> Project Handover
+                </h3>
+                <p style="line-height: 1.6;">
+                    Manage the transfer of ongoing projects to ensure they continue smoothly 
+                    after your departure. Document project status, deliverables, and key contacts.
+                </p>
+            </div>
+            
+            <div class="tour-section" style="margin-bottom: 25px;">
+                <h3 style="color: #27ae60; margin-bottom: 10px;">
+                    <i class="fas fa-lightbulb"></i> Best Practices
+                </h3>
+                <ul style="margin-left: 20px; line-height: 1.8;">
+                    <li>Start KT process early (at least 2-3 weeks before departure)</li>
+                    <li>Document processes step-by-step with screenshots</li>
+                    <li>Schedule regular sessions with your successor</li>
+                    <li>Get confirmation from recipients for each handover</li>
+                    <li>Update documentation regularly until final day</li>
+                </ul>
+            </div>
+            
+            <div class="tour-section" style="margin-bottom: 20px;">
+                <h3 style="color: #e74c3c; margin-bottom: 10px;">
+                    <i class="fas fa-exclamation-triangle"></i> Important Notes
+                </h3>
+                <p style="line-height: 1.6;">
+                    <strong>For HR:</strong> You can see all KT activities across the organization.<br>
+                    <strong>For Employees:</strong> You see only your personal KT activities.<br>
+                    <strong>Data Privacy:</strong> Your KT data is visible only to authorized personnel.
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="closeTour()" style="
+                    background: #3498db;
+                    border: none;
+                    color: white;
+                    padding: 12px 30px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    margin-right: 10px;
+                ">
+                    <i class="fas fa-check"></i> Got it, Start Using KT
+                </button>
+                <button onclick="showQuickTour()" style="
+                    background: #95a5a6;
+                    border: none;
+                    color: white;
+                    padding: 12px 30px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 16px;
+                ">
+                    <i class="fas fa-rocket"></i> Quick Tour
+                </button>
+            </div>
+        `;
+        
+        tourOverlay.appendChild(tourContent);
+        document.body.appendChild(tourOverlay);
+    }
+    
+    function closeTour() {
+        const overlay = document.getElementById('ktTourOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+    
+    function showQuickTour() {
+        closeTour();
+        // Highlight each section sequentially
+        const sections = [
+            {
+                element: document.querySelector('.card:has(#sessionsCompleted)'),
+                title: 'Progress Overview',
+                message: 'Your personal KT progress at a glance'
+            },
+            {
+                element: document.querySelector('#ktSessionsTable'),
+                title: 'KT Sessions',
+                message: 'Your scheduled knowledge transfer sessions'
+            },
+            {
+                element: document.querySelector('#ktDocumentsTable'),
+                title: 'Documentation',
+                message: 'Critical process documents you\'ve uploaded'
+            },
+            {
+                element: document.querySelector('#successorTraining'),
+                title: 'Successor Training',
+                message: 'Track your replacement\'s training progress'
+            },
+            {
+                element: document.querySelector('#projectsTable'),
+                title: 'Project Handover',
+                message: 'Projects you\'re transferring to others'
+            }
+        ];
+        
+        let currentIndex = 0;
+        
+        function highlightSection(index) {
+            if (index >= sections.length) {
+                showTourComplete();
+                return;
+            }
+            
+            const section = sections[index];
+            if (!section.element) {
+                highlightSection(index + 1);
+                return;
+            }
+            
+            // Remove previous highlights
+            document.querySelectorAll('.tour-highlight').forEach(el => {
+                el.classList.remove('tour-highlight');
+            });
+            
+            // Highlight current section
+            section.element.classList.add('tour-highlight');
+            section.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Create tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tour-tooltip';
+            tooltip.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #3498db;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                z-index: 10001;
+                max-width: 300px;
+                text-align: center;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            `;
+            tooltip.innerHTML = `
+                <h4 style="margin: 0 0 10px 0;">${section.title}</h4>
+                <p style="margin: 0;">${section.message}</p>
+                <button onclick="nextSection()" style="
+                    background: white;
+                    color: #3498db;
+                    border: none;
+                    padding: 8px 15px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-top: 10px;
+                ">Next →</button>
+            `;
+            
+            document.body.appendChild(tooltip);
+            currentIndex = index;
+        }
+        
+        window.nextSection = function() {
+            const tooltip = document.querySelector('.tour-tooltip');
+            if (tooltip) tooltip.remove();
+            highlightSection(currentIndex + 1);
+        };
+        
+        function showTourComplete() {
+            const completeMsg = document.createElement('div');
+            completeMsg.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #27ae60;
+                color: white;
+                padding: 20px;
+                border-radius: 8px;
+                z-index: 10001;
+                text-align: center;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            `;
+            completeMsg.innerHTML = `
+                <h3 style="margin: 0 0 10px 0;">Tour Complete! 🎉</h3>
+                <p style="margin: 0;">You're now ready to use the Knowledge Transfer system effectively.</p>
+                <button onclick="this.parentElement.remove()" style="
+                    background: white;
+                    color: #27ae60;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-top: 10px;
+                ">Got it!</button>
+            `;
+            document.body.appendChild(completeMsg);
+            
+            // Remove highlights
+            document.querySelectorAll('.tour-highlight').forEach(el => {
+                el.classList.remove('tour-highlight');
+            });
+        }
+        
+        // Add CSS for highlights
+        const style = document.createElement('style');
+        style.textContent = `
+            .tour-highlight {
+                border: 3px solid #3498db !important;
+                border-radius: 8px !important;
+                box-shadow: 0 0 20px rgba(52, 152, 219, 0.5) !important;
+                transition: all 0.3s ease !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        highlightSection(0);
+    }
+    
+    // Add tour button click handler
+    const tourBtn = document.getElementById('startKTTour');
+    if (tourBtn) {
+        tourBtn.addEventListener('click', startKTTour);
+    }
+    
     // Update successor training progress
     function updateSuccessorProgress() {
         const checkboxes = document.querySelectorAll('#successorTraining input[type="checkbox"]');

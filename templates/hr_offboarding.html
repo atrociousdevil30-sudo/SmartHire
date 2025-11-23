@@ -1,0 +1,836 @@
+{% extends "base.html" %}
+
+{% block title %}HR Offboarding Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-light mb-1">
+                <i class="fas fa-door-open me-2"></i>Offboarding Management
+            </h1>
+            <p class="text-muted mb-0">Manage employee offboarding processes and tasks</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-light btn-sm" onclick="startTour()">
+                <i class="fas fa-play me-1"></i>Start Tour
+            </button>
+            <button class="btn btn-outline-info btn-sm ms-2" onclick="createKTRecords()">
+                <i class="fas fa-brain me-1"></i>Create KT Records
+            </button>
+            <button class="btn btn-primary btn-sm ms-2" onclick="goToExitAnalytics()">
+                <i class="fas fa-chart-line me-1"></i>Exit Analytics
+            </button>
+        </div>
+    </div>
+
+    <!-- Employee Selection -->
+    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <label for="employeeSelect" class="form-label text-light">Select Offboarding Employee:</label>
+                    <select class="form-select bg-dark bg-opacity-50 text-light border-secondary" id="employeeSelect">
+                        <option value="">Choose an employee...</option>
+                        {% if offboarding_employees %}
+                            {% for employee in offboarding_employees %}
+                                <option value="{{ employee.id }}" {% if selected_employee and selected_employee.id == employee.id %}selected{% endif %}>
+                                    {{ employee.full_name }} - {{ employee.position or 'No Position' }}
+                                </option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No employees in offboarding</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-end mt-3 mt-md-0">
+                        <span class="badge bg-info bg-opacity-25 text-info">
+                            {{ offboarding_employees|length }} employee{{ 's' if offboarding_employees|length != 1 else '' }} in offboarding
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Overview -->
+    {% if selected_employee and selected_employee.status == 'Offboarding' %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info d-flex align-items-center" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <div>
+                    <strong>Viewing:</strong> {{ selected_employee.full_name }}'s Offboarding Checklist
+                </div>
+            </div>
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <h5 class="text-light mb-2">{{ selected_employee.full_name }} - Offboarding Progress</h5>
+                            <div class="progress bg-dark bg-opacity-50 mb-2" style="height: 10px;">
+                                {% set progress_value = checklist.get_progress() if checklist else 0 %}
+                                <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" 
+                                     data-progress="{{ progress_value }}"
+                                     data-width="{{ progress_value }}%"
+                                     aria-valuenow="{{ progress_value }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="text-muted">Progress: {{ "%.0f"|format(progress_value) }}% Complete</small>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <h6 class="text-warning mb-1">{{ checklist.tasks | length if checklist else 0 }}</h6>
+                                    <small class="text-muted">Total Tasks</small>
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="text-success mb-1">{{ checklist.tasks | selectattr('is_completed', 'equalto', true) | list | length if checklist else 0 }}</h6>
+                                    <small class="text-muted">Completed</small>
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="text-info mb-1">{{ (now() - checklist.created_at).days if checklist and checklist.created_at else 0 }}</h6>
+                                    <small class="text-muted">Days Since Start</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- No Tasks Section -->
+    {% if selected_employee and selected_employee.status == 'Offboarding' and not checklist %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                    <h5 class="text-light mb-2">No Offboarding Tasks Yet</h5>
+                    <p class="text-muted mb-3">{{ selected_employee.full_name }} doesn't have any offboarding tasks assigned yet.</p>
+                    <button class="btn btn-warning" onclick="generateOffboardingTasks()">
+                        <i class="fas fa-plus me-1"></i>Generate Offboarding Tasks
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tasks Section -->
+    {% if selected_employee and selected_employee.status == 'Offboarding' and checklist %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-header bg-transparent border-secondary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="text-light mb-0">Offboarding Tasks</h6>
+                        <div>
+                            <span class="badge bg-warning bg-opacity-25 text-warning me-2">
+                                {{ checklist.tasks | selectattr('is_completed', 'equalto', true) | list | length }}/{{ checklist.tasks | length }} Complete
+                            </span>
+                            <button class="btn btn-sm btn-outline-light" id="refreshBtn">
+                                <i class="fas fa-sync-alt me-1"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Task Filters -->
+                    <div class="px-3 pt-3">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-light active" data-filter="all">All</button>
+                            <button type="button" class="btn btn-sm btn-outline-light" data-filter="pending">Pending</button>
+                            <button type="button" class="btn btn-sm btn-outline-light" data-filter="completed">Completed</button>
+                            <button type="button" class="btn btn-sm btn-outline-light" data-filter="overdue">Overdue</button>
+                            <button type="button" class="btn btn-sm btn-outline-light" data-filter="today">Due Today</button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Status</th>
+                                    <th>Due Date</th>
+                                    <th>Priority</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="offboardingTasks">
+                                {% if checklist and checklist.tasks %}
+                                    {% for task in checklist.tasks %}
+                                    <tr class="task-item" data-status="{{ 'completed' if task.is_completed else 'pending' }}" data-task-id="{{ task.id }}">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="form-check me-3">
+                                                    <input class="form-check-input task-checkbox" type="checkbox" 
+                                                           id="task{{ task.id }}" 
+                                                           data-task-id="{{ task.id }}" 
+                                                           {{ 'checked' if task.is_completed else '' }}>
+                                                    <label class="form-check-label" for="task{{ task.id }}"></label>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-medium text-light">{{ task.task_name }}</div>
+                                                    {% if task.task_description %}
+                                                    <small class="text-muted">{{ task.task_description[:80] }}{% if task.task_description|length > 80 %}...{% endif %}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if task.is_completed %}
+                                                <span class="badge bg-success bg-opacity-25 text-success">
+                                                    <i class="fas fa-check-circle me-1"></i> Completed
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary bg-opacity-25 text-muted">
+                                                    <i class="far fa-clock me-1"></i> Pending
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if task.due_date %}
+                                                <span class="text-light">{{ task.due_date.strftime('%b %d') }}</span>
+                                                {% if not task.is_completed %}
+                                                    {% set days_until_due = (task.due_date.date() - now().date()).days %}
+                                                    {% if days_until_due < 0 %}
+                                                        <span class="badge bg-danger bg-opacity-25 text-danger ms-1">Overdue</span>
+                                                    {% elif days_until_due == 0 %}
+                                                        <span class="badge bg-warning bg-opacity-25 text-warning ms-1">Today</span>
+                                                    {% elif days_until_due <= 3 %}
+                                                        <span class="badge bg-info bg-opacity-25 text-info ms-1">{{ days_until_due }} days</span>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">TBD</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if task.priority == 'high' %}
+                                                <span class="badge bg-danger bg-opacity-25 text-danger">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i> High
+                                                </span>
+                                            {% elif task.priority == 'medium' %}
+                                                <span class="badge bg-warning bg-opacity-25 text-warning">
+                                                    <i class="fas fa-exclamation-circle me-1"></i> Medium
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-info bg-opacity-25 text-info">
+                                                    <i class="fas fa-info-circle me-1"></i> Low
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-dark">
+                                                    <li>
+                                                        <a class="dropdown-item task-action" href="#" data-task-id="{{ task.id }}" data-completed="{{ 'false' if task.is_completed else 'true' }}" data-action="toggle-completion">
+                                                            <i class="fas fa-{{ 'undo' if task.is_completed else 'check' }} me-2"></i>{{ 'Mark as Incomplete' if task.is_completed else 'Mark as Complete' }}
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <i class="fas fa-tasks fa-2x mb-2"></i>
+                                            <div>No tasks found</div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- No Employee Selected -->
+    {% if not selected_employee or selected_employee.status != 'Offboarding' %}
+    <div class="card bg-dark bg-opacity-25 border-secondary">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            {% if not selected_employee %}
+                <h5 class="text-light mb-2">No Employee Selected</h5>
+                <p class="text-muted">Select an employee from the dropdown above to view their offboarding checklist</p>
+            {% elif selected_employee.status != 'Offboarding' %}
+                <h5 class="text-light mb-2">Employee Not in Offboarding</h5>
+                <p class="text-muted">{{ selected_employee.full_name }} is not currently in the offboarding process</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- No Employees in Offboarding -->
+    {% if not offboarding_employees %}
+    <div class="card bg-dark bg-opacity-25 border-secondary mt-4">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-door-open fa-3x text-muted mb-3"></i>
+            <h5 class="text-light mb-2">No Employees in Offboarding</h5>
+            <p class="text-muted">There are currently no employees in the offboarding process</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Mobile Navigation -->
+<nav class="mobile-nav d-md-none">
+    <a href="{{ url_for('hr_dashboard') }}" class="mobile-nav-item">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+    </a>
+    <a href="{{ url_for('onboarding') }}" class="mobile-nav-item">
+        <i class="fas fa-user-clock"></i>
+        <span>Onboarding</span>
+    </a>
+    <a href="{{ url_for('hr_offboarding') }}" class="mobile-nav-item active">
+        <i class="fas fa-door-open"></i>
+        <span>Offboarding</span>
+    </a>
+    <a href="{{ url_for('list_employees') }}" class="mobile-nav-item">
+        <i class="fas fa-users"></i>
+        <span>Employees</span>
+    </a>
+    <a href="{{ url_for('interview') }}" class="mobile-nav-item">
+        <i class="fas fa-video"></i>
+        <span>Interviews</span>
+    </a>
+</nav>
+
+<!-- Floating Action Button (Mobile) -->
+<div class="fab-container d-md-none">
+    <button class="fab-main" onclick="toggleFabMenu()">
+        <i class="fas fa-plus"></i>
+    </button>
+    <div class="fab-menu" id="fabMenu">
+        <a href="{{ url_for('exit_interview') }}" class="fab-menu-item">
+            <i class="fas fa-chart-line"></i>
+            <span>Exit Analytics</span>
+        </a>
+        <a href="{{ url_for('add_employee') }}" class="fab-menu-item">
+            <i class="fas fa-user-plus"></i>
+            <span>Add Employee</span>
+        </a>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set progress bar widths from data attributes
+    const progressBars = document.querySelectorAll('[data-width]');
+    progressBars.forEach(bar => {
+        const width = bar.getAttribute('data-width');
+        if (width) {
+            bar.style.width = width;
+        }
+    });
+    
+    // Employee selection handler
+    const employeeSelect = document.getElementById('employeeSelect');
+    if (employeeSelect) {
+        employeeSelect.addEventListener('change', function() {
+            const employeeId = this.value;
+            if (employeeId) {
+                // Navigate to selected employee's offboarding page
+                window.location.href = `/hr/offboarding?employee_id=${employeeId}`;
+            } else {
+                // Navigate back to main offboarding page
+                window.location.href = '/hr/offboarding';
+            }
+        });
+    }
+
+    // Generate offboarding tasks function
+    window.generateOffboardingTasks = function() {
+        const employeeId = document.getElementById('employeeSelect').value;
+        if (!employeeId) {
+            alert('Please select an employee first');
+            return;
+        }
+
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+        button.disabled = true;
+
+        fetch(`/api/hr/offboarding/generate-tasks/${employeeId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                // Refresh the page to show the new tasks
+                window.location.reload();
+            } else {
+                alert(data.message || 'Error generating tasks');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error generating tasks. Please try again.');
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
+
+    // Handle refresh button
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            // Add spinning animation to the icon
+            const icon = this.querySelector('i');
+            icon.classList.add('fa-spin');
+            
+            // Disable button during refresh
+            this.disabled = true;
+            
+            // Refresh the current page
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        });
+    }
+
+    // Handle task filtering
+    const filterItems = document.querySelectorAll('[data-filter]');
+    const taskItems = document.querySelectorAll('.task-item');
+    
+    filterItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update active state
+            filterItems.forEach(fi => fi.classList.remove('active'));
+            this.classList.add('active');
+            
+            const filter = this.getAttribute('data-filter');
+            const tbody = document.getElementById('offboardingTasks');
+            
+            // Filter tasks
+            taskItems.forEach(taskItem => {
+                const status = taskItem.getAttribute('data-status');
+                const dueDateElement = taskItem.querySelector('td:nth-child(3) span');
+                const dueDate = dueDateElement ? dueDateElement.textContent : '';
+                
+                let show = false;
+                
+                switch(filter) {
+                    case 'all':
+                        show = true;
+                        break;
+                    case 'pending':
+                        show = status === 'pending';
+                        break;
+                    case 'completed':
+                        show = status === 'completed';
+                        break;
+                    case 'overdue':
+                        // Check if task is pending and overdue
+                        if (status === 'pending' && dueDate !== 'TBD') {
+                            const dueDateObj = new Date(dueDate);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            show = dueDateObj < today;
+                        }
+                        break;
+                    case 'today':
+                        // Check if task is due today
+                        if (dueDate !== 'TBD') {
+                            const dueDateObj = new Date(dueDate);
+                            const today = new Date();
+                            show = dueDateObj.toDateString() === today.toDateString();
+                        }
+                        break;
+                }
+                
+                taskItem.style.display = show ? '' : 'none';
+            });
+            
+            // Update task count display
+            const visibleTasks = Array.from(taskItems).filter(item => item.style.display !== 'none');
+            const countText = visibleTasks.length > 0 ? 
+                `Showing ${visibleTasks.length} task${visibleTasks.length > 1 ? 's' : ''}` : 
+                'No tasks found';
+            
+            // Update or create count display
+            let countDisplay = document.querySelector('.task-count-display');
+            if (!countDisplay) {
+                countDisplay = document.createElement('div');
+                countDisplay.className = 'task-count-display text-muted small ms-3';
+                tbody.parentNode.parentNode.querySelector('.card-header h5').appendChild(countDisplay);
+            }
+            countDisplay.textContent = countText;
+        });
+    });
+
+    // Task completion toggle
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('task-action')) {
+            e.preventDefault();
+            const taskId = e.target.dataset.taskId;
+            const completed = e.target.dataset.completed === 'true';
+            
+            toggleTaskCompletion(taskId, completed);
+        }
+    });
+
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('task-checkbox')) {
+            const taskId = e.target.dataset.taskId;
+            const completed = e.target.checked;
+            toggleTaskCompletion(taskId, completed);
+        }
+    });
+});
+
+function toggleTaskCompletion(taskId, completed) {
+    fetch(`/api/onboarding/tasks/${taskId}/toggle`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed: completed })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update UI
+            const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+            const checkbox = document.querySelector(`#task${taskId}`);
+            const statusBadge = taskRow.querySelector('.badge');
+            
+            if (completed) {
+                checkbox.checked = true;
+                statusBadge.className = 'badge bg-success bg-opacity-25 text-success';
+                statusBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i> Completed';
+                taskRow.dataset.status = 'completed';
+            } else {
+                checkbox.checked = false;
+                statusBadge.className = 'badge bg-secondary bg-opacity-25 text-muted';
+                statusBadge.innerHTML = '<i class="far fa-clock me-1"></i> Pending';
+                taskRow.dataset.status = 'pending';
+            }
+            
+            // Show success message
+            showNotification('Task status updated successfully', 'success');
+        } else {
+            showNotification('Error updating task status', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error updating task status', 'error');
+    });
+}
+
+function showNotification(message, type) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+
+// Create KT Records function
+function createKTRecords() {
+    const employeeSelect = document.getElementById('employeeSelect');
+    const employeeId = employeeSelect.value;
+    
+    if (!employeeId) {
+        alert('Please select an employee first');
+        return;
+    }
+    
+    if (confirm('Create knowledge transfer records for this employee? This will set up KT sessions, progress tracking, and documentation for the offboarding process.')) {
+        fetch(`/api/offboarding/kt-records/${employeeId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Knowledge transfer records created successfully! Session ID: ' + data.session_id);
+                // Optionally refresh the page or update UI
+                window.location.reload();
+            } else {
+                alert('Error creating KT records: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error creating KT records. Please try again.');
+        });
+    }
+}
+
+// Mobile FAB menu toggle
+function toggleFabMenu() {
+    const menu = document.getElementById('fabMenu');
+    menu.classList.toggle('active');
+}
+
+// Go to Exit Analytics function
+function goToExitAnalytics() {
+    window.location.href = '/exit';
+}
+
+// Interactive Tour
+function startTour() {
+    const steps = [
+        {
+            element: '#employeeSelect',
+            title: 'Employee Selection',
+            content: 'Select an employee to view and manage their offboarding tasks.'
+        },
+        {
+            element: '.progress-bar',
+            title: 'Progress Overview',
+            content: 'See the overall progress of the selected employee\'s offboarding process.'
+        },
+        {
+            element: '#offboardingTasks',
+            title: 'Task Management',
+            content: 'View and manage individual offboarding tasks here.'
+        },
+        {
+            element: '.btn-group',
+            title: 'Task Filters',
+            content: 'Filter tasks by status, due date, or priority.'
+        }
+    ];
+    
+    // Simple tour implementation
+    let currentStep = 0;
+    
+    function showStep(index) {
+        if (index >= steps.length) {
+            alert('Tour completed! You can now manage offboarding tasks efficiently.');
+            return;
+        }
+        
+        const step = steps[index];
+        const element = document.querySelector(step.element);
+        
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('tour-highlight');
+            
+            // Show tour tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tour-tooltip';
+            tooltip.innerHTML = `
+                <div class="tour-tooltip-header">
+                    <strong>${step.title}</strong>
+                    <button onclick="this.parentElement.parentElement.remove(); document.querySelector('.tour-highlight').classList.remove('tour-highlight')" class="btn-close btn-close-white"></button>
+                </div>
+                <div class="tour-tooltip-content">${step.content}</div>
+                <div class="tour-tooltip-footer">
+                    <button onclick="this.parentElement.parentElement.remove(); document.querySelector('.tour-highlight').classList.remove('tour-highlight'); startTour()" class="btn btn-primary btn-sm">Next</button>
+                    <button onclick="this.parentElement.parentElement.remove(); document.querySelector('.tour-highlight').classList.remove('tour-highlight')" class="btn btn-outline-light btn-sm">Skip Tour</button>
+                </div>
+            `;
+            
+            document.body.appendChild(tooltip);
+            
+            // Position tooltip
+            const rect = element.getBoundingClientRect();
+            tooltip.style.position = 'fixed';
+            tooltip.style.top = (rect.bottom + 10) + 'px';
+            tooltip.style.left = rect.left + 'px';
+            tooltip.style.zIndex = '9999';
+            tooltip.style.minWidth = '300px';
+            tooltip.style.background = '#212529';
+            tooltip.style.border = '1px solid #495057';
+            tooltip.style.borderRadius = '0.375rem';
+            tooltip.style.padding = '1rem';
+            tooltip.style.color = '#fff';
+        }
+    }
+    
+    showStep(currentStep);
+}
+
+// Add tour highlight styles
+const tourStyles = document.createElement('style');
+tourStyles.textContent = `
+    .tour-highlight {
+        box-shadow: 0 0 0 3px #ffc107 !important;
+        border-radius: 0.375rem !important;
+    }
+    .tour-tooltip-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #495057;
+    }
+    .tour-tooltip-content {
+        margin-bottom: 1rem;
+    }
+    .tour-tooltip-footer {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+`;
+document.head.appendChild(tourStyles);
+</script>
+
+<style>
+/* Mobile Navigation Styles */
+.mobile-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(33, 37, 41, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid #495057;
+    display: flex;
+    justify-content: space-around;
+    padding: 0.5rem 0;
+    z-index: 1000;
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #6c757d;
+    text-decoration: none;
+    font-size: 0.75rem;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.mobile-nav-item.active {
+    color: #ffc107;
+}
+
+.mobile-nav-item:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.mobile-nav-item i {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+/* FAB Styles */
+.fab-container {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.fab-main {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #ffc107;
+    border: none;
+    color: #212529;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.fab-main:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.fab-menu {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.8);
+    transition: all 0.3s ease;
+}
+
+.fab-menu.active {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+
+.fab-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #212529;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 2rem;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+}
+
+.fab-menu.active .fab-menu-item {
+    transform: translateX(0);
+}
+
+.fab-menu-item:hover {
+    background: #343a40;
+    color: #ffc107;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .container-fluid {
+        padding-bottom: 100px;
+    }
+}
+</style>
+{% endblock %}

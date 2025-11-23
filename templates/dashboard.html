@@ -3,70 +3,264 @@
 {% block title %}HR Dashboard - SmartHire AI{% endblock %}
 
 {% block content %}
+<!-- Include Phase 2 CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/template-gallery.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-optimized.css') }}">
+
 <div class="container-fluid py-4">
-    <!-- HR User Info Header (Simplified) -->
-    <div class="card bg-dark bg-opacity-25 border-secondary mb-4">
-        <div class="card-body py-3">
-            <div class="d-flex align-items-center">
-                <div class="me-3">
-                    <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                        <i class="fas fa-user-tie"></i>
+    <!-- Welcome Section with Tour -->
+    <div class="dashboard-welcome mb-4">
+        <div class="card bg-dark bg-opacity-25 border-secondary">
+            <div class="card-body py-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
+                                <i class="fas fa-user-tie fa-2x"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-light mb-1">Welcome back, {{ user.full_name }}! 👋</h2>
+                                <p class="text-muted mb-0">Ready to make today productive? Here's what needs your attention.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Tour Controls -->
+                        <div class="tour-controls">
+                            <button class="btn btn-outline-primary btn-sm me-2" onclick="tourManager.startTour('dashboard')">
+                                <i class="fas fa-play-circle me-1"></i>Start Dashboard Tour
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="tourManager.resetProgress()">
+                                <i class="fas fa-redo me-1"></i>Reset All Tours
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="help-section">
+                            <button class="btn btn-outline-light btn-sm help-button" onclick="toggleHelpPanel()">
+                                <i class="fas fa-question-circle me-1"></i>Need Help?
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div class="flex-grow-1">
-                    <h5 class="mb-1 text-light">Welcome, {{ user.full_name }}</h5>
-                    <p class="mb-0 text-muted small">HR Manager</p>
-                </div>
-                <div>
-                    <button class="btn btn-outline-light btn-sm" onclick="toggleAdvancedMode()">
-                        <i class="fas fa-cog me-1"></i>Advanced
-                    </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Search Bar -->
+    <div class="smart-search-bar mb-4">
+        <div class="search-input-group">
+            <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary text-light">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" class="form-control bg-dark text-light border-secondary smart-search-input" 
+                       placeholder="What are you looking for? Try 'add employee' or 'generate document'">
+                <button class="btn btn-outline-secondary" type="button" onclick="clearSmartSearch()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Priority Tasks Section -->
+    <div class="priority-tasks mb-4">
+        <div class="card bg-dark bg-opacity-25 border-secondary">
+            <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="text-light mb-0">
+                    <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Today's Priorities
+                </h5>
+                <span class="badge bg-warning">4 Urgent</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                        <div class="priority-card urgent touch-feedback">
+                            <div class="priority-header">
+                                <i class="fas fa-user-plus text-warning"></i>
+                                <span class="priority-count">{{ onboarding_count or 2 }}</span>
+                            </div>
+                            <h6>New Onboarding</h6>
+                            <p class="text-muted small">Employees waiting for onboarding setup</p>
+                            <button class="btn btn-warning btn-sm" onclick="navigateTo('/onboarding')">
+                                Start Now <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <div class="priority-card important touch-feedback">
+                            <div class="priority-header">
+                                <i class="fas fa-file-signature text-info"></i>
+                                <span class="priority-count">1</span>
+                            </div>
+                            <h6>Document Signature</h6>
+                            <p class="text-muted small">Policy acknowledgment pending</p>
+                            <button class="btn btn-info btn-sm" onclick="navigateTo('/hr/generated_documents')">
+                                Review <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <div class="priority-card normal touch-feedback">
+                            <div class="priority-header">
+                                <i class="fas fa-video text-primary"></i>
+                                <span class="priority-count">{{ completed_interviews or 3 }}</span>
+                            </div>
+                            <h6>Interview Results</h6>
+                            <p class="text-muted small">AI interviews need review</p>
+                            <button class="btn btn-primary btn-sm" onclick="navigateTo('/interview')">
+                                Review <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <div class="priority-card low touch-feedback">
+                            <div class="priority-header">
+                                <i class="fas fa-chart-line text-success"></i>
+                                <span class="priority-count">5</span>
+                            </div>
+                            <h6>Weekly Reports</h6>
+                            <p class="text-muted small">Analytics ready to view</p>
+                            <button class="btn btn-success btn-sm" onclick="navigateTo('/analytics/mood')">
+                                View <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Actions (Primary Focus) -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h5 class="text-light mb-3">Quick Actions</h5>
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <a href="{{ url_for('add_employee') }}" class="card card-simplified h-100 text-decoration-none">
-                        <div class="card-body text-center p-3">
-                            <i class="fas fa-user-plus fa-2x text-primary mb-2"></i>
-                            <h6 class="text-light">Add Employee</h6>
-                        </div>
-                    </a>
+    <!-- Quick Actions with Enhanced Design -->
+    <div class="quick-actions-section mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-light">
+                <i class="fas fa-bolt me-2 text-primary"></i>Quick Actions
+            </h5>
+            <button class="btn btn-outline-light btn-sm" onclick="toggleAdvancedMode()">
+                <i class="fas fa-cog me-1"></i>Advanced
+            </button>
+        </div>
+        
+        <div class="row g-3">
+            <div class="col-md-3">
+                <a href="{{ url_for('add_employee') }}" class="action-card primary touch-feedback">
+                    <div class="action-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <h6>Add Employee</h6>
+                    <small class="text-muted">Most popular</small>
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('onboarding') }}" class="action-card success touch-feedback">
+                    <div class="action-icon">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <h6>Onboarding</h6>
+                    <small class="text-muted">{{ onboarding_count or 0 }} active</small>
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('hr_templates') }}" class="action-card info touch-feedback">
+                    <div class="action-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h6>Documents</h6>
+                    <small class="text-muted">12 templates</small>
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('interview') }}" class="action-card warning touch-feedback">
+                    <div class="action-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <h6>Interviews</h6>
+                    <small class="text-muted">AI-powered</small>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Gallery Preview -->
+    <div class="template-gallery-preview mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-light">
+                <i class="fas fa-file-contract me-2 text-info"></i>Popular Templates
+            </h5>
+            <a href="{{ url_for('hr_templates') }}" class="btn btn-outline-info btn-sm">
+                View All <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+        
+        <div class="template-grid">
+            <div class="template-card touch-feedback" onclick="previewTemplate('offer-letter')">
+                <div class="template-preview">
+                    <div class="template-preview-placeholder">
+                        <i class="fas fa-file-contract"></i>
+                        <h4>Offer Letter</h4>
+                        <p>Professional employment offer</p>
+                    </div>
+                    <span class="template-badge popular">Popular</span>
                 </div>
-                <div class="col-md-3">
-                    <a href="{{ url_for('onboarding') }}" class="card card-simplified h-100 text-decoration-none">
-                        <div class="card-body text-center p-3">
-                            <i class="fas fa-user-clock fa-2x text-success mb-2"></i>
-                            <h6 class="text-light">Onboarding</h6>
-                        </div>
-                    </a>
+                <div class="template-info">
+                    <h4>Offer Letter</h4>
+                    <p>Standard employment offer template with customizable terms</p>
+                    <div class="template-stats">
+                        <span><i class="fas fa-users"></i> Used 23 times</span>
+                        <span><i class="fas fa-clock"></i> 2 min setup</span>
+                    </div>
+                    <div class="template-actions">
+                        <button class="template-btn primary">Use Template</button>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <a href="{{ url_for('interview') }}" class="card card-simplified h-100 text-decoration-none">
-                        <div class="card-body text-center p-3">
-                            <i class="fas fa-robot fa-2x text-info mb-2"></i>
-                            <h6 class="text-light">AI Interview</h6>
-                        </div>
-                    </a>
+            </div>
+            
+            <div class="template-card touch-feedback" onclick="previewTemplate('welcome-package')">
+                <div class="template-preview" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="template-preview-placeholder">
+                        <i class="fas fa-gift"></i>
+                        <h4>Welcome Package</h4>
+                        <p>New employee welcome kit</p>
+                    </div>
+                    <span class="template-badge new">New</span>
                 </div>
-                <div class="col-md-3">
-                    <a href="{{ url_for('list_employees') }}" class="card card-simplified h-100 text-decoration-none">
-                        <div class="card-body text-center p-3">
-                            <i class="fas fa-users fa-2x text-warning mb-2"></i>
-                            <h6 class="text-light">Employees</h6>
-                        </div>
-                    </a>
+                <div class="template-info">
+                    <h4>Welcome Package</h4>
+                    <p>Complete onboarding welcome package for new hires</p>
+                    <div class="template-stats">
+                        <span><i class="fas fa-users"></i> Used 8 times</span>
+                        <span><i class="fas fa-clock"></i> 3 min setup</span>
+                    </div>
+                    <div class="template-actions">
+                        <button class="template-btn primary">Use Template</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="template-card touch-feedback" onclick="previewTemplate('policy-acknowledgment')">
+                <div class="template-preview" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="template-preview-placeholder">
+                        <i class="fas fa-file-contract"></i>
+                        <h4>Policy</h4>
+                        <p>Company policy acknowledgment</p>
+                    </div>
+                </div>
+                <div class="template-info">
+                    <h4>Policy Acknowledgment</h4>
+                    <p>Employee policy acknowledgment and consent form</p>
+                    <div class="template-stats">
+                        <span><i class="fas fa-users"></i> Used 15 times</span>
+                        <span><i class="fas fa-clock"></i> 1 min setup</span>
+                    </div>
+                    <div class="template-actions">
+                        <button class="template-btn primary">Use Template</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Original Content Starts Here -->
     <!-- Key Metrics (Simplified) -->
     <div class="row mb-4" id="keyMetrics">
         <div class="col-12">
@@ -340,6 +534,389 @@
         </div>
     </div>
 </div>
+
+<!-- Help Panel -->
+<div id="helpPanel" class="help-panel" style="display: none;">
+    <div class="help-content">
+        <div class="help-header">
+            <h4>How can we help you?</h4>
+            <button class="help-close" onclick="toggleHelpPanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="help-body">
+            <div class="help-section">
+                <h5>Quick Start Guide</h5>
+                <div class="help-links">
+                    <a href="#" onclick="startTour('dashboard')">
+                        <i class="fas fa-play-circle"></i>
+                        <span>Take Dashboard Tour</span>
+                    </a>
+                    <a href="#" onclick="showHelpArticle('add-employee')">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Adding Your First Employee</span>
+                    </a>
+                    <a href="#" onclick="showHelpArticle('generate-document')">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Generating Documents</span>
+                    </a>
+                </div>
+            </div>
+            <div class="help-section">
+                <h5>Common Questions</h5>
+                <div class="help-links">
+                    <a href="#" onclick="showHelpArticle('onboarding')">
+                        <i class="fas fa-question-circle"></i>
+                        <span>How does onboarding work?</span>
+                    </a>
+                    <a href="#" onclick="showHelpArticle('interviews')">
+                        <i class="fas fa-question-circle"></i>
+                        <span>AI Interview setup</span>
+                    </a>
+                    <a href="#" onclick="showHelpArticle('templates')">
+                        <i class="fas fa-question-circle"></i>
+                        <span>Customizing templates</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile Navigation -->
+<nav class="mobile-nav d-md-none">
+    <a href="{{ url_for('hr_dashboard') }}" class="mobile-nav-item active">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+    </a>
+    <a href="{{ url_for('list_employees') }}" class="mobile-nav-item">
+        <i class="fas fa-users"></i>
+        <span>Employees</span>
+    </a>
+    <a href="{{ url_for('hr_templates') }}" class="mobile-nav-item">
+        <i class="fas fa-file-alt"></i>
+        <span>Documents</span>
+    </a>
+    <a href="{{ url_for('interview') }}" class="mobile-nav-item">
+        <i class="fas fa-video"></i>
+        <span>Interviews</span>
+    </a>
+</nav>
+
+<!-- Floating Action Button (Mobile) -->
+<div class="fab-container d-md-none">
+    <div class="fab-menu" id="fabMenu">
+        <a href="{{ url_for('add_employee') }}" class="fab-menu-item">
+            <i class="fas fa-user-plus"></i>
+            <span>Add Employee</span>
+        </a>
+        <a href="{{ url_for('hr_templates') }}" class="fab-menu-item">
+            <i class="fas fa-file-alt"></i>
+            <span>Document</span>
+        </a>
+        <a href="{{ url_for('onboarding') }}" class="fab-menu-item">
+            <i class="fas fa-user-clock"></i>
+            <span>Onboarding</span>
+        </a>
+    </div>
+    <button class="fab-button" onclick="toggleFabMenu()">
+        <i class="fas fa-plus"></i>
+    </button>
+</div>
+
+<!-- Include Phase 2 JavaScript -->
+<script src="{{ url_for('static', filename='js/tour-system.js') }}"></script>
+<script src="{{ url_for('static', filename='js/smart-search.js') }}"></script>
+
+<style>
+/* Dashboard-specific styles */
+.dashboard-welcome {
+    animation: fadeInUp 0.6s ease;
+}
+
+.priority-card {
+    background: rgba(45, 45, 45, 0.9);
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.priority-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.priority-card.urgent { border-left: 4px solid #ffc107; }
+.priority-card.important { border-left: 4px solid #17a2b8; }
+.priority-card.normal { border-left: 4px solid #7b2cbf; }
+.priority-card.low { border-left: 4px solid #28a745; }
+
+.priority-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.priority-header i {
+    font-size: 24px;
+}
+
+.priority-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.action-card {
+    display: block;
+    background: rgba(45, 45, 45, 0.9);
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    text-decoration: none;
+    color: #f8f9fa;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    text-decoration: none;
+    color: #f8f9fa;
+}
+
+.action-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 24px;
+}
+
+.action-card.primary .action-icon { background: rgba(123, 44, 191, 0.2); color: #7b2cbf; }
+.action-card.success .action-icon { background: rgba(40, 167, 69, 0.2); color: #28a745; }
+.action-card.info .action-icon { background: rgba(23, 162, 184, 0.2); color: #17a2b8; }
+.action-card.warning .action-icon { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+.action-card.secondary .action-icon { background: rgba(108, 117, 125, 0.2); color: #6c757d; }
+.action-card.dark .action-icon { background: rgba(33, 33, 33, 0.5); color: #f8f9fa; }
+
+.help-panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 400px;
+    height: 100%;
+    background: #1a1a1a;
+    border-left: 1px solid #444;
+    z-index: 9999;
+    transition: right 0.3s ease;
+}
+
+.help-panel.active {
+    right: 0;
+}
+
+.help-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.help-header {
+    padding: 20px;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.help-header h4 {
+    color: #f8f9fa;
+    margin: 0;
+}
+
+.help-close {
+    background: transparent;
+    border: none;
+    color: #6c757d;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.help-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.help-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.help-section {
+    margin-bottom: 32px;
+}
+
+.help-section h5 {
+    color: #7b2cbf;
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.help-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.help-links a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(45, 45, 45, 0.9);
+    border: 1px solid #444;
+    border-radius: 8px;
+    color: #f8f9fa;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.help-links a:hover {
+    background: rgba(123, 44, 191, 0.1);
+    border-color: #7b2cbf;
+    color: #f8f9fa;
+    text-decoration: none;
+}
+
+.help-links i {
+    width: 20px;
+    text-align: center;
+    color: #7b2cbf;
+}
+
+@media (max-width: 768px) {
+    .help-panel {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .template-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .priority-tasks .row {
+        grid-template-columns: 1fr;
+    }
+    
+    .quick-actions-section .row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+// Dashboard-specific JavaScript
+function toggleHelpPanel() {
+    const panel = document.getElementById('helpPanel');
+    panel.classList.toggle('active');
+}
+
+function toggleFabMenu() {
+    const menu = document.getElementById('fabMenu');
+    menu.classList.toggle('active');
+}
+
+function navigateTo(url) {
+    window.location.href = url;
+}
+
+function clearSmartSearch() {
+    const searchInput = document.querySelector('.smart-search-input');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+    }
+}
+
+function previewTemplate(templateId) {
+    // Navigate to template with preview
+    window.location.href = `/hr/templates#${templateId}`;
+}
+
+function startTour(page) {
+    if (window.tourManager) {
+        tourManager.startTour(page);
+    }
+    toggleHelpPanel();
+}
+
+function showHelpArticle(article) {
+    // Show specific help article
+    console.log('Show help article:', article);
+    toggleHelpPanel();
+}
+
+// Add touch feedback
+document.addEventListener('DOMContentLoaded', () => {
+    const touchElements = document.querySelectorAll('.touch-feedback');
+    
+    touchElements.forEach(element => {
+        element.addEventListener('touchstart', () => {
+            element.classList.add('active');
+        });
+        
+        element.addEventListener('touchend', () => {
+            setTimeout(() => {
+                element.classList.remove('active');
+            }, 150);
+        });
+    });
+    
+    // Auto-start tour for first-time users
+    const visitCount = localStorage.getItem('smarthire_dashboard_visits') || '0';
+    if (visitCount === '0') {
+        setTimeout(() => {
+            if (window.tourManager) {
+                tourManager.startTour('dashboard');
+            }
+        }, 3000);
+    }
+    localStorage.setItem('smarthire_dashboard_visits', parseInt(visitCount) + 1);
+});
+</script>
 
 <!-- JavaScript for advanced mode toggle and charts -->
 <script>

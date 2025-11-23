@@ -3,6 +3,9 @@
 {% block title %}Onboarding - SmartHire AI{% endblock %}
 
 {% block content %}
+<!-- Include Phase 2 CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/template-gallery.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-optimized.css') }}">
 <div class="container-fluid py-4">
     <!-- Header Section -->
     <div class="row mb-4">
@@ -15,6 +18,12 @@
                     <p class="text-muted mb-0">Track and manage new hire onboarding tasks and progress</p>
                 </div>
                 <div>
+                    <button class="btn btn-outline-primary btn-sm me-2" onclick="tourManager.startTour('onboarding')">
+                        <i class="fas fa-play-circle me-1"></i>Start Tour
+                    </button>
+                    <button class="btn btn-outline-info btn-sm me-2" onclick="createKTSession()">
+                        <i class="fas fa-brain me-1"></i>Create KT Session
+                    </button>
                     <button class="btn btn-outline-light" id="refreshBtn">
                         <i class="fas fa-sync-alt me-1"></i> Refresh
                     </button>
@@ -58,7 +67,7 @@
     </div>
     
     <!-- Progress Overview -->
-    {% if selected_employee and selected_employee.status == 'Onboarding' and checklist %}
+    {% if selected_employee and selected_employee.status == 'Onboarding' %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="alert alert-info d-flex align-items-center" role="alert">
@@ -75,12 +84,12 @@
                             <div class="progress bg-dark bg-opacity-50 mb-2" style="height: 10px;">
                                 <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
                                      role="progressbar" 
-                                     data-progress="{{ checklist.get_progress() }}"
-                                     aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                     data-progress="{{ checklist.get_progress() if checklist else 0 }}"
+                                     aria-valuenow="{{ checklist.get_progress() if checklist else 0 }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small class="text-muted">{{ "%.0f"|format(checklist.get_progress()) }}% Complete</small>
-                                {% set pending_count = checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length %}
+                                <small class="text-muted">{{ "%.0f"|format(checklist.get_progress() if checklist else 0) }}% Complete</small>
+                                {% set pending_count = (checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length if checklist else 0) %}
                                 {% if pending_count > 0 %}
                                 <small class="text-warning">
                                     <i class="fas fa-exclamation-triangle me-1"></i> {{ pending_count }} task{{ 's' if pending_count > 1 else '' }} pending
@@ -91,19 +100,19 @@
                         <div class="col-md-6">
                             <div class="d-flex flex-wrap justify-content-md-end gap-2">
                                 <div class="border-end pe-3 me-3">
-                                    <h6 class="text-light mb-1">{{ checklist.tasks|length }}</h6>
+                                    <h6 class="text-light mb-1">{{ checklist.tasks|length if checklist else 0 }}</h6>
                                     <small class="text-muted">Total Tasks</small>
                                 </div>
                                 <div class="border-end pe-3 me-3">
-                                    <h6 class="text-success mb-1">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length }}</h6>
+                                    <h6 class="text-success mb-1">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length if checklist else 0 }}</h6>
                                     <small class="text-muted">Completed</small>
                                 </div>
                                 <div class="border-end pe-3 me-3">
-                                    <h6 class="text-warning mb-1">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length }}</h6>
+                                    <h6 class="text-warning mb-1">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length if checklist else 0 }}</h6>
                                     <small class="text-muted">Pending</small>
                                 </div>
                                 <div>
-                                    <h6 class="text-info mb-1">{{ (now() - checklist.created_at).days if checklist.created_at else 0 }}</h6>
+                                    <h6 class="text-info mb-1">{{ (now() - checklist.created_at).days if checklist and checklist.created_at else 0 }}</h6>
                                     <small class="text-muted">Days Since Start</small>
                                 </div>
                             </div>
@@ -113,7 +122,43 @@
             </div>
         </div>
     </div>
-    {% else %}
+    {% endif %}
+    
+    <!-- No Tasks Section -->
+    {% if selected_employee and selected_employee.status == 'Onboarding' and not checklist %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                    <h5 class="text-light mb-2">No Onboarding Tasks Yet</h5>
+                    <p class="text-muted mb-3">{{ selected_employee.full_name }} doesn't have any onboarding tasks assigned yet.</p>
+                    <button class="btn btn-primary" onclick="generateOnboardingTasks()">
+                        <i class="fas fa-plus me-1"></i>Generate Onboarding Tasks
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Tasks Section -->
+    {% if selected_employee and selected_employee.status == 'Onboarding' and checklist %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark bg-opacity-25 border-secondary">
+                <div class="card-body">
+                    <!-- Task list content would go here -->
+                    <h5 class="text-light">Onboarding Tasks</h5>
+                    <p class="text-muted">Tasks will be displayed here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- No Employee Selected or Not Onboarding -->
+    {% if not selected_employee or selected_employee.status != 'Onboarding' %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="card bg-dark bg-opacity-25 border-secondary">
@@ -235,29 +280,29 @@
                                 <div class="col-md-8">
                                     <div class="d-flex align-items-center mb-2">
                                         <h6 class="text-light mb-0 me-3">Overall Progress</h6>
-                                        <span class="badge bg-primary bg-opacity-25 text-primary">{{ "%.0f"|format(checklist.get_progress()) }}% Complete</span>
+                                        <span class="badge bg-primary bg-opacity-25 text-primary">{{ "%.0f"|format(checklist.get_progress() if checklist else 0) }}% Complete</span>
                                     </div>
                                     <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
                                         <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
                                              role="progressbar" 
-                                             data-progress="{{ checklist.get_progress() }}"
+                                             data-progress="{{ checklist.get_progress() if checklist else 0 }}"
                                              style="width: 0%"
-                                             data-width="{{ checklist.get_progress() }}%"
-                                             aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                             data-width="{{ checklist.get_progress() if checklist else 0 }}%"
+                                             aria-valuenow="{{ checklist.get_progress() if checklist else 0 }}" aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
                                 </div>
                                 <div class="col-md-4 text-end">
                                     <div class="row text-center">
                                         <div class="col-4">
-                                            <h6 class="text-success mb-0">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length }}</h6>
+                                            <h6 class="text-success mb-0">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length if checklist else 0 }}</h6>
                                             <small class="text-muted">Completed</small>
                                         </div>
                                         <div class="col-4">
-                                            <h6 class="text-warning mb-0">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length }}</h6>
+                                            <h6 class="text-warning mb-0">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length if checklist else 0 }}</h6>
                                             <small class="text-muted">Pending</small>
                                         </div>
                                         <div class="col-4">
-                                            <h6 class="text-info mb-0">{{ checklist.tasks|length }}</h6>
+                                            <h6 class="text-info mb-0">{{ checklist.tasks|length if checklist else 0 }}</h6>
                                             <small class="text-muted">Total</small>
                                         </div>
                                     </div>
@@ -351,24 +396,24 @@
                             <div class="progress bg-dark bg-opacity-50 mb-3" style="height: 20px;">
                                 <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
                                      role="progressbar" 
-                                     data-progress="{{ checklist.get_progress() }}"
-                                     aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                     data-progress="{{ checklist.get_progress() if checklist else 0 }}"
+                                     aria-valuenow="{{ checklist.get_progress() if checklist else 0 }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                             <div class="row text-center">
                                 <div class="col-md-3">
-                                    <h4 class="text-light">{{ checklist.tasks|length }}</h4>
+                                    <h4 class="text-light">{{ checklist.tasks|length if checklist else 0 }}</h4>
                                     <small class="text-muted">Total</small>
                                 </div>
                                 <div class="col-md-3">
-                                    <h4 class="text-success">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length }}</h4>
+                                    <h4 class="text-success">{{ checklist.tasks|selectattr('is_completed', 'equalto', true)|list|length if checklist else 0 }}</h4>
                                     <small class="text-muted">Completed</small>
                                 </div>
                                 <div class="col-md-3">
-                                    <h4 class="text-warning">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length }}</h4>
+                                    <h4 class="text-warning">{{ checklist.tasks|selectattr('is_completed', 'equalto', false)|list|length if checklist else 0 }}</h4>
                                     <small class="text-muted">Pending</small>
                                 </div>
                                 <div class="col-md-3">
-                                    <h4 class="text-info">{{ "%.0f"|format(checklist.get_progress()) }}%</h4>
+                                    <h4 class="text-info">{{ "%.0f"|format(checklist.get_progress() if checklist else 0) }}%</h4>
                                     <small class="text-muted">Complete</small>
                                 </div>
                             </div>
@@ -405,7 +450,7 @@
                                         </span>
                                     </p>
                                     <p><strong>Hire Date:</strong> {{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else 'N/A' }}</p>
-                                    <p><strong>Days Since Start:</strong> {{ (now() - checklist.created_at).days if checklist.created_at else 0 }}</p>
+                                    <p><strong>Days Since Start:</strong> {{ (now() - checklist.created_at).days if checklist and checklist.created_at else 0 }}</p>
                                 </div>
                             </div>
                         </div>
@@ -438,14 +483,14 @@
                                     <p class="text-muted mb-2"><strong>Department:</strong> {{ selected_employee.department or 'Not Assigned' }}</p>
                                     <p class="text-muted mb-2"><strong>Position:</strong> {{ selected_employee.position or 'Not Assigned' }}</p>
                                     <p class="text-muted mb-2"><strong>Hire Date:</strong> {{ selected_employee.hire_date.strftime('%B %d, %Y') if selected_employee.hire_date else 'N/A' }}</p>
-                                    <p class="text-muted mb-2"><strong>Days Since Start:</strong> {{ (now() - checklist.created_at).days if checklist.created_at else 0 }}</p>
+                                    <p class="text-muted mb-2"><strong>Days Since Start:</strong> {{ (now() - checklist.created_at).days if checklist and checklist.created_at else 0 }}</p>
                                 </div>
                                 <div class="col-md-6">
                                     <h6 class="text-light mb-3">Checklist Details</h6>
-                                    <p class="text-muted mb-2"><strong>Created:</strong> {{ checklist.created_at.strftime('%B %d, %Y') if checklist.created_at else 'N/A' }}</p>
-                                    <p class="text-muted mb-2"><strong>Total Tasks:</strong> {{ checklist.tasks | length }}</p>
-                                    <p class="text-muted mb-2"><strong>Completed:</strong> {{ checklist.tasks | selectattr('is_completed', 'equalto', true) | list | length }}</p>
-                                    <p class="text-muted mb-2"><strong>Progress:</strong> {{ "%.0f"|format(checklist.get_progress()) }}%</p>
+                                    <p class="text-muted mb-2"><strong>Created:</strong> {{ checklist.created_at.strftime('%B %d, %Y') if checklist and checklist.created_at else 'N/A' }}</p>
+                                    <p class="text-muted mb-2"><strong>Total Tasks:</strong> {{ checklist.tasks | length if checklist else 0 }}</p>
+                                    <p class="text-muted mb-2"><strong>Completed:</strong> {{ checklist.tasks | selectattr('is_completed', 'equalto', true) | list | length if checklist else 0 }}</p>
+                                    <p class="text-muted mb-2"><strong>Progress:</strong> {{ "%.0f"|format(checklist.get_progress() if checklist else 0) }}%</p>
                                 </div>
                             </div>
                             {% endif %}
@@ -458,10 +503,10 @@
                                         <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
                                             <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
                                                  role="progressbar" 
-                                                 data-progress="{{ checklist.get_progress() }}"
+                                                 data-progress="{{ checklist.get_progress() if checklist else 0 }}"
                                                  style="width: 0%"
-                                                 data-width="{{ checklist.get_progress() }}%"
-                                                 aria-valuenow="{{ checklist.get_progress() }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                 data-width="{{ checklist.get_progress() if checklist else 0 }}%"
+                                                 aria-valuenow="{{ checklist.get_progress() if checklist else 0 }}" aria-valuemin="0" aria-valuemax="100"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -486,109 +531,151 @@
                         // Navigate to selected employee's onboarding page
                         window.location.href = `/onboarding?employee_id=${employeeId}`;
                     } else {
-                        // Navigate back to main onboarding page without employee
+                        // Navigate back to general onboarding page
                         window.location.href = '/onboarding';
                     }
                 });
             }
+        });
+
+        // Generate onboarding tasks function
+        function generateOnboardingTasks() {
+            const employeeSelect = document.getElementById('employeeSelect');
+            const employeeId = employeeSelect ? employeeSelect.value : null;
             
-            // Handle refresh button
-            const refreshBtn = document.getElementById('refreshBtn');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', function() {
-                    // Add spinning animation to the icon
-                    const icon = this.querySelector('i');
-                    icon.classList.add('fa-spin');
-                    
-                    // Disable button during refresh
-                    this.disabled = true;
-                    
-                    // Refresh the current page
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 500);
-                });
+            if (!employeeId) {
+                alert('Please select an employee first');
+                return;
             }
-            
-            // Set progress bar widths from data attributes
-            const progressBars = document.querySelectorAll('[data-width]');
-            progressBars.forEach(bar => {
-                const width = bar.getAttribute('data-width');
-                if (width) {
-                    bar.style.width = width;
+
+            // Show loading state
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+            button.disabled = true;
+
+            // Make API call to generate tasks
+            fetch(`/api/hr/onboarding/generate-tasks/${employeeId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
                 }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Refresh the page to show the new tasks
+                    window.location.reload();
+                } else {
+                    alert('Error generating tasks: ' + data.message);
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error generating tasks. Please try again.');
+                button.innerHTML = originalText;
+                button.disabled = false;
             });
-            
-            // Handle task filtering
-            const filterItems = document.querySelectorAll('[data-filter]');
-            const taskItems = document.querySelectorAll('.task-item');
-            
-            filterItems.forEach(item => {
-                item.addEventListener('click', function(e) {
-                    e.preventDefault();
+        }
+        
+        // Handle refresh button
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                // Add spinning animation to the icon
+                const icon = this.querySelector('i');
+                icon.classList.add('fa-spin');
+                
+                // Disable button during refresh
+                this.disabled = true;
+                
+                // Refresh the current page
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            });
+        }
+        
+        // Set progress bar widths from data attributes
+        const progressBars = document.querySelectorAll('[data-width]');
+        progressBars.forEach(bar => {
+            const width = bar.getAttribute('data-width');
+            if (width) {
+                bar.style.width = width;
+            }
+        });
+        
+        // Handle task filtering
+        const filterItems = document.querySelectorAll('[data-filter]');
+        const taskItems = document.querySelectorAll('.task-item');
+        
+        filterItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Update active state
+                filterItems.forEach(fi => fi.classList.remove('active'));
+                this.classList.add('active');
+                
+                const filter = this.getAttribute('data-filter');
+                const tbody = document.getElementById('onboardingTasks');
+                
+                // Filter tasks
+                taskItems.forEach(taskItem => {
+                    const status = taskItem.getAttribute('data-status');
+                    const dueDateElement = taskItem.querySelector('td:nth-child(3) span');
+                    const dueDate = dueDateElement ? dueDateElement.textContent : '';
                     
-                    // Update active state
-                    filterItems.forEach(fi => fi.classList.remove('active'));
-                    this.classList.add('active');
+                    let show = false;
                     
-                    const filter = this.getAttribute('data-filter');
-                    const tbody = document.getElementById('onboardingTasks');
-                    
-                    // Filter tasks
-                    taskItems.forEach(taskItem => {
-                        const status = taskItem.getAttribute('data-status');
-                        const dueDateElement = taskItem.querySelector('td:nth-child(3) span');
-                        const dueDate = dueDateElement ? dueDateElement.textContent : '';
-                        
-                        let show = false;
-                        
-                        switch(filter) {
-                            case 'all':
-                                show = true;
-                                break;
-                            case 'pending':
-                                show = status === 'pending';
-                                break;
-                            case 'completed':
-                                show = status === 'completed';
-                                break;
-                            case 'overdue':
-                                // Check if task is pending and overdue
-                                if (status === 'pending' && dueDate !== 'TBD') {
-                                    const dueDateObj = new Date(dueDate);
-                                    const today = new Date();
-                                    today.setHours(0, 0, 0, 0);
-                                    show = dueDateObj < today;
-                                }
-                                break;
-                            case 'today':
-                                // Check if task is due today
-                                if (dueDate !== 'TBD') {
-                                    const dueDateObj = new Date(dueDate);
-                                    const today = new Date();
-                                    show = dueDateObj.toDateString() === today.toDateString();
-                                }
-                                break;
-                        }
-                        
-                        taskItem.style.display = show ? '' : 'none';
-                    });
-                    
-                    // Update task count display
-                    const visibleTasks = Array.from(taskItems).filter(item => item.style.display !== 'none');
-                    const countText = visibleTasks.length > 0 ? 
-                        `Showing ${visibleTasks.length} task${visibleTasks.length > 1 ? 's' : ''}` : 
-                        'No tasks found';
-                    
-                    // Update or create count display
-                    let countDisplay = document.querySelector('.task-count-display');
-                    if (!countDisplay) {
-                        countDisplay = document.createElement('div');
-                        countDisplay.className = 'task-count-display text-muted small ms-3';
-                        tbody.parentNode.parentNode.querySelector('.card-header h5').appendChild(countDisplay);
+                    switch(filter) {
+                        case 'all':
+                            show = true;
+                            break;
+                        case 'pending':
+                            show = status === 'pending';
+                            break;
+                        case 'completed':
+                            show = status === 'completed';
+                            break;
+                        case 'overdue':
+                            // Check if task is pending and overdue
+                            if (status === 'pending' && dueDate !== 'TBD') {
+                                const dueDateObj = new Date(dueDate);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                show = dueDateObj < today;
+                            }
+                            break;
+                        case 'today':
+                            // Check if task is due today
+                            if (dueDate !== 'TBD') {
+                                const dueDateObj = new Date(dueDate);
+                                const today = new Date();
+                                show = dueDateObj.toDateString() === today.toDateString();
+                            }
+                            break;
                     }
-                    countDisplay.textContent = countText;
+                    
+                    taskItem.style.display = show ? '' : 'none';
                 });
+                
+                // Update task count display
+                const visibleTasks = Array.from(taskItems).filter(item => item.style.display !== 'none');
+                const countText = visibleTasks.length > 0 ? 
+                    `Showing ${visibleTasks.length} task${visibleTasks.length > 1 ? 's' : ''}` : 
+                    'No tasks found';
+                
+                // Update or create count display
+                let countDisplay = document.querySelector('.task-count-display');
+                if (!countDisplay) {
+                    countDisplay = document.createElement('div');
+                    countDisplay.className = 'task-count-display text-muted small ms-3';
+                    tbody.parentNode.parentNode.querySelector('.card-header h5').appendChild(countDisplay);
+                }
+                countDisplay.textContent = countText;
             });
         });
         
@@ -596,6 +683,40 @@
             // Switch to advanced tab
             var advancedTab = new bootstrap.Tab(document.getElementById('advanced-tab'));
             advancedTab.show();
+        }
+
+        // Create KT Session function
+        function createKTSession() {
+            const employeeSelect = document.getElementById('employeeSelect');
+            const employeeId = employeeSelect.value;
+            
+            if (!employeeId) {
+                alert('Please select an employee first');
+                return;
+            }
+            
+            if (confirm('Create a knowledge transfer session for this employee? This will schedule a KT session and update their onboarding progress.')) {
+                fetch(`/api/onboarding/kt-session/${employeeId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Knowledge transfer session created successfully!');
+                        // Optionally refresh the page or update UI
+                        window.location.reload();
+                    } else {
+                        alert('Error creating KT session: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error creating KT session. Please try again.');
+                });
+            }
         }
 
         // Real-time task updates
@@ -687,4 +808,62 @@
             }, 1000);
         });
     </script>
+
+<!-- Include Phase 2 JavaScript -->
+<script src="{{ url_for('static', filename='js/tour-system.js') }}"></script>
+<script src="{{ url_for('static', filename='js/smart-search.js') }}"></script>
+
+<!-- Mobile Navigation -->
+<nav class="mobile-nav d-md-none">
+    <a href="{{ url_for('hr_dashboard') }}" class="mobile-nav-item">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+    </a>
+    <a href="{{ url_for('onboarding') }}" class="mobile-nav-item active">
+        <i class="fas fa-user-clock"></i>
+        <span>Onboarding</span>
+    </a>
+    <a href="{{ url_for('list_employees') }}" class="mobile-nav-item">
+        <i class="fas fa-users"></i>
+        <span>Employees</span>
+    </a>
+    <a href="{{ url_for('interview') }}" class="mobile-nav-item">
+        <i class="fas fa-video"></i>
+        <span>Interviews</span>
+    </a>
+</nav>
+
+<!-- Floating Action Button (Mobile) -->
+<div class="fab-container d-md-none">
+    <div class="fab-menu" id="fabMenu">
+        <a href="#" onclick="generateOnboardingTasks()" class="fab-menu-item">
+            <i class="fas fa-plus"></i>
+            <span>Generate Tasks</span>
+        </a>
+        <a href="{{ url_for('add_employee') }}" class="fab-menu-item">
+            <i class="fas fa-user-plus"></i>
+            <span>Add Employee</span>
+        </a>
+    </div>
+    <button class="fab-button" onclick="toggleFabMenu()">
+        <i class="fas fa-plus"></i>
+    </button>
+</div>
+
+<style>
+/* Onboarding-specific mobile styles */
+@media (max-width: 768px) {
+    .mobile-nav-item.active {
+        color: #7b2cbf !important;
+    }
+}
+</style>
+
+<script>
+// Mobile FAB menu toggle
+function toggleFabMenu() {
+    const menu = document.getElementById('fabMenu');
+    menu.classList.toggle('active');
+}
+</script>
 {% endblock %}

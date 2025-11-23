@@ -2220,7 +2220,11 @@ def view_employee_document(doc_id):
     return jsonify({
         'success': True,
         'content': document.content,
-        'template_name': document.template_name
+        'template_name': document.template.name if document.template else 'Unknown Template',
+        'document_name': document.document_name,
+        'template_type': document.template.template_type if document.template else 'Unknown',
+        'generated_at': document.generated_at.strftime('%Y-%m-%d %H:%M'),
+        'generated_by_name': User.query.get(document.generated_by).full_name if document.generated_by else 'Unknown'
     })
 
 @app.route('/employee/documents/<int:doc_id>/download')
@@ -2237,7 +2241,6 @@ def download_employee_document(doc_id):
     
     # Update status to downloaded
     document.status = 'downloaded'
-    document.downloaded_at = datetime.utcnow()
     db.session.commit()
     
     # Generate professional PDF
@@ -2356,7 +2359,6 @@ def acknowledge_employee_document(doc_id):
     
     # Update status to acknowledged
     document.status = 'acknowledged'
-    document.acknowledged_at = datetime.utcnow()
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Document acknowledged successfully'})
@@ -3700,6 +3702,270 @@ def get_candidates_list():
                        'message': 'Failed to fetch candidates'}), 500
 
 
+@app.route('/hr/offboarding', methods=['GET', 'POST'])
+@login_required('hr')
+def hr_offboarding():
+    # Get all employees with 'Offboarding' status
+    offboarding_employees = User.query.filter_by(status='Offboarding', is_active=True).all()
+    
+    # Check if employee_id is provided in URL parameters
+    employee_id = request.args.get('employee_id')
+    selected_employee = None
+    checklist = None
+    
+    if employee_id:
+        # Get employee and their offboarding checklist
+        selected_employee = User.query.get_or_404(employee_id)
+        
+        # Get offboarding tasks using the general Task model
+        offboarding_tasks = Task.query.filter_by(
+            assigned_to=selected_employee.id, 
+            task_type='offboarding'
+        ).all()
+        
+        # Create compatible task objects for template
+        compatible_tasks = []
+        for task in offboarding_tasks:
+            compatible_task = type('Task', (), {
+                'id': task.id,
+                'task_name': task.title,
+                'task_description': task.description,
+                'is_completed': task.status == 'completed',
+                'due_date': task.due_date,
+                'priority': task.priority,
+                'status': task.status
+            })()
+            compatible_tasks.append(compatible_task)
+        
+        # Create a checklist-like structure for compatibility with template
+        if compatible_tasks:
+            def get_progress(self):
+                if not compatible_tasks:
+                    return 0
+                completed_tasks = len([task for task in compatible_tasks if task.is_completed])
+                return int((completed_tasks / len(compatible_tasks)) * 100)
+            
+            checklist = type('Checklist', (), {
+                'tasks': compatible_tasks,
+                'created_at': offboarding_tasks[0].created_at if offboarding_tasks else datetime.utcnow(),
+                'get_progress': get_progress
+            })()
+        else:
+            checklist = None
+    
+    # Get current logged-in HR user
+    current_hr = User.query.get(session['user_id'])
+    
+    # Render offboarding template with employee's specific data
+    return render_template('hr_offboarding.html', 
+                         selected_employee=selected_employee,
+                         checklist=checklist,
+                         offboarding_employees=offboarding_employees,
+                         user=current_hr)
+
+
+@app.route('/api/onboarding/kt-session/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def create_onboarding_kt_session(employee_id):
+    """Create knowledge transfer session for onboarding employee"""
+    try:
+        employee = User.query.get_or_404(employee_id)
+        
+        # Create KT session for onboarding
+        kt_session = KTSession(
+            session_topic=f"Onboarding Knowledge Transfer - {employee.full_name}",
+            attendees=f"{employee.full_name} + Team Members",
+            scheduled_date=datetime.utcnow().date() + timedelta(days=3),
+            duration_hours=2.0,
+            description=f"Team-specific knowledge transfer session for new employee {employee.full_name}",
+            status='Scheduled'
+        )
+        
+        db.session.add(kt_session)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Knowledge transfer session created successfully',
+            'session_id': kt_session.id
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error creating onboarding KT session: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to create knowledge transfer session'
+        }), 500
+
+
+@app.route('/api/offboarding/kt-records/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def create_offboarding_kt_records(employee_id):
+    """Create knowledge transfer records for offboarding employee"""
+    try:
+        employee = User.query.get_or_404(employee_id)
+        
+        # Create KT progress record
+        kt_progress = KTProgress(
+            employee_id=employee_id,
+            sessions_completed=0,
+            docs_uploaded=0,
+            successor_trained_percent=0,
+            projects_handover=0,
+            overall_progress=0
+        )
+        
+        # Create initial KT session
+        kt_session = KTSession(
+            session_topic=f"Offboarding Knowledge Transfer - {employee.full_name}",
+            attendees=f"{employee.full_name} + Successor",
+            scheduled_date=datetime.utcnow().date() + timedelta(days=2),
+            duration_hours=3.0,
+            description=f"Knowledge transfer session for departing employee {employee.full_name}",
+            status='Scheduled'
+        )
+        
+        db.session.add(kt_progress)
+        db.session.add(kt_session)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Knowledge transfer records created successfully',
+            'session_id': kt_session.id,
+            'progress_id': kt_progress.id
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error creating offboarding KT records: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to create knowledge transfer records'
+        }), 500
+
+
+@app.route('/api/hr/offboarding/generate-tasks/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def generate_offboarding_tasks(employee_id):
+    """Generate offboarding tasks for an employee"""
+    try:
+        employee = User.query.get_or_404(employee_id)
+        
+        # Check if employee already has offboarding tasks
+        existing_tasks = Task.query.filter_by(
+            assigned_to=employee_id, 
+            task_type='offboarding'
+        ).all()
+        
+        if existing_tasks:
+            return jsonify({
+                'success': False,
+                'message': 'Employee already has offboarding tasks'
+            }), 400
+        
+        # Generate standard offboarding tasks
+        offboarding_tasks = [
+            {
+                'title': 'Submit Resignation Letter',
+                'description': 'Submit formal resignation letter with notice period details',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=1)
+            },
+            {
+                'title': 'Handover Work Responsibilities',
+                'description': 'Document and handover all ongoing work to team members',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=3)
+            },
+            {
+                'title': 'Knowledge Transfer Planning',
+                'description': 'Create knowledge transfer plan and identify critical processes',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=2)
+            },
+            {
+                'title': 'Conduct KT Sessions',
+                'description': 'Complete knowledge transfer sessions with team members',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=5)
+            },
+            {
+                'title': 'Document Critical Processes',
+                'description': 'Document all critical processes and workflows in knowledge base',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=4)
+            },
+            {
+                'title': 'Return Company Assets',
+                'description': 'Return laptop, phone, ID card, and other company property',
+                'priority': 'medium',
+                'due_date': datetime.utcnow() + timedelta(days=7)
+            },
+            {
+                'title': 'Exit Interview',
+                'description': 'Complete exit interview with HR',
+                'priority': 'medium',
+                'due_date': datetime.utcnow() + timedelta(days=5)
+            },
+            {
+                'title': 'Clear Financial Dues',
+                'description': 'Clear all pending payments and reimbursements',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=4)
+            },
+            {
+                'title': 'Update Knowledge Base',
+                'description': 'Update documentation and knowledge base with current information',
+                'priority': 'medium',
+                'due_date': datetime.utcnow() + timedelta(days=6)
+            },
+            {
+                'title': 'System Access Revocation',
+                'description': 'Coordinate with IT to revoke system access',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=7)
+            },
+            {
+                'title': 'Final Clearance Process',
+                'description': 'Complete final clearance from all departments',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=7)
+            }
+        ]
+        
+        # Create tasks in database
+        created_tasks = []
+        for task_data in offboarding_tasks:
+            task = Task(
+                title=task_data['title'],
+                description=task_data['description'],
+                assigned_to=employee_id,
+                assigned_by=session['user_id'],
+                task_type='offboarding',
+                priority=task_data['priority'],
+                due_date=task_data['due_date'],
+                status='pending',
+                created_at=datetime.utcnow()
+            )
+            db.session.add(task)
+            created_tasks.append(task)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully generated {len(created_tasks)} offboarding tasks',
+            'task_count': len(created_tasks)
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error generating offboarding tasks: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate offboarding tasks'
+        }), 500
+
+
 @app.route('/onboarding', methods=['GET', 'POST'])
 @login_required('hr')
 def onboarding():
@@ -3808,6 +4074,122 @@ def onboarding():
                          sample_candidates=candidates,
                          selected_candidate=selected_candidate,
                          user=current_hr)
+
+
+@app.route('/api/hr/onboarding/generate-tasks/<int:employee_id>', methods=['POST'])
+@login_required('hr')
+def generate_onboarding_tasks(employee_id):
+    """Generate onboarding tasks for an employee"""
+    try:
+        employee = User.query.get_or_404(employee_id)
+        
+        # Check if employee already has onboarding tasks
+        existing_tasks = Task.query.filter_by(
+            assigned_to=employee_id, 
+            task_type='onboarding'
+        ).all()
+        
+        if existing_tasks:
+            return jsonify({
+                'success': False,
+                'message': 'Employee already has onboarding tasks'
+            }), 400
+        
+        # Generate standard onboarding tasks
+        onboarding_tasks = [
+            {
+                'title': 'Complete Personal Information',
+                'description': 'Fill out personal details, emergency contacts, and banking information',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=2)
+            },
+            {
+                'title': 'Review Employee Handbook',
+                'description': 'Read and acknowledge company policies and procedures',
+                'priority': 'medium',
+                'due_date': datetime.utcnow() + timedelta(days=3)
+            },
+            {
+                'title': 'IT Setup and Accounts',
+                'description': 'Set up email, system access, and software accounts',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=1)
+            },
+            {
+                'title': 'Attend Orientation Session',
+                'description': 'Complete company orientation and team introductions',
+                'priority': 'medium',
+                'due_date': datetime.utcnow() + timedelta(days=5)
+            },
+            {
+                'title': 'Benefits Enrollment',
+                'description': 'Review and select benefits packages',
+                'priority': 'medium',
+                'due_date': datetime.utcnow() + timedelta(days=7)
+            },
+            {
+                'title': 'Security Training',
+                'description': 'Complete mandatory security and compliance training',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=4)
+            },
+            {
+                'title': 'Equipment Setup',
+                'description': 'Receive and set up work equipment (laptop, phone, etc.)',
+                'priority': 'medium',
+                'due_date': datetime.utcnow() + timedelta(days=2)
+            },
+            {
+                'title': 'Knowledge Transfer Session 1',
+                'description': 'Attend team-specific knowledge transfer session with assigned mentor',
+                'priority': 'high',
+                'due_date': datetime.utcnow() + timedelta(days=3)
+            },
+            {
+                'title': 'Review Team Documentation',
+                'description': 'Access and review team-specific knowledge base documents',
+                'priority': 'medium',
+                'due_date': datetime.utcnow() + timedelta(days=4)
+            },
+            {
+                'title': 'First Week Check-in',
+                'description': 'Meet with manager to discuss first week progress',
+                'priority': 'low',
+                'due_date': datetime.utcnow() + timedelta(days=7)
+            }
+        ]
+        
+        # Create tasks in database
+        created_tasks = []
+        for task_data in onboarding_tasks:
+            task = Task(
+                title=task_data['title'],
+                description=task_data['description'],
+                assigned_to=employee_id,
+                assigned_by=session['user_id'],
+                task_type='onboarding',
+                priority=task_data['priority'],
+                due_date=task_data['due_date'],
+                status='pending',
+                created_at=datetime.utcnow()
+            )
+            db.session.add(task)
+            created_tasks.append(task)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully generated {len(created_tasks)} onboarding tasks',
+            'task_count': len(created_tasks)
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error generating onboarding tasks: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate onboarding tasks'
+        }), 500
 
 def get_department_tasks(department, position):
     """Get department-specific onboarding tasks"""
@@ -4978,21 +5360,53 @@ def knowledge_transfer():
                 User.full_name.notlike('%test%')
             ).first()
     
-    # Fetch Knowledge Transfer data from database
-    kt_sessions = KTSession.query.order_by(KTSession.scheduled_date.desc()).all()
-    kt_documents = KTDocument.query.order_by(KTDocument.upload_date.desc()).all()
-    successor_training = SuccessorTraining.query.order_by(SuccessorTraining.created_at.desc()).all()
-    project_handovers = ProjectHandover.query.order_by(ProjectHandover.created_at.desc()).all()
+    # Fetch Knowledge Transfer data from database for current user
+    # For HR users, show all KT data; for employees, show only their data
+    if session.get('role') == 'hr':
+        # HR can see all KT data
+        kt_sessions = KTSession.query.order_by(KTSession.scheduled_date.desc()).all()
+        kt_documents = KTDocument.query.order_by(KTDocument.upload_date.desc()).all()
+        successor_training = SuccessorTraining.query.order_by(SuccessorTraining.created_at.desc()).all()
+        project_handovers = ProjectHandover.query.order_by(ProjectHandover.created_at.desc()).all()
+    else:
+        # Employees see only their KT data
+        kt_sessions = KTSession.query.filter(
+            KTSession.attendees.like(f'%{employee.full_name}%')
+        ).order_by(KTSession.scheduled_date.desc()).all()
+        
+        kt_documents = KTDocument.query.filter_by(uploaded_by=session['user_id']).order_by(KTDocument.upload_date.desc()).all()
+        
+        successor_training = SuccessorTraining.query.filter_by(trainer_id=session['user_id']).order_by(SuccessorTraining.created_at.desc()).all()
+        
+        # For project handovers, show projects where user is either the creator or recipient
+        project_handovers = ProjectHandover.query.filter(
+            (ProjectHandover.recipient_name.like(f'%{employee.full_name}%')) |
+            (ProjectHandover.notes.like(f'%{employee.full_name}%'))
+        ).order_by(ProjectHandover.created_at.desc()).all()
     
     # Get or create KT progress for current employee
     kt_progress = KTProgress.query.filter_by(employee_id=session['user_id']).first()
     if not kt_progress:
+        # Calculate user-specific progress
+        user_sessions_completed = KTSession.query.filter(
+            KTSession.attendees.like(f'%{employee.full_name}%'),
+            KTSession.status == 'Completed'
+        ).count()
+        
+        user_docs_uploaded = KTDocument.query.filter_by(uploaded_by=session['user_id']).count()
+        
+        user_projects_completed = ProjectHandover.query.filter(
+            (ProjectHandover.recipient_name.like(f'%{employee.full_name}%')) |
+            (ProjectHandover.notes.like(f'%{employee.full_name}%')),
+            ProjectHandover.status == 'Completed'
+        ).count()
+        
         kt_progress = KTProgress(
             employee_id=session['user_id'],
-            sessions_completed=KTSession.query.filter_by(status='Completed').count(),
-            docs_uploaded=KTDocument.query.count(),
+            sessions_completed=user_sessions_completed,
+            docs_uploaded=user_docs_uploaded,
             successor_trained_percent=calculate_successor_progress(),
-            projects_handover=ProjectHandover.query.filter_by(status='Completed').count(),
+            projects_handover=user_projects_completed,
             overall_progress=calculate_overall_progress(session['user_id'])
         )
         db.session.add(kt_progress)
@@ -5019,25 +5433,46 @@ def calculate_successor_progress():
         return 0
 
 def calculate_overall_progress(employee_id):
-    """Calculate overall KT progress percentage"""
+    """Calculate overall KT progress percentage for specific employee"""
     try:
+        # Get employee for user-specific calculations
+        employee = User.query.get(employee_id)
+        if not employee:
+            return 0
+            
         # Get weights for different components
         session_weight = 0.3
         doc_weight = 0.2
         training_weight = 0.3
         project_weight = 0.2
         
-        # Calculate individual progress
-        total_sessions = KTSession.query.count()
-        completed_sessions = KTSession.query.filter_by(status='Completed').count()
-        session_progress = (completed_sessions / total_sessions * 100) if total_sessions > 0 else 0
+        # Calculate user-specific progress
+        user_sessions = KTSession.query.filter(
+            KTSession.attendees.like(f'%{employee.full_name}%')
+        ).all()
+        user_completed_sessions = KTSession.query.filter(
+            KTSession.attendees.like(f'%{employee.full_name}%'),
+            KTSession.status == 'Completed'
+        ).all()
+        session_progress = (len(user_completed_sessions) / len(user_sessions) * 100) if user_sessions else 0
         
-        doc_progress = 100 if KTDocument.query.count() > 0 else 0
-        training_progress = calculate_successor_progress()
+        user_docs = KTDocument.query.filter_by(uploaded_by=employee_id).all()
+        doc_progress = 100 if user_docs else 0
         
-        total_projects = ProjectHandover.query.count()
-        completed_projects = ProjectHandover.query.filter_by(status='Completed').count()
-        project_progress = (completed_projects / total_projects * 100) if total_projects > 0 else 0
+        user_training = SuccessorTraining.query.filter_by(trainer_id=employee_id).all()
+        user_completed_training = SuccessorTraining.query.filter_by(trainer_id=employee_id, status='Completed').all()
+        training_progress = (len(user_completed_training) / len(user_training) * 100) if user_training else 0
+        
+        user_projects = ProjectHandover.query.filter(
+            (ProjectHandover.recipient_name.like(f'%{employee.full_name}%')) |
+            (ProjectHandover.notes.like(f'%{employee.full_name}%'))
+        ).all()
+        user_completed_projects = ProjectHandover.query.filter(
+            (ProjectHandover.recipient_name.like(f'%{employee.full_name}%')) |
+            (ProjectHandover.notes.like(f'%{employee.full_name}%')),
+            ProjectHandover.status == 'Completed'
+        ).all()
+        project_progress = (len(user_completed_projects) / len(user_projects) * 100) if user_projects else 0
         
         # Calculate weighted average
         overall = (session_progress * session_weight + 

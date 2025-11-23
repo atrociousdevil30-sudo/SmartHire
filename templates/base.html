@@ -201,13 +201,14 @@
                     
                     <!-- Employee Lifecycle -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.path in [url_for('onboarding'), url_for('pre_onboarding'), url_for('knowledge_transfer')] %}active{% endif %}" href="#" id="lifecycleDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle {% if request.path in [url_for('onboarding'), url_for('pre_onboarding'), url_for('hr_offboarding'), url_for('knowledge_transfer')] %}active{% endif %}" href="#" id="lifecycleDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-plus"></i> Lifecycle
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="lifecycleDropdown">
                             <li><a class="dropdown-item" href="{{ url_for('pre_onboarding') }}">Pre-Onboarding</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('onboarding') }}">Onboarding</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('exit_interview') }}">Offboarding</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('hr_offboarding') }}">Offboarding Management</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('exit_interview') }}">Exit Analytics</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('knowledge_transfer') }}">Knowledge Transfer</a></li>
                         </ul>
                     </li>
