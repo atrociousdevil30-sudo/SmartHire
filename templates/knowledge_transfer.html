@@ -881,6 +881,35 @@ document.addEventListener('DOMContentLoaded', function() {
         tourBtn.addEventListener('click', startKTTour);
     }
     
+    // Helper functions for data attribute handling
+    function deleteDocument(button) {
+        const documentId = button.getAttribute('data-document-id');
+        if (documentId && confirm('Are you sure you want to delete this document?')) {
+            // Add delete logic here
+            console.log('Deleting document:', documentId);
+            // You can add an API call here to actually delete the document
+        }
+    }
+    
+    function viewProjectDocs(button) {
+        const projectId = button.getAttribute('data-project-id');
+        const projectName = button.getAttribute('data-project-name');
+        if (projectId && projectName) {
+            // Add view logic here
+            console.log('Viewing project docs:', projectId, projectName);
+            // You can add logic to view project documentation here
+        }
+    }
+    
+    // Initialize progress bar from data attribute
+    const successorProgress = document.getElementById('successorProgress');
+    if (successorProgress) {
+        const progress = successorProgress.getAttribute('data-progress');
+        if (progress) {
+            successorProgress.style.width = progress + '%';
+        }
+    }
+    
     // Update successor training progress
     function updateSuccessorProgress() {
         const checkboxes = document.querySelectorAll('#successorTraining input[type="checkbox"]');
