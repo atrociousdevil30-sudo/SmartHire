@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         tourContent.innerHTML = `
-            <button onclick="closeTour()" style="
+            <button id="closeTourBtn" style="
                 position: absolute;
                 top: 10px;
                 right: 15px;
@@ -692,7 +692,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             
             <div style="text-align: center; margin-top: 20px;">
-                <button onclick="closeTour()" style="
+                <button id="startUsingKTBtn" style="
                     background: #3498db;
                     border: none;
                     color: white;
@@ -704,7 +704,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ">
                     <i class="fas fa-check"></i> Got it, Start Using KT
                 </button>
-                <button onclick="showQuickTour()" style="
+                <button id="quickTourBtn" style="
                     background: #95a5a6;
                     border: none;
                     color: white;
@@ -720,6 +720,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         tourOverlay.appendChild(tourContent);
         document.body.appendChild(tourOverlay);
+        
+        // Add event listeners to buttons after DOM insertion
+        document.getElementById('closeTourBtn').addEventListener('click', closeTour);
+        document.getElementById('startUsingKTBtn').addEventListener('click', closeTour);
+        document.getElementById('quickTourBtn').addEventListener('click', showQuickTour);
     }
     
     function closeTour() {
