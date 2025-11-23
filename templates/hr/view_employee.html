@@ -207,16 +207,16 @@
                 </div>
                 <div class="card-body">
                     {% if employee_skills %}
-                        <!-- Enhanced Skills Grid - Horizontal Expansion -->
+                        <!-- Enhanced Skills Grid - Expanded Card Layout -->
                         <div class="row g-3">
                             {% for skill in employee_skills %}
-                                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
-                                    <div class="skill-item p-3 bg-dark bg-opacity-30 rounded border border-secondary border-opacity-50">
+                                <div class="col-xl-6 col-lg-6 col-md-12">
+                                    <div class="skill-item p-4 bg-dark bg-opacity-30 rounded border border-secondary border-opacity-50">
                                         <!-- Skill Header -->
                                         <div class="d-flex justify-content-between align-items-start mb-3">
                                             <div class="flex-grow-1">
                                                 <h6 class="text-light mb-2 fw-bold">{{ skill.skill_name }}</h6>
-                                                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                                                <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
                                                     <span class="badge bg-{{ 'success' if skill.proficiency_level == 'Expert' else 'info' if skill.proficiency_level == 'Advanced' else 'warning' if skill.proficiency_level == 'Intermediate' else 'secondary' }} bg-opacity-25 text-{{ 'success' if skill.proficiency_level == 'Expert' else 'info' if skill.proficiency_level == 'Advanced' else 'warning' if skill.proficiency_level == 'Intermediate' else 'secondary' }} text-capitalize">
                                                         {{ skill.proficiency_level }}
                                                     </span>
@@ -225,17 +225,17 @@
                                                     </span>
                                                     {% if skill.years_experience %}
                                                         <small class="text-muted fw-semibold">
-                                                            <i class="fas fa-clock me-1"></i>{{ "%.1f"|format(skill.years_experience) }}y
+                                                            <i class="fas fa-clock me-1"></i>{{ "%.1f"|format(skill.years_experience) }} years
                                                         </small>
                                                     {% endif %}
                                                 </div>
                                                 {% if skill.certification %}
-                                                    <div class="text-info mb-2 fw-medium">
-                                                        <i class="fas fa-certificate me-1"></i>{{ skill.certification }}
+                                                    <div class="text-info mb-3 fw-medium">
+                                                        <i class="fas fa-certificate me-2"></i>{{ skill.certification }}
                                                     </div>
                                                 {% endif %}
                                             </div>
-                                            <div class="text-end ms-2">
+                                            <div class="text-end ms-3">
                                                 {% if skill.proficiency_level == 'Expert' %}
                                                     <i class="fas fa-star text-warning fa-lg"></i>
                                                 {% elif skill.proficiency_level == 'Advanced' %}
@@ -249,7 +249,7 @@
                                         </div>
                                         
                                         <!-- Proficiency Bar -->
-                                        <div class="progress bg-dark bg-opacity-50" style="height: 8px;">
+                                        <div class="progress bg-dark bg-opacity-50" style="height: 10px;">
                                             {% set proficiency_width = 100 if skill.proficiency_level == 'Expert' else 75 if skill.proficiency_level == 'Advanced' else 50 if skill.proficiency_level == 'Intermediate' else 25 %}
                                             <div class="progress-bar bg-{{ 'success' if skill.proficiency_level == 'Expert' else 'info' if skill.proficiency_level == 'Advanced' else 'warning' if skill.proficiency_level == 'Intermediate' else 'secondary' }}" 
                                                  role="progressbar" 
@@ -837,12 +837,12 @@
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
     
-    /* Enhanced Skills Layout - Horizontal Expansion */
+    /* Enhanced Skills Layout - Expanded Card Design */
     .skill-item {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         position: relative;
         overflow: hidden;
-        min-height: 180px;
+        min-height: 120px;
     }
     
     .skill-item:hover {
@@ -860,43 +860,43 @@
         background-color: rgba(255, 255, 255, 0.02) !important;
     }
     
-    /* Enhanced Typography for Horizontal Layout */
+    /* Enhanced Typography for Expanded Cards */
     .skill-item h6 {
-        font-size: 0.95rem;
-        line-height: 1.2;
+        font-size: 1.1rem;
+        line-height: 1.3;
         letter-spacing: 0.01em;
     }
     
     .skill-item .badge {
-        font-size: 0.7rem;
-        padding: 0.3rem 0.5rem;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.7rem;
         font-weight: 500;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
     
     .skill-item .text-info {
-        font-size: 0.8rem;
-        line-height: 1.3;
+        font-size: 0.9rem;
+        line-height: 1.4;
     }
     
     .skill-item .text-muted {
-        font-size: 0.75rem;
-        line-height: 1.3;
+        font-size: 0.85rem;
+        line-height: 1.4;
     }
     
     /* Enhanced Progress Bar */
     .skill-item .progress {
         background-color: rgba(255, 255, 255, 0.15) !important;
-        border-radius: 4px;
+        border-radius: 5px;
         box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
     }
     
     .skill-item .progress-bar {
-        border-radius: 4px;
+        border-radius: 5px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
     
-    /* Horizontal Expansion - Enhanced Spacing */
+    /* Expanded Card Spacing */
     .row.g-3 {
         margin-right: -1rem;
         margin-left: -1rem;
@@ -907,10 +907,32 @@
         padding-left: 1rem;
     }
     
-    /* Responsive adjustments for horizontal expansion */
-    @media (min-width: 1400px) {
+    /* Responsive adjustments for expanded cards */
+    @media (min-width: 1200px) {
         .skill-item {
-            min-height: 200px;
+            min-height: 130px;
+        }
+        
+        .skill-item h6 {
+            font-size: 1.2rem;
+        }
+        
+        .skill-item .badge {
+            font-size: 0.85rem;
+            padding: 0.45rem 0.8rem;
+        }
+    }
+    
+    @media (max-width: 1199px) {
+        .skill-item {
+            min-height: 120px;
+        }
+    }
+    
+    @media (max-width: 991px) {
+        .skill-item {
+            padding: 1rem !important;
+            min-height: 110px;
         }
         
         .skill-item h6 {
@@ -920,23 +942,6 @@
         .skill-item .badge {
             font-size: 0.75rem;
             padding: 0.35rem 0.6rem;
-        }
-    }
-    
-    @media (max-width: 1199px) {
-        .skill-item {
-            min-height: 170px;
-        }
-    }
-    
-    @media (max-width: 991px) {
-        .skill-item {
-            padding: 1rem !important;
-            min-height: 160px;
-        }
-        
-        .skill-item h6 {
-            font-size: 0.9rem;
         }
     }
     
@@ -954,17 +959,26 @@
         .skill-item {
             padding: 0.75rem !important;
             margin-bottom: 0.5rem;
-            min-height: 140px;
+            min-height: 100px;
+        }
+        
+        .skill-item h6 {
+            font-size: 0.95rem;
+        }
+        
+        .skill-item .badge {
+            font-size: 0.7rem;
+            padding: 0.3rem 0.5rem;
         }
     }
     
     @media (max-width: 575px) {
         .skill-item {
-            min-height: 120px;
+            min-height: 90px;
         }
         
         .skill-item h6 {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
         }
         
         .skill-item .badge {
