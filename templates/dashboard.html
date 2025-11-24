@@ -8,14 +8,14 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-optimized.css') }}">
 
 <div class="container-fluid py-4">
-    <!-- Welcome Section with Tour -->
+    <!-- Enhanced Welcome Section -->
     <div class="dashboard-welcome mb-4">
         <div class="card bg-dark bg-opacity-25 border-secondary">
             <div class="card-body py-4">
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
+                            <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px; background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%); border: 2px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 15px rgba(123, 44, 191, 0.3);">
                                 <i class="fas fa-user-tie fa-2x"></i>
                             </div>
                             <div>
@@ -24,21 +24,24 @@
                             </div>
                         </div>
                         
-                        <!-- Tour Controls -->
+                        <!-- Enhanced Tour Controls -->
                         <div class="tour-controls">
-                            <button class="btn btn-outline-primary btn-sm me-2" onclick="tourManager.startTour('dashboard')">
+                            <button class="btn btn-outline-primary btn-sm me-2 enhanced-button" onclick="tourManager.startTour('dashboard')">
                                 <i class="fas fa-play-circle me-1"></i>Start Dashboard Tour
                             </button>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="tourManager.resetProgress()">
+                            <button class="btn btn-outline-secondary btn-sm enhanced-button" onclick="tourManager.resetProgress()">
                                 <i class="fas fa-redo me-1"></i>Reset All Tours
                             </button>
                         </div>
                     </div>
                     <div class="col-md-4 text-end">
                         <div class="help-section">
-                            <button class="btn btn-outline-light btn-sm help-button" onclick="toggleHelpPanel()">
-                                <i class="fas fa-question-circle me-1"></i>Need Help?
-                            </button>
+                            <div class="d-flex justify-content-end gap-2">
+                                <span class="badge bg-primary bg-opacity-25 text-primary hr-badge">HR Manager</span>
+                                <button class="btn btn-outline-light btn-sm help-button enhanced-button" onclick="toggleHelpPanel()">
+                                    <i class="fas fa-question-circle me-1"></i>Need Help?
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -46,81 +49,90 @@
         </div>
     </div>
 
-    <!-- Smart Search Bar -->
+    <!-- Enhanced Smart Search Bar -->
     <div class="smart-search-bar mb-4">
         <div class="search-input-group">
-            <div class="input-group">
-                <span class="input-group-text bg-dark border-secondary text-light">
+            <div class="input-group enhanced-search">
+                <span class="input-group-text bg-dark border-secondary text-light search-icon">
                     <i class="fas fa-search"></i>
                 </span>
-                <input type="text" class="form-control bg-dark text-light border-secondary smart-search-input" 
+                <input type="text" class="form-control bg-dark text-light border-secondary smart-search-input enhanced-input" 
                        placeholder="What are you looking for? Try 'add employee' or 'generate document'">
-                <button class="btn btn-outline-secondary" type="button" onclick="clearSmartSearch()">
+                <button class="btn btn-outline-secondary enhanced-button" type="button" onclick="clearSmartSearch()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Priority Tasks Section -->
+    <!-- Enhanced Priority Tasks Section -->
     <div class="priority-tasks mb-4">
-        <div class="card bg-dark bg-opacity-25 border-secondary">
+        <div class="card bg-dark bg-opacity-25 border-secondary enhanced-card">
             <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
-                <h5 class="text-light mb-0">
+                <h5 class="text-light mb-0 d-flex align-items-center">
                     <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Today's Priorities
+                    <span class="priority-indicator ms-2"></span>
                 </h5>
-                <span class="badge bg-warning">4 Urgent</span>
+                <span class="badge bg-warning priority-badge">4 Urgent</span>
             </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6 col-lg-3">
-                        <div class="priority-card urgent touch-feedback">
+                        <div class="priority-card urgent touch-feedback enhanced-priority-card">
                             <div class="priority-header">
-                                <i class="fas fa-user-plus text-warning"></i>
+                                <div class="priority-icon-wrapper urgent-icon">
+                                    <i class="fas fa-user-plus"></i>
+                                </div>
                                 <span class="priority-count">{{ onboarding_count or 2 }}</span>
                             </div>
                             <h6>New Onboarding</h6>
                             <p class="text-muted small">Employees waiting for onboarding setup</p>
-                            <button class="btn btn-warning btn-sm" onclick="navigateTo('/onboarding')">
+                            <button class="btn btn-warning btn-sm enhanced-action-button" onclick="navigateTo('/onboarding')">
                                 Start Now <i class="fas fa-arrow-right ms-1"></i>
                             </button>
                         </div>
                     </div>
                     <div class="col-md-6 col-lg-3">
-                        <div class="priority-card important touch-feedback">
+                        <div class="priority-card important touch-feedback enhanced-priority-card">
                             <div class="priority-header">
-                                <i class="fas fa-file-signature text-info"></i>
+                                <div class="priority-icon-wrapper important-icon">
+                                    <i class="fas fa-file-signature"></i>
+                                </div>
                                 <span class="priority-count">1</span>
                             </div>
                             <h6>Document Signature</h6>
                             <p class="text-muted small">Policy acknowledgment pending</p>
-                            <button class="btn btn-info btn-sm" onclick="navigateTo('/hr/generated_documents')">
+                            <button class="btn btn-info btn-sm enhanced-action-button" onclick="navigateTo('/hr/generated_documents')">
                                 Review <i class="fas fa-arrow-right ms-1"></i>
                             </button>
                         </div>
                     </div>
                     <div class="col-md-6 col-lg-3">
-                        <div class="priority-card normal touch-feedback">
+                        <div class="priority-card normal touch-feedback enhanced-priority-card">
                             <div class="priority-header">
-                                <i class="fas fa-video text-primary"></i>
+                                <div class="priority-icon-wrapper normal-icon">
+                                    <i class="fas fa-video"></i>
+                                </div>
                                 <span class="priority-count">{{ completed_interviews or 3 }}</span>
                             </div>
                             <h6>Interview Results</h6>
                             <p class="text-muted small">AI interviews need review</p>
-                            <button class="btn btn-primary btn-sm" onclick="navigateTo('/interview')">
+                            <button class="btn btn-primary btn-sm enhanced-action-button" onclick="navigateTo('/interview')">
                                 Review <i class="fas fa-arrow-right ms-1"></i>
                             </button>
                         </div>
                     </div>
                     <div class="col-md-6 col-lg-3">
-                        <div class="priority-card low touch-feedback">
+                        <div class="priority-card low touch-feedback enhanced-priority-card">
                             <div class="priority-header">
-                                <i class="fas fa-chart-line text-success"></i>
+                                <div class="priority-icon-wrapper low-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
                                 <span class="priority-count">5</span>
                             </div>
                             <h6>Weekly Reports</h6>
                             <p class="text-muted small">Analytics ready to view</p>
-                            <button class="btn btn-success btn-sm" onclick="navigateTo('/analytics/mood')">
+                            <button class="btn btn-success btn-sm enhanced-action-button" onclick="navigateTo('/analytics/mood')">
                                 View <i class="fas fa-arrow-right ms-1"></i>
                             </button>
                         </div>
@@ -130,21 +142,22 @@
         </div>
     </div>
 
-    <!-- Quick Actions with Enhanced Design -->
+    <!-- Enhanced Quick Actions Section -->
     <div class="quick-actions-section mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="text-light">
+            <h5 class="text-light d-flex align-items-center">
                 <i class="fas fa-bolt me-2 text-primary"></i>Quick Actions
+                <span class="quick-actions-indicator ms-2"></span>
             </h5>
-            <button class="btn btn-outline-light btn-sm" onclick="toggleAdvancedMode()">
+            <button class="btn btn-outline-light btn-sm enhanced-button" onclick="toggleAdvancedMode()">
                 <i class="fas fa-cog me-1"></i>Advanced
             </button>
         </div>
         
         <div class="row g-3">
             <div class="col-md-3">
-                <a href="{{ url_for('add_employee') }}" class="action-card primary touch-feedback">
-                    <div class="action-icon">
+                <a href="{{ url_for('add_employee') }}" class="action-card primary touch-feedback enhanced-action-card">
+                    <div class="action-icon enhanced-icon">
                         <i class="fas fa-user-plus"></i>
                     </div>
                     <h6>Add Employee</h6>
@@ -152,8 +165,8 @@
                 </a>
             </div>
             <div class="col-md-3">
-                <a href="{{ url_for('onboarding') }}" class="action-card success touch-feedback">
-                    <div class="action-icon">
+                <a href="{{ url_for('onboarding') }}" class="action-card success touch-feedback enhanced-action-card">
+                    <div class="action-icon enhanced-icon">
                         <i class="fas fa-user-clock"></i>
                     </div>
                     <h6>Onboarding</h6>
@@ -161,8 +174,8 @@
                 </a>
             </div>
             <div class="col-md-3">
-                <a href="{{ url_for('hr_templates') }}" class="action-card info touch-feedback">
-                    <div class="action-icon">
+                <a href="{{ url_for('hr_templates') }}" class="action-card info touch-feedback enhanced-action-card">
+                    <div class="action-icon enhanced-icon">
                         <i class="fas fa-file-alt"></i>
                     </div>
                     <h6>Documents</h6>
@@ -170,8 +183,8 @@
                 </a>
             </div>
             <div class="col-md-3">
-                <a href="{{ url_for('interview') }}" class="action-card warning touch-feedback">
-                    <div class="action-icon">
+                <a href="{{ url_for('interview') }}" class="action-card warning touch-feedback enhanced-action-card">
+                    <div class="action-icon enhanced-icon">
                         <i class="fas fa-video"></i>
                     </div>
                     <h6>Interviews</h6>
@@ -1093,5 +1106,417 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 </script>
+
+<!-- Enhanced HR Dashboard CSS Styles -->
+<style>
+/* Enhanced HR Dashboard Styles - Matching Employee Portal UX */
+
+/* Enhanced Welcome Section */
+.dashboard-welcome .card {
+    background: linear-gradient(135deg, rgba(123, 44, 191, 0.1) 0%, rgba(90, 24, 154, 0.1) 100%);
+    border: 1px solid rgba(123, 44, 191, 0.3);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.dashboard-welcome .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(123, 44, 191, 0.2);
+    border-color: rgba(123, 44, 191, 0.5);
+}
+
+/* Enhanced Buttons */
+.enhanced-button {
+    background: rgba(26, 26, 26, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.enhanced-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.enhanced-button:hover::before {
+    left: 100%;
+}
+
+.enhanced-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border-color: rgba(123, 44, 191, 0.5);
+}
+
+/* HR Badge */
+.hr-badge {
+    background: linear-gradient(135deg, rgba(123, 44, 191, 0.25) 0%, rgba(90, 24, 154, 0.25) 100%);
+    border: 1px solid rgba(123, 44, 191, 0.3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: badgePulse 3s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* Enhanced Search Bar */
+.enhanced-search {
+    border: 1px solid rgba(123, 44, 191, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: rgba(26, 26, 26, 0.8);
+    backdrop-filter: blur(10px);
+}
+
+.enhanced-search:focus-within {
+    border-color: #7b2cbf;
+    box-shadow: 0 0 20px rgba(123, 44, 191, 0.3);
+}
+
+.enhanced-input {
+    background: transparent !important;
+    border: none !important;
+    color: #f8f9fa !important;
+}
+
+.enhanced-input:focus {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.search-icon {
+    background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%) !important;
+    border: none !important;
+}
+
+/* Enhanced Priority Cards */
+.enhanced-card {
+    background: rgba(26, 26, 26, 0.8) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.enhanced-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(123, 44, 191, 0.3);
+}
+
+.priority-badge {
+    animation: priorityPulse 2s infinite;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+@keyframes priorityPulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
+
+.priority-indicator {
+    width: 8px;
+    height: 8px;
+    background: #ffc107;
+    border-radius: 50%;
+    animation: indicatorBlink 2s infinite;
+}
+
+@keyframes indicatorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Enhanced Priority Cards */
+.enhanced-priority-card {
+    background: rgba(26, 26, 26, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.enhanced-priority-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    transition: left 0.5s ease;
+}
+
+.enhanced-priority-card:hover::before {
+    left: 100%;
+}
+
+.enhanced-priority-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.enhanced-priority-card.urgent:hover {
+    border-color: #ffc107;
+    box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
+}
+
+.enhanced-priority-card.important:hover {
+    border-color: #17a2b8;
+    box-shadow: 0 10px 25px rgba(23, 162, 184, 0.3);
+}
+
+.enhanced-priority-card.normal:hover {
+    border-color: #7b2cbf;
+    box-shadow: 0 10px 25px rgba(123, 44, 191, 0.3);
+}
+
+.enhanced-priority-card.low:hover {
+    border-color: #28a745;
+    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+}
+
+/* Priority Icon Wrappers */
+.priority-icon-wrapper {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.2rem;
+    position: relative;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.urgent-icon {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    border-color: #ffc107;
+    color: #212529;
+}
+
+.important-icon {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    border-color: #17a2b8;
+}
+
+.normal-icon {
+    background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
+    border-color: #7b2cbf;
+}
+
+.low-icon {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border-color: #28a745;
+}
+
+/* Enhanced Action Buttons */
+.enhanced-action-button {
+    background: rgba(26, 26, 26, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.enhanced-action-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.enhanced-action-button:hover::before {
+    left: 100%;
+}
+
+.enhanced-action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced Quick Actions */
+.quick-actions-indicator {
+    width: 6px;
+    height: 6px;
+    background: #7b2cbf;
+    border-radius: 50%;
+    animation: quickActionsPulse 3s infinite;
+}
+
+@keyframes quickActionsPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Enhanced Action Cards */
+.enhanced-action-card {
+    display: block;
+    padding: 1.5rem;
+    background: rgba(26, 26, 26, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    text-decoration: none;
+    color: #f8f9fa;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.enhanced-action-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.enhanced-action-card:hover::before {
+    left: 100%;
+}
+
+.enhanced-action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    color: #f8f9fa;
+}
+
+.enhanced-action-card.primary:hover {
+    border-color: #7b2cbf;
+    box-shadow: 0 10px 25px rgba(123, 44, 191, 0.3);
+}
+
+.enhanced-action-card.success:hover {
+    border-color: #28a745;
+    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+}
+
+.enhanced-action-card.info:hover {
+    border-color: #17a2b8;
+    box-shadow: 0 10px 25px rgba(23, 162, 184, 0.3);
+}
+
+.enhanced-action-card.warning:hover {
+    border-color: #ffc107;
+    box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
+}
+
+.enhanced-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.5rem;
+    position: relative;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.enhanced-action-card:hover .enhanced-icon {
+    transform: scale(1.1);
+}
+
+.enhanced-action-card.primary .enhanced-icon {
+    background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
+    border-color: #7b2cbf;
+}
+
+.enhanced-action-card.success .enhanced-icon {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border-color: #28a745;
+}
+
+.enhanced-action-card.info .enhanced-icon {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    border-color: #17a2b8;
+}
+
+.enhanced-action-card.warning .enhanced-icon {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    border-color: #ffc107;
+    color: #212529;
+}
+
+/* Touch Feedback */
+.touch-feedback {
+    position: relative;
+    overflow: hidden;
+}
+
+.touch-feedback::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.touch-feedback:active::after {
+    width: 200px;
+    height: 200px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .enhanced-priority-card {
+        padding: 1rem;
+    }
+    
+    .enhanced-action-card {
+        padding: 1rem;
+    }
+    
+    .enhanced-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .priority-icon-wrapper {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .dashboard-welcome .card-body {
+        padding: 1.5rem;
+    }
+}
+</style>
 
     {% endblock %}
