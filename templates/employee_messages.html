@@ -27,11 +27,109 @@
     </div>
 
     <div class="row">
-        <!-- Conversations List -->
+        <!-- HR Contacts Panel -->
         <div class="col-lg-4">
+            <!-- HR Contacts Section -->
             <div class="card bg-dark bg-opacity-25 border-secondary shadow mb-4">
                 <div class="card-header bg-transparent border-secondary">
-                    <h6 class="m-0 text-light">Conversations</h6>
+                    <h6 class="m-0 text-light">
+                        <i class="fas fa-users-cog me-2"></i>HR Contacts
+                        <span class="badge bg-danger bg-opacity-25 text-danger ms-2">Strictly Monitored</span>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if hr_contacts %}
+                    <div class="list-group list-group-flush">
+                        {% for hr in hr_contacts %}
+                        <div class="list-group-item bg-dark bg-opacity-50 text-light border-secondary hr-contact-item">
+                            <div class="d-flex align-items-center">
+                                <div class="user-avatar me-3">
+                                    <i class="bi bi-person-circle"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 text-light">
+                                        {{ hr.full_name }}
+                                        {% if hr.full_name == 'Deeksha' %}
+                                        <span class="badge bg-warning text-dark ms-2">Primary HR</span>
+                                        {% endif %}
+                                        <span class="badge bg-primary bg-opacity-25 text-primary ms-2">{{ hr.role.upper() }}</span>
+                                    </h6>
+                                    <small class="text-muted">{{ hr.position or 'HR Representative' }}</small>
+                                    {% if hr.email %}
+                                    <br><small class="text-muted">{{ hr.email }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="ms-auto">
+                                    <button class="btn btn-sm btn-outline-primary start-hr-conversation" 
+                                        data-hr-id="{{ hr.id }}" 
+                                        data-hr-name="{{ hr.full_name }}">
+                                        <i class="fas fa-comment me-1"></i>Message
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users-cog fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">No HR contacts available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Employee Contacts Section -->
+            <div class="card bg-dark bg-opacity-25 border-secondary shadow mb-4">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="m-0 text-light">
+                        <i class="fas fa-users me-2"></i>Employee Contacts
+                        <span class="badge bg-success bg-opacity-25 text-success ms-2">Light Monitoring</span>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if employee_contacts %}
+                    <div class="list-group list-group-flush">
+                        {% for emp in employee_contacts %}
+                        <div class="list-group-item bg-dark bg-opacity-50 text-light border-secondary employee-contact-item">
+                            <div class="d-flex align-items-center">
+                                <div class="user-avatar me-3">
+                                    <i class="bi bi-person"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 text-light">
+                                        {{ emp.full_name }}
+                                        <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2">{{ emp.role.upper() }}</span>
+                                    </h6>
+                                    <small class="text-muted">{{ emp.position or 'Employee' }}</small>
+                                    {% if emp.department %}
+                                    <br><small class="text-muted">{{ emp.department }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="ms-auto">
+                                    <button class="btn btn-sm btn-outline-secondary start-employee-conversation" 
+                                        data-employee-id="{{ emp.id }}" 
+                                        data-employee-name="{{ emp.full_name }}">
+                                        <i class="fas fa-comment me-1"></i>Message
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">No employee contacts available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Conversations List -->
+            <div class="card bg-dark bg-opacity-25 border-secondary shadow mb-4">
+                <div class="card-header bg-transparent border-secondary">
+                    <h6 class="m-0 text-light">Recent Conversations</h6>
                 </div>
                 <div class="card-body p-0">
                     {% if conversations %}
@@ -41,9 +139,12 @@
                            data-conversation-id="{{ conversation.user_id }}"
                            data-user-name="{{ conversation.user.full_name or conversation.user.username }}">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1 text-light">{{ conversation.user.full_name or conversation.user.username }}
+                                <h6 class="mb-1 text-light">
+                                    {{ conversation.user.full_name or conversation.user.username }}
                                     {% if conversation.user.role == 'hr' %}
                                     <span class="badge bg-primary bg-opacity-25 text-primary ms-2">HR</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2">{{ conversation.user.role.upper() }}</span>
                                     {% endif %}
                                 </h6>
                                 <small class="text-muted">{{ conversation.last_message_time.strftime('%H:%M') if conversation.last_message_time else '' }}</small>
@@ -182,11 +283,28 @@
                         <div class="mb-3">
                             <label for="recipientSelect" class="form-label text-light">To:</label>
                             <select class="form-select bg-dark bg-opacity-50 border-secondary text-light" id="recipientSelect" required>
-                                <option value="">Select HR Contact</option>
-                                {% for hr in hr_contacts %}
-                                <option value="{{ hr.id }}">{{ hr.full_name }} - {{ hr.position or 'HR' }}</option>
-                                {% endfor %}
+                                <option value="">Select Contact</option>
+                                <optgroup label="HR Contacts (Strictly Monitored)">
+                                    {% for hr in hr_contacts %}
+                                    <option value="{{ hr.id }}">
+                                        {{ hr.full_name }} - {{ hr.position or 'HR Representative' }} ({{ hr.role.upper() }})
+                                        {% if hr.full_name == 'Deeksha' %} - Primary HR{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="Employee Contacts (Light Monitoring)">
+                                    {% for emp in employee_contacts %}
+                                    <option value="{{ emp.id }}">
+                                        {{ emp.full_name }} - {{ emp.position or 'Employee' }} ({{ emp.role.upper() }})
+                                        {% if emp.department %} - {{ emp.department }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
                             </select>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                HR communications are strictly monitored. Employee-to-employee communications have light monitoring.
+                            </small>
                         </div>
                         <div class="mb-3">
                             <label for="messageSubject" class="form-label text-light">Subject:</label>
@@ -253,11 +371,136 @@
 <script>
 let currentConversationId = null;
 
+// Get CSRF token from cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Start conversation with HR contact
+function startConversationWithHR(hrId, hrName) {
+    // Close compose modal if open
+    const composeModal = bootstrap.Modal.getInstance(document.getElementById('composeMessageModal'));
+    if (composeModal) {
+        composeModal.hide();
+    }
+    
+    // Load conversation
+    loadConversation(hrId);
+    
+    // Show success toast
+    showToast('info', 'Conversation Started', `Starting conversation with ${hrName} (HR)`);
+}
+
+// Update badge count
+function updateBadgeCount() {
+    fetch('/api/messages/unread-count')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateUnreadBadge(data.unread_count);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating badge count:', error);
+        });
+}
+
+// Mark messages as read
+function markMessagesAsRead(userId) {
+    fetch(`/api/messages/mark-read/${userId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrf_token')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log('Messages marked as read');
+            updateBadgeCount();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking messages as read:', error);
+    });
+}
+
+// Load conversation with a usermployee
+function startConversationWithEmployee(empId, empName) {
+    // Close compose modal if open
+    const composeModal = bootstrap.Modal.getInstance(document.getElementById('composeMessageModal'));
+    if (composeModal) {
+        composeModal.hide();
+    }
+    
+    // Load conversation
+    loadConversation(empId);
+    
+    // Show success toast
+    showToast('info', 'Conversation Started', `Starting conversation with ${empName} (Employee)`);
+}
+
+// Handle HR conversation button clicks
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listener for HR conversation buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.start-hr-conversation')) {
+            const button = e.target.closest('.start-hr-conversation');
+            const hrId = button.getAttribute('data-hr-id');
+            const hrName = button.getAttribute('data-hr-name');
+            startConversationWithHR(parseInt(hrId), hrName);
+        }
+        
+        // Add event listener for employee conversation buttons
+        if (e.target.closest('.start-employee-conversation')) {
+            const button = e.target.closest('.start-employee-conversation');
+            const empId = button.getAttribute('data-employee-id');
+            const empName = button.getAttribute('data-employee-name');
+            startConversationWithEmployee(parseInt(empId), empName);
+        }
+    });
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                console.log('Notification permission granted');
+            }
+        });
+    }
+    
+    // Add click event listeners to conversation items
+    const conversationItems = document.querySelectorAll('.conversation-item');
+    conversationItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const conversationId = parseInt(this.getAttribute('data-conversation-id'));
+            loadConversation(conversationId);
+        });
+    });
+    
+    // Start real-time message checking
+    startRealTimeUpdates();
+    
+    console.log('Employee messaging system loaded with monitoring levels');
+});
 // Sound notification system
 function playNotificationSound() {
     try {
         // Create audio context for notification sound
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioContext = new (window.AudioContext || window.webkitAudioContext());
         
         // Create a pleasant notification sound (beep sequence)
         const oscillator = audioContext.createOscillator();
@@ -303,33 +546,6 @@ function displayNewMessage(message) {
         });
     }
 }
-
-// Request notification permission on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Request notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                console.log('Notification permission granted');
-            }
-        });
-    }
-    
-    // Add click event listeners to conversation items
-    const conversationItems = document.querySelectorAll('.conversation-item');
-    conversationItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const conversationId = parseInt(this.getAttribute('data-conversation-id'));
-            loadConversation(conversationId);
-        });
-    });
-    
-    // Start real-time message checking
-    startRealTimeUpdates();
-    
-    console.log('Employee messaging system loaded with sound alerts');
-});
 
 // Real-time message checking
 let lastMessageCount = 0;
@@ -438,16 +654,19 @@ function displayMessages(messages) {
         messageDiv.className = `message-container ${message.is_sent ? 'sent' : 'received'} mb-3`;
         messageDiv.setAttribute('data-message-id', message.id);
         
-        // Ensure sender information exists
+        // Ensure sender information exists and show role
         const senderName = message.is_sent ? 'You' : 
-                         (message.sender_name || 'Unknown') + 
-                         (message.sender_role ? ` <span class="sender-role">(${message.sender_role.toUpperCase()})</span>` : '');
+                         (message.sender_name || 'Unknown');
+        
+        const roleBadge = message.is_sent ? '' : 
+                         (message.sender_role ? 
+                          `<span class="badge bg-${message.sender_role === 'hr' ? 'primary' : 'secondary'} bg-opacity-25 text-${message.sender_role === 'hr' ? 'primary' : 'secondary'} ms-2">${message.sender_role.toUpperCase()}</span>` : '');
         
         const messageContent = `
             <div class="d-flex ${message.is_sent ? 'justify-content-end' : 'justify-content-start'}">
                 <div class="message-card ${message.is_sent ? 'sent-message' : 'received-message'}">
                     <div class="message-header">
-                        <span class="sender-name">${senderName}</span>
+                        <span class="sender-name">${senderName}${roleBadge}</span>
                         <span class="message-time">${formatTime(message.sent_at)}</span>
                         ${message.is_sent ? `
                             <div class="dropdown float-end ms-2">
@@ -760,12 +979,6 @@ function createToastContainer() {
     document.body.appendChild(container);
     return container;
 }
-
-// Load HR contacts for compose modal
-document.addEventListener('DOMContentLoaded', function() {
-    // HR contacts are already loaded in the template
-    console.log('Employee messaging system loaded');
-});
 </script>
 
 <style>

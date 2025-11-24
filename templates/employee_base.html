@@ -658,6 +658,74 @@ if ('Notification' in window && Notification.permission === 'default') {
                 link.classList.add('active');
             }
         });
+        
+        // Mobile Bottom Navigation Active State
+        if (window.innerWidth <= 768) {
+            document.querySelectorAll('.mobile-bottom-nav .nav-link').forEach(link => {
+                if (link.getAttribute('href') === currentPage) {
+                    link.classList.add('active');
+                }
+            });
+        }
     });
+    
+    // Mobile FAB Click Handler
+    function openMobileActions() {
+        // Create mobile actions menu
+        const actions = [
+            { icon: 'bi-envelope', text: 'Messages', url: '{{ url_for("employee_messages") }}' },
+            { icon: 'bi-file-earmark-text', text: 'Documents', url: '{{ url_for("employee_documents") }}' },
+            { icon: 'bi-heart-pulse', text: 'Mood Check-in', url: '{{ url_for("employee_mood_tracking") }}' },
+            { icon: 'bi-mic', text: 'AI Interview', url: '{{ url_for("employee_interview") }}' },
+            { icon: 'bi-question-circle', text: 'Help', url: '#' }
+        ];
+        
+        // You can implement a modal or bottom sheet here
+        console.log('Mobile actions clicked');
+    }
 </script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav d-none d-md-flex" style="display: none !important;">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col">
+                <a class="nav-link {% if request.endpoint == 'employee_dashboard' %}active{% endif %}" href="{{ url_for('employee_dashboard') }}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="col">
+                <a class="nav-link {% if request.endpoint == 'employee_messages' %}active{% endif %}" href="{{ url_for('employee_messages') }}">
+                    <i class="bi bi-envelope"></i>
+                    <span>Messages</span>
+                </a>
+            </div>
+            <div class="col">
+                <a class="nav-link {% if request.endpoint == 'employee_documents' %}active{% endif %}" href="{{ url_for('employee_documents') }}">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>Documents</span>
+                </a>
+            </div>
+            <div class="col">
+                <a class="nav-link {% if request.endpoint == 'employee_mood_tracking' %}active{% endif %}" href="{{ url_for('employee_mood_tracking') }}">
+                    <i class="bi bi-heart-pulse"></i>
+                    <span>Mood</span>
+                </a>
+            </div>
+            <div class="col">
+                <a class="nav-link {% if request.endpoint == 'employee_interview' %}active{% endif %}" href="{{ url_for('employee_interview') }}">
+                    <i class="bi bi-mic"></i>
+                    <span>AI</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Mobile Floating Action Button -->
+<button class="mobile-fab d-none d-md-flex" style="display: none !important;" onclick="openMobileActions()" title="Quick Actions">
+    <i class="bi bi-plus-lg"></i>
+</button>
+
 {% endblock %}

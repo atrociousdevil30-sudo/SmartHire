@@ -37,22 +37,23 @@ function checkHRNotifications() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            // Filter out daily summary notifications but keep interview_ready notifications
+            // Filter out daily summary notifications but keep interview_ready and message notifications
             const filteredNotifications = (data.notifications || []).filter(notification => {
                 return notification.message_type === 'interview_ready' || 
+                       notification.message_type === 'message' ||
                        !(notification.notification_data && notification.notification_data.notification_type === 'daily_summary');
             });
             
             // Update badge with count of non-daily summary notifications
             updateHRNotificationBadge(filteredNotifications.length);
             
-            // Show toast for new high-priority notifications (DISABLED)
-            // filteredNotifications.forEach(notification => {
-            //     if ((notification.priority === 'urgent' || notification.priority === 'high') && 
-            //         notification.message_type === 'interview_ready') {
-            //         showHRNotificationToast(notification);
-            //     }
-            // });
+            // Show toast for new high-priority notifications (interviews only, no messages)
+            filteredNotifications.forEach(notification => {
+                if ((notification.priority === 'urgent' || notification.priority === 'high') && 
+                    notification.message_type === 'interview_ready') {
+                    showHRNotificationToast(notification);
+                }
+            });
         }
     })
     .catch(error => {
@@ -133,6 +134,7 @@ function getHRNotificationIcon(type) {
         case 'document_pending': return 'fas fa-file-alt';
         case 'interview_scheduled': return 'fas fa-calendar-check';
         case 'exit_pending': return 'fas fa-door-open';
+        case 'message': return 'fas fa-envelope';
         default: return 'fas fa-info-circle';
     }
 }
@@ -149,9 +151,10 @@ function loadHRNotifications() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            // Apply same filtering: include interview_ready, exclude daily summaries
+            // Apply same filtering: include interview_ready and messages, exclude daily summaries
             const filteredNotifications = (data.notifications || []).filter(notification => {
                 return notification.message_type === 'interview_ready' || 
+                       notification.message_type === 'message' ||
                        !(notification.notification_data && notification.notification_data.notification_type === 'daily_summary');
             });
             displayHRNotificationsModal(filteredNotifications);
@@ -204,6 +207,7 @@ function displayHRNotificationsModal(notifications) {
             const title = notification.subject || notification.title || 'Notification';
             const message = notification.content || notification.message || '';
             const isInterviewReady = (notification.message_type || '').toLowerCase() === 'interview_ready';
+            const isMessage = (notification.message_type || '').toLowerCase() === 'message';
             
             // Create action button based on notification type
             let actionButton = '';
@@ -216,6 +220,13 @@ function displayHRNotificationsModal(notifications) {
                                      document.getElementById('hrNotificationsModal').querySelector('.btn-close').click();">
                         <i class="fas fa-video me-1"></i> Start Interview
                     </button>
+                `;
+            } else if (isMessage) {
+                // For message notifications, add a button to go to messages
+                actionButton = `
+                    <a href="/hr/messages" class="btn btn-sm btn-primary">
+                        <i class="fas fa-envelope me-1"></i> View Message
+                    </a>
                 `;
             } else if (notification.action_url) {
                 actionButton = `<a href="${notification.action_url}" class="btn btn-sm btn-outline-primary">View Details</a>`;

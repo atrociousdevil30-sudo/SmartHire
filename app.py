@@ -8,8 +8,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 from functools import wraps
 from io import BytesIO
 from pathlib import Path
-from datetime import datetime, timedelta
-from sqlalchemy import orm, or_
+from datetime import datetime, timedelta, date
+from sqlalchemy import orm, or_, func
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -2367,32 +2367,217 @@ def acknowledge_employee_document(doc_id):
     
     return jsonify({'success': True, 'message': 'Document acknowledged successfully'})
 
-@app.route('/employee/messages')
-@login_required('employee')
-def employee_messages():
-    """Employee messages page"""
+@app.route('/hr/messages')
+@login_required('hr')
+def hr_messages():
+    """HR messages page - shows conversations with employees and other HR"""
     user_id = session.get('user_id')
     user = User.query.get(user_id)
     
-    # Get all users for messaging (HR and other employees)
-    all_users = User.query.filter(User.id != user_id, User.is_active == True).all()
-    
-    # Get recent conversations
+    # Get all conversations (both sent and received messages)
     recent_messages = Message.query.filter(
         (Message.sender_id == user_id) | (Message.recipient_id == user_id)
     ).order_by(Message.sent_at.desc()).limit(50).all()
     
-    # Get unread count
+    # Filter conversations to include only real users (exclude test accounts)
+    filtered_messages = []
+    for msg in recent_messages:
+        other_user_id = msg.recipient_id if msg.sender_id == user_id else msg.sender_id
+        other_user = User.query.get(other_user_id)
+        if other_user and other_user.is_active and 'test' not in other_user.full_name.lower():
+            filtered_messages.append(msg)
+    
+    # Get unread messages count
     unread_messages_count = Message.query.filter_by(
         recipient_id=user_id, 
         status='unread'
+    ).join(User, Message.sender_id == User.id).filter(
+        User.is_active == True,
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).count()
+    
+    # Calculate statistics
+    total_messages = Message.query.filter_by(sender_id=user_id).join(User, Message.recipient_id == User.id).filter(
+        User.is_active == True,
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).count()
+    
+    # Get conversations with last message info
+    conversations = []
+    conversation_users = set()
+    
+    for msg in filtered_messages:
+        other_user_id = msg.recipient_id if msg.sender_id == user_id else msg.sender_id
+        if other_user_id not in conversation_users:
+            conversation_users.add(other_user_id)
+            other_user = User.query.get(other_user_id)
+            if other_user and other_user.is_active and 'test' not in other_user.full_name.lower():
+                # Get unread count for this conversation
+                unread_count = Message.query.filter_by(
+                    sender_id=other_user_id,
+                    recipient_id=user_id,
+                    status='unread'
+                ).count()
+                
+                conversations.append({
+                    'user_id': other_user_id,
+                    'user': other_user,
+                    'last_message_content': msg.content,
+                    'last_message_time': msg.sent_at,
+                    'unread_count': unread_count
+                })
+    
+    today_active = Message.query.filter(
+        Message.sender_id == user_id,
+        func.date(Message.sent_at) == date.today()
+    ).join(User, Message.recipient_id == User.id).filter(
+        User.is_active == True,
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).count()
+    
+    # Get all possible contacts (employees and other HR)
+    employee_contacts = User.query.filter(
+        User.role == 'employee',
+        User.is_active == True,
+        User.username.notin_(['test_employee', 'testemp', 'employee_test']),
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).all()
+    
+    hr_contacts = User.query.filter(
+        User.role == 'hr',
+        User.is_active == True,
+        User.id != user_id,  # Exclude self
+        User.username.notin_(['test_hr', 'testhr', 'hr_test']),
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).all()
+    
+    return render_template('messages.html',
+                         user=user,
+                         conversations=conversations,
+                         total_messages=total_messages,
+                         unread_messages_count=unread_messages_count,
+                         total_conversations=len(conversations),
+                         today_active=today_active,
+                         employee_contacts=employee_contacts,
+                         hr_contacts=hr_contacts,
+                         title='Messages')
+
+@app.route('/employee/messages')
+@login_required('employee')
+def employee_messages():
+    """Employee messages page - HR contacts and other employees available"""
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    # Get HR contacts (filtered - no test accounts)
+    hr_contacts = User.query.filter(
+        User.role == 'hr',
+        User.is_active == True,
+        User.username.notin_(['test_hr', 'testhr', 'hr_test', 'testhr_user', 'hr_test_user']),
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).all()
+    
+    # Remove any remaining test accounts
+    for hr in hr_contacts[:]:
+        if 'test' in hr.full_name.lower() or 'test' in hr.username.lower():
+            hr_contacts.remove(hr)
+    
+    # Get other employees (excluding self and test accounts)
+    employee_contacts = User.query.filter(
+        User.role == 'employee',
+        User.is_active == True,
+        User.id != user_id,
+        User.username.notin_(['test_employee', 'testemp', 'employee_test']),
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).all()
+    
+    # Remove any remaining test employee accounts
+    for emp in employee_contacts[:]:
+        if 'test' in emp.full_name.lower() or 'test' in emp.username.lower():
+            employee_contacts.remove(emp)
+    
+    # Get all conversations (both HR and employee)
+    recent_messages = Message.query.filter(
+        (Message.sender_id == user_id) | (Message.recipient_id == user_id)
+    ).order_by(Message.sent_at.desc()).limit(50).all()
+    
+    # Filter conversations to include both HR and employees
+    filtered_messages = []
+    for msg in recent_messages:
+        other_user_id = msg.recipient_id if msg.sender_id == user_id else msg.sender_id
+        other_user = User.query.get(other_user_id)
+        if other_user and other_user.is_active and 'test' not in other_user.full_name.lower():
+            filtered_messages.append(msg)
+    
+    # Get unread messages count (exclude test accounts)
+    unread_messages_count = Message.query.filter_by(
+        recipient_id=user_id, 
+        status='unread'
+    ).join(User, Message.sender_id == User.id).filter(
+        User.is_active == True,
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).count()
+    
+    # Calculate statistics - count only messages you've sent to real users (exclude test accounts)
+    total_messages = Message.query.filter_by(sender_id=user_id).join(User, Message.recipient_id == User.id).filter(
+        User.is_active == True,
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
+    ).count()
+    
+    # Get conversations with last message info
+    conversations = []
+    conversation_users = set()
+    
+    for msg in filtered_messages:
+        other_user_id = msg.recipient_id if msg.sender_id == user_id else msg.sender_id
+        if other_user_id not in conversation_users:
+            conversation_users.add(other_user_id)
+            other_user = User.query.get(other_user_id)
+            if other_user and other_user.is_active and 'test' not in other_user.full_name.lower():
+                # Get unread count for this conversation
+                unread_count = Message.query.filter_by(
+                    sender_id=other_user_id,
+                    recipient_id=user_id,
+                    status='unread'
+                ).count()
+                
+                conversations.append({
+                    'user_id': other_user_id,
+                    'user': other_user,
+                    'last_message_content': msg.content,
+                    'last_message_time': msg.sent_at,
+                    'unread_count': unread_count
+                })
+    
+    today_active = Message.query.filter(
+        Message.sender_id == user_id,
+        func.date(Message.sent_at) == date.today()
+    ).join(User, Message.recipient_id == User.id).filter(
+        User.is_active == True,
+        ~User.full_name.like('%test%'),
+        ~User.username.like('%test%')
     ).count()
     
     return render_template('employee_messages.html',
                          user=user,
-                         all_users=all_users,
-                         recent_messages=recent_messages,
+                         hr_contacts=hr_contacts,
+                         employee_contacts=employee_contacts,
+                         all_users=[],  # Empty - using specific contact lists
+                         conversations=conversations,
+                         total_messages=total_messages,
                          unread_messages_count=unread_messages_count,
+                         unread_count=unread_messages_count,  # Keep for compatibility
+                         total_conversations=len(conversations),
+                         today_active=today_active,
                          title='Messages')
 
 @app.route('/employee/profile', methods=['GET', 'POST'])
@@ -2482,38 +2667,88 @@ def get_unread_count():
             'message': 'Failed to fetch unread count'
         }), 500
 
-@app.route('/api/hr-contacts', methods=['GET'])
+@app.route('/api/employee-contacts', methods=['GET'])
 @login_required('employee')
-def get_hr_contacts():
-    """Get list of HR contacts for employees to message"""
+def get_employee_contacts():
+    """Get list of employee contacts for peer-to-peer messaging"""
     try:
-        # Get HR contacts - exclude test HR users
-        hr_contacts = User.query.filter_by(role='hr', is_active=True).filter(
-            User.username != 'test_hr',
-            User.username != 'testhr',
-            User.full_name.notlike('%test%')
+        current_user_id = session['user_id']
+        
+        # Get other employees (excluding self and test accounts)
+        employee_contacts = User.query.filter(
+            User.role == 'employee',
+            User.is_active == True,
+            User.id != current_user_id,
+            User.username.notin_(['test_employee', 'testemp', 'employee_test']),
+            ~User.full_name.like('%test%'),
+            ~User.username.like('%test%'),
+            ~User.email.like('%test%')
         ).all()
+        
+        # Additional filtering to remove any remaining test accounts
+        real_employee_contacts = []
+        for emp in employee_contacts:
+            if (emp.full_name and 
+                'test' not in emp.full_name.lower() and 
+                'test' not in emp.username.lower() and
+                emp.email and 'test' not in emp.email.lower()):
+                real_employee_contacts.append(emp)
+        
         contacts_list = []
         
-        for hr in hr_contacts:
+        for emp in real_employee_contacts:
             contacts_list.append({
-                'id': hr.id,
-                'full_name': hr.full_name,
-                'username': hr.username,
-                'email': hr.email,
-                'position': hr.position or 'HR Representative',
-                'is_primary': hr.full_name.like('%Deeksha%')
+                'id': emp.id,
+                'full_name': emp.full_name,
+                'username': emp.username,
+                'email': emp.email,
+                'position': emp.position or 'Employee',
+                'department': emp.department,
+                'role': emp.role,
+                'monitoring_level': 'light'  # Employee-to-employee is light monitoring
             })
         
         return jsonify({
             'status': 'success',
-            'contacts': contacts_list
+            'contacts': contacts_list,
+            'total_contacts': len(contacts_list),
+            'monitoring_level': 'light'
         })
     except Exception as e:
-        app.logger.error(f"Error fetching HR contacts: {str(e)}")
+        app.logger.error(f"Error fetching employee contacts: {str(e)}")
         return jsonify({
             'status': 'error',
-            'message': 'Failed to fetch HR contacts'
+            'message': 'Failed to fetch employee contacts'
+        }), 500
+
+@app.route('/api/messages/mark-read/<int:user_id>', methods=['PUT'])
+@login_required(['hr', 'employee'])
+def mark_messages_as_read(user_id):
+    """Mark all messages from a specific user as read"""
+    try:
+        current_user_id = session['user_id']
+        
+        # Update all unread messages from the specified user
+        updated_count = Message.query.filter_by(
+            sender_id=user_id,
+            recipient_id=current_user_id,
+            status='unread'
+        ).update({'status': 'read'})
+        
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Marked {updated_count} messages as read',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error marking messages as read: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to mark messages as read'
         }), 500
 
 @app.route('/api/messages/<int:message_id>', methods=['PUT'])
@@ -2622,8 +2857,11 @@ def delete_message(message_id):
 @app.route('/api/messages', methods=['POST'])
 @login_required(['hr', 'employee'])
 def create_message():
-    """Create a new message"""
+    """Create a new message with monitoring based on communication type"""
     try:
+        current_user_id = session['user_id']
+        current_user_role = session.get('role', 'unknown')
+        
         # Handle both form data and JSON data
         if request.is_json:
             data = request.get_json()
@@ -2637,18 +2875,17 @@ def create_message():
             recipient_id = request.form.get('recipient_id')
             subject = request.form.get('subject', 'No Subject')
             content = request.form.get('content')
-            is_priority = request.form.get('is_priority') == 'on'
+            is_priority = request.form.get('is_priority', False) == 'true'
             message_type = request.form.get('message_type', 'message')
             priority = request.form.get('priority', 'normal')
         
-        # Validate required fields
         if not recipient_id or not content:
             return jsonify({
                 'status': 'error',
                 'message': 'Recipient and content are required'
             }), 400
         
-        # Verify recipient exists
+        # Get recipient user
         recipient = User.query.get(recipient_id)
         if not recipient:
             return jsonify({
@@ -2656,32 +2893,92 @@ def create_message():
                 'message': 'Recipient not found'
             }), 404
         
+        # Get current user
+        current_user = User.query.get(current_user_id)
+        
+        # Determine monitoring level based on communication type
+        monitoring_level = 'standard'  # Default for employee-employee
+        
+        if current_user_role == 'employee' and recipient.role == 'hr':
+            # Employee to HR communication - strictly monitored
+            monitoring_level = 'strict'
+        elif current_user_role == 'hr' and recipient.role == 'employee':
+            # HR to employee communication - strictly monitored
+            monitoring_level = 'strict'
+        elif current_user_role == 'hr' and recipient.role == 'hr':
+            # HR to HR communication - standard monitoring
+            monitoring_level = 'standard'
+        elif current_user_role == 'employee' and recipient.role == 'employee':
+            # Employee to employee communication - less strict monitoring
+            monitoring_level = 'light'
+        
+        # Create message
         message = Message(
-            sender_id=session['user_id'],
+            sender_id=current_user_id,
             recipient_id=recipient_id,
             subject=subject,
             content=content,
             message_type=message_type,
-            priority=priority,
-            is_priority=is_priority
+            is_priority=is_priority,
+            status='sent',
+            sent_at=datetime.utcnow()
         )
         
         db.session.add(message)
         db.session.commit()
         
+        # Log monitoring based on level
+        if monitoring_level == 'strict':
+            app.logger.info(f'STRICT MONITORING: {current_user_role} {current_user.full_name} -> {recipient.role} {recipient.full_name}: "{content[:100]}..."')
+        elif monitoring_level == 'standard':
+            app.logger.info(f'STANDARD MONITORING: {current_user_role} {current_user.full_name} -> {recipient.role} {recipient.full_name}')
+        elif monitoring_level == 'light':
+            app.logger.debug(f'LIGHT MONITORING: {current_user_role} {current_user.full_name} -> {recipient.role} {recipient.full_name}')
+        
+        # Create notification for recipient
+        if recipient.role == 'hr':
+            # HR receiving message - high priority notification
+            notification_subject = f"New Message from {current_user_role.upper()}"
+            notification_content = f"You have received a new message from {current_user.full_name}:\n\nSubject: {subject}\n\n{content[:100]}{'...' if len(content) > 100 else ''}"
+            
+            create_notification(
+                recipient_id=recipient_id,
+                subject=notification_subject,
+                content=notification_content,
+                message_type='message',
+                priority='high',
+                sender_id=current_user_id
+            )
+        elif recipient.role == 'employee':
+            # Employee receiving message from HR - notify them
+            notification_subject = f"New Message from HR"
+            notification_content = f"You have received a new message from {current_user.full_name} (HR):\n\nSubject: {subject}\n\n{content[:100]}{'...' if len(content) > 100 else ''}"
+            
+            create_notification(
+                recipient_id=recipient_id,
+                subject=notification_subject,
+                content=notification_content,
+                message_type='message',
+                priority='normal',
+                sender_id=current_user_id
+            )
+        
         return jsonify({
             'status': 'success',
             'message': 'Message sent successfully',
-            'message_id': message.id
+            'data': {
+                'id': message.id,
+                'sent_at': message.sent_at.isoformat()
+            }
         })
         
     except Exception as e:
-        app.logger.error(f"Error creating message: {str(e)}")
+        db.session.rollback()
+        app.logger.error(f"Error sending message: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': 'Failed to send message'
         }), 500
-
 @app.route('/api/messages/conversation/<int:user_id>', methods=['GET'])
 @login_required(['hr', 'employee'])
 def get_conversation_messages(user_id):
@@ -2712,6 +3009,8 @@ def get_conversation_messages(user_id):
                 'is_priority': msg.is_priority,
                 'is_edited': msg.is_edited,
                 'edited_at': msg.edited_at.isoformat() if msg.edited_at else None,
+                'is_deleted': msg.is_deleted,
+                'deleted_at': msg.deleted_at.isoformat() if msg.deleted_at else None,
                 'sender_name': sender_name,
                 'sender_role': sender_role,
                 'is_sent': msg.sender_id == current_user_id
@@ -2735,34 +3034,6 @@ def get_conversation_messages(user_id):
         return jsonify({
             'status': 'error',
             'message': 'Failed to load conversation'
-        }), 500
-
-@app.route('/api/messages/mark-read/<int:user_id>', methods=['PUT'])
-@login_required(['hr', 'employee'])
-def mark_messages_as_read(user_id):
-    """Mark messages from a user as read"""
-    try:
-        current_user_id = session['user_id']
-        
-        Message.query.filter(
-            Message.sender_id == user_id,
-            Message.recipient_id == current_user_id,
-            Message.status == 'unread'
-        ).update({'status': 'read'})
-        
-        db.session.commit()
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Messages marked as read'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error marking messages as read: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'message': 'Failed to mark messages as read'
         }), 500
 
 @app.route('/api/messages/unread-count', methods=['GET'])
@@ -7970,25 +8241,12 @@ def check_pending_access_revocation():
 def get_hr_notifications():
     """Get HR notifications count and recent high-priority notifications"""
     try:
-        # Simple test response
-        return jsonify({
-            'status': 'success',
-            'unread_count': 0,
-            'notifications': [],
-            'message': 'HR notifications API working'
-        })
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-@app.route('/api/hr/notifications/all', methods=['GET'])
-@login_required('hr')
-def get_all_hr_notifications():
-    """Get all HR notifications"""
-    try:
-        # Get all notifications for current HR user
-        all_notifications = Message.query.filter_by(
-            recipient_id=session['user_id'],
-            message_type='hr_notification'
+        current_user_id = session['user_id']
+        
+        # Get all notifications for current HR user (both hr_notification and message types)
+        all_notifications = Message.query.filter(
+            Message.recipient_id == current_user_id,
+            Message.message_type.in_(['hr_notification', 'message'])
         ).order_by(Message.sent_at.desc()).limit(50).all()
         
         # Format notifications
@@ -7999,11 +8257,56 @@ def get_all_hr_notifications():
                 'id': notif.id,
                 'title': notif.subject,
                 'message': notif.content,
-                'type': notification_data.get('notification_type', 'info'),
+                'message_type': notif.message_type,
+                'type': notification_data.get('notification_type', notif.message_type),
                 'priority': notif.priority,
                 'created_at': notif.sent_at.isoformat(),
+                'sent_at': notif.sent_at.isoformat(),
                 'action_url': notification_data.get('action_url'),
-                'is_read': notif.status == 'read'
+                'is_read': notif.status == 'read',
+                'notification_data': notification_data
+            })
+        
+        # Get unread count
+        unread_count = len([n for n in notifications if not n['is_read']])
+        
+        return jsonify({
+            'status': 'success',
+            'unread_count': unread_count,
+            'notifications': notifications,
+            'message': f'Found {len(notifications)} notifications'
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting HR notifications: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/hr/notifications/all', methods=['GET'])
+@login_required('hr')
+def get_all_hr_notifications():
+    """Get all HR notifications"""
+    try:
+        # Get all notifications for current HR user (both hr_notification and message types)
+        all_notifications = Message.query.filter(
+            Message.recipient_id == session['user_id'],
+            Message.message_type.in_(['hr_notification', 'message'])
+        ).order_by(Message.sent_at.desc()).limit(50).all()
+        
+        # Format notifications
+        notifications = []
+        for notif in all_notifications:
+            notification_data = notif.notification_data or {}
+            notifications.append({
+                'id': notif.id,
+                'title': notif.subject,
+                'message': notif.content,
+                'message_type': notif.message_type,
+                'type': notification_data.get('notification_type', notif.message_type),
+                'priority': notif.priority,
+                'created_at': notif.sent_at.isoformat(),
+                'sent_at': notif.sent_at.isoformat(),
+                'action_url': notification_data.get('action_url'),
+                'is_read': notif.status == 'read',
+                'notification_data': notification_data
             })
         
         return jsonify({
@@ -8011,11 +8314,8 @@ def get_all_hr_notifications():
             'notifications': notifications
         })
     except Exception as e:
-        app.logger.error(f'Error getting all HR notifications: {str(e)}')
-        return jsonify({
-            'status': 'error',
-            'message': 'Failed to get notifications'
-        }), 500
+        app.logger.error(f"Error getting all HR notifications: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/hr/daily-summary', methods=['POST'])
 @login_required('hr')

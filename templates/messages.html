@@ -1,8 +1,660 @@
 {% extends "base.html" %}
 
-{% block title %}Messages{% endblock %}
+{% block title %}Messages - SmartHire{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Premium Chat Interface Styles */
+.message-container {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.sent-message {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+}
+
+.received-message {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-end;
+}
+
+.message-bubble {
+    position: relative;
+    max-width: 70%;
+    border-radius: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message-bubble:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sent-bubble {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom-right-radius: 0.25rem;
+}
+
+.received-bubble {
+    background: #2d3748;
+    color: #e2e8f0;
+    border: 1px solid #4a5568;
+    border-bottom-left-radius: 0.25rem;
+}
+
+.message-content {
+    padding: 0.875rem 1.125rem;
+}
+
+.message-text {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+    color: inherit;
+}
+
+.message-meta {
+    display: flex;
+    align-items: center;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    gap: 0.5rem;
+}
+
+.sent-bubble .message-meta {
+    color: rgba(255, 255, 255, 0.9);
+    justify-content: flex-end;
+}
+
+.received-bubble .message-meta {
+    color: #a0aec0;
+}
+
+.message-time {
+    display: flex;
+    align-items: center;
+}
+
+.message-edited {
+    display: flex;
+    align-items: center;
+    font-style: italic;
+}
+
+.message-actions {
+    margin-left: 0.5rem;
+}
+
+.message-action-btn {
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 0.375rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.message-action-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.received-bubble .message-action-btn {
+    background: rgba(160, 174, 192, 0.2);
+    color: #a0aec0;
+}
+
+.received-bubble .message-action-btn:hover {
+    background: rgba(160, 174, 192, 0.3);
+    color: #e2e8f0;
+}
+
+.message-status {
+    position: absolute;
+    bottom: 0.25rem;
+    right: -1.25rem;
+    color: #48bb78;
+    font-size: 0.75rem;
+}
+
+/* Selection Mode Styles */
+.selection-mode .message-checkbox {
+    align-self: center;
+    margin-right: 0.75rem;
+}
+
+.selection-mode .message-checkbox .form-check-input {
+    border-radius: 0.25rem;
+    border: 2px solid #4a5568;
+    background-color: #2d3748;
+    transition: all 0.2s ease;
+}
+
+.selection-mode .message-checkbox .form-check-input:checked {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+}
+
+/* Message Thread Container */
+#messageThread {
+    background: #1a202c;
+    min-height: 400px;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid #2d3748;
+}
+
+/* Enhanced Quick Reply */
+#quickReply {
+    background: #2d3748;
+    border-top: 1px solid #4a5568;
+    padding: 1rem;
+}
+
+#replyForm .input-group {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    border-radius: 2rem;
+    overflow: hidden;
+    background: #2d3748;
+}
+
+#replyForm .form-control {
+    border: none;
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+    border-radius: 2rem;
+}
+
+#replyForm .form-control::placeholder {
+    color: #a0aec0;
+}
+
+#replyForm .form-control:focus {
+    background: #2d3748;
+    color: #e2e8f0;
+    box-shadow: none;
+}
+
+#replyForm .btn {
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0 2rem 2rem 0;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+#replyForm .btn:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    transform: translateY(-1px);
+}
+
+/* Conversation Header Enhancements */
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    font-weight: 600;
+}
+
+/* Selection Toolbar Enhancements */
+#selectionToolbar {
+    background: #2d3748;
+    border-bottom: 2px solid #4a5568;
+    padding: 0.875rem 1rem;
+    color: #e2e8f0;
+}
+
+#selectionToolbar .btn {
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 1px solid #4a5568;
+    background: #2d3748;
+    color: #e2e8f0;
+}
+
+#selectionToolbar .btn:hover {
+    transform: translateY(-1px);
+    background: #4a5568;
+    color: #e2e8f0;
+}
+
+#selectionToolbar .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Conversation List Dark Theme */
+.conversation-item {
+    background: #2d3748;
+    color: #e2e8f0;
+    border: 1px solid #4a5568;
+}
+
+.conversation-item:hover {
+    background: #4a5568;
+    color: #e2e8f0;
+}
+
+/* Animations */
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-container {
+    animation: messageSlideIn 0.3s ease-out;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .message-bubble {
+        max-width: 85%;
+    }
+    
+    .message-content {
+        padding: 0.75rem 1rem;
+    }
+    
+    .message-text {
+        font-size: 0.9rem;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-envelope me-2"></i>Messages
+        </h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#composeMessageModal">
+            <i class="fas fa-paper-plane me-1"></i> Compose Message
+        </button>
+    </div>
+
+    <div class="row">
+        <!-- Conversations List -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold">Recent Conversations</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if conversations %}
+                    <div class="list-group list-group-flush">
+                        {% for conversation in conversations %}
+                        <a href="#" class="list-group-item list-group-item-action conversation-item" 
+                           data-conversation-id="{{ conversation.user_id }}"
+                           onclick="loadConversation('{{ conversation.user_id }}')">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">
+                                    {{ conversation.user.full_name or conversation.user.username }}
+                                    <span class="badge bg-{{ 'primary' if conversation.user.role == 'hr' else 'secondary' }} bg-opacity-25 text-{{ 'primary' if conversation.user.role == 'hr' else 'secondary' }} ms-2">
+                                        {{ conversation.user.role.upper() }}
+                                    </span>
+                                </h6>
+                                <small>{{ conversation.last_message_time.strftime('%H:%M') if conversation.last_message_time else '' }}</small>
+                            </div>
+                            <p class="mb-1 text-truncate">{{ conversation.last_message_content[:50] }}{% if conversation.last_message_content|length > 50 %}...{% endif %}</p>
+                            <small class="text-muted">
+                                {% if conversation.unread_count > 0 %}
+                                <span class="badge bg-danger">{{ conversation.unread_count }} unread</span>
+                                {% endif %}
+                            </small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-comments fa-2x text-gray-300 mb-2"></i>
+                        <p class="text-gray-500 mb-0">No conversations yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">{{ total_messages }}</h5>
+                            <p class="card-text small">Total Messages</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 mb-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">{{ unread_messages_count }}</h5>
+                            <p class="card-text small">Unread</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Thread -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold" id="conversationHeader">Select a conversation</h6>
+                    <div id="conversationActions" style="display: none;">
+                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="toggleSelectionMode()">
+                            <i class="fas fa-check-square me-1"></i>Select Messages
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="replyToMessage()">
+                            <i class="fas fa-reply"></i> Reply
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Message Selection Toolbar -->
+                <div id="selectionToolbar" class="card-header d-flex align-items-center" style="display: none; background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                    <div class="form-check me-3">
+                        <input class="form-check-input" type="checkbox" id="selectAllMessages">
+                        <label class="form-check-label" for="selectAllMessages">
+                            Select All
+                        </label>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button id="bulkEditBtn" class="btn btn-sm btn-outline-primary" disabled>
+                            <i class="fas fa-edit me-1"></i>Edit Selected
+                        </button>
+                        <button id="bulkDeleteBtn" class="btn btn-sm btn-outline-danger" disabled>
+                            <i class="fas fa-trash me-1"></i>Delete Selected
+                        </button>
+                        <button id="cancelSelectionBtn" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
+                    </div>
+                    <small class="text-muted ms-auto">
+                        <span id="selectedCount">0</span> messages selected
+                    </small>
+                </div>
+                
+                <div class="card-body p-0" style="height: 500px; overflow-y: auto;">
+                    <div id="messageThread" class="p-3">
+                        <div class="text-center py-5">
+                            <i class="fas fa-comments fa-3x text-gray-300 mb-3"></i>
+                            <h5 class="text-gray-400">Select a conversation</h5>
+                            <p class="text-gray-500">Choose a conversation from the list to start messaging</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Quick Reply -->
+                <div class="card-footer" id="quickReply" style="display: none;">
+                    <form id="replyForm">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="replyMessage" placeholder="Type a message...">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compose Message Modal -->
+    <div class="modal fade" id="composeMessageModal" tabindex="-1" aria-labelledby="composeMessageModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="composeMessageModalLabel">Compose Message</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="composeForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="recipientSelect" class="form-label">To:</label>
+                            <select class="form-select" id="recipientSelect" required>
+                                <option value="">Select Contact</option>
+                                <optgroup label="Employees">
+                                    {% for emp in employee_contacts %}
+                                    <option value="{{ emp.id }}">
+                                        {{ emp.full_name }} - {{ emp.position or 'Employee' }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="HR Staff">
+                                    {% for hr in hr_contacts %}
+                                    <option value="{{ hr.id }}">
+                                        {{ hr.full_name }} - {{ hr.position or 'HR Representative' }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="messageContent" class="form-label">Message:</label>
+                            <textarea class="form-control" id="messageContent" rows="5" placeholder="Type your message..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="priorityMessage">
+                                <label class="form-check-label" for="priorityMessage">
+                                    Mark as priority message
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-1"></i> Send Message
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Remove duplicate declaration - it's already declared in extra_js block
+
+// Load conversation
+function loadConversation(userId) {
+    currentConversationId = userId;
+    
+    // Update UI
+    document.getElementById('conversationHeader').textContent = 'Loading...';
+    document.getElementById('messageThread').innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>';
+    
+    // Fetch messages
+    fetch(`/api/messages/conversation/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displayMessages(data.messages);
+                if (data.user && data.user.full_name) {
+                    document.getElementById('conversationHeader').textContent = data.user.full_name;
+                }
+                showQuickReply();
+                markMessagesAsRead(userId);
+            } else {
+                showError('Failed to load conversation');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading conversation:', error);
+            showError('Error loading conversation');
+        });
+}
+
+// Display messages - REMOVED (using the newer version below)
+
+// Mark messages as read
+function markMessagesAsRead(userId) {
+    fetch(`/api/messages/mark-read/${userId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrf_token')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log('Messages marked as read');
+        }
+    })
+    .catch(error => {
+        console.error('Error marking messages as read:', error);
+    });
+}
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Show quick reply
+function showQuickReply() {
+    document.getElementById('quickReply').style.display = 'block';
+    document.getElementById('conversationActions').style.display = 'block';
+}
+
+// Reply to message
+function replyToMessage() {
+    const replyInput = document.getElementById('replyMessage');
+    replyInput.focus();
+}
+
+// Send reply
+const replyForm = document.getElementById('replyForm');
+if (replyForm) {
+    replyForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const messageContent = document.getElementById('replyMessage').value.trim();
+        if (!messageContent || !currentConversationId) return;
+        
+        const messageData = {
+            recipient_id: currentConversationId,
+            content: messageContent,
+            subject: 'Re: Conversation',
+            message_type: 'message',
+            priority: false
+        };
+        
+        fetch('/api/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrf_token')
+            },
+            body: JSON.stringify(messageData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('replyMessage').value = '';
+                loadConversation(currentConversationId);
+            } else {
+                showError('Failed to send message: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error sending message:', error);
+            showError('Error sending message');
+        });
+    });
+}
+
+// Compose message
+const composeForm = document.getElementById('composeForm');
+if (composeForm) {
+    composeForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const recipientId = document.getElementById('recipientSelect').value;
+        const content = document.getElementById('messageContent').value.trim();
+        const isPriority = document.getElementById('priorityMessage').checked;
+        
+        if (!recipientId || !content) return;
+        
+        const messageData = {
+            recipient_id: recipientId,
+            subject: 'Message', // Default subject for database
+            content: content,
+            message_type: 'message',
+            priority: isPriority
+        };
+        
+        fetch('/api/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrf_token')
+            },
+            body: JSON.stringify(messageData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Message sent successfully!');
+                bootstrap.Modal.getInstance(document.getElementById('composeMessageModal')).hide();
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error sending message:', error);
+            showError('Error sending message');
+        });
+    });
+}
+
+// Show error
+function showError(message) {
+    alert(message); // Simple error display - you could enhance this
+}
+
+</script>
+
+<style>
+.message-bubble {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -27,7 +679,7 @@
                         {% for conversation in conversations %}
                         <a href="#" class="list-group-item list-group-item-action conversation-item" 
                            data-conversation-id="{{ conversation.user_id }}"
-                           onclick="loadConversation({{ conversation.user_id }})">
+                           onclick="loadConversation('{{ conversation.user_id }}')">
                             <div class="d-flex w-100 justify-content-between">
                                 <h6 class="mb-1">{{ conversation.user.full_name or conversation.user.username }}</h6>
                                 <small>{{ conversation.last_message_time.strftime('%H:%M') if conversation.last_message_time else '' }}</small>
@@ -173,10 +825,6 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label for="messageSubject" class="form-label">Subject *</label>
-                            <input type="text" class="form-control" id="messageSubject" name="subject" required>
-                        </div>
                     </div>
                     <div class="mt-3">
                         <label for="messageContent" class="form-label">Message *</label>
@@ -199,12 +847,39 @@
         </div>
     </div>
 </div>
-{% endblock %}
+
+<!-- Edit Message Modal -->
+<div class="modal fade" id="editMessageModal" tabindex="-1" aria-labelledby="editMessageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editMessageModalLabel">Edit Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editMessageForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editMessageId" name="message_id">
+                    <div class="mb-3">
+                        <label for="editMessageContent" class="form-label">Message</label>
+                        <textarea class="form-control" id="editMessageContent" name="content" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {% block extra_js %}
 {{ super() }}
 <script>
 let currentConversationId = null;
+let selectionMode = false;
+// Get current user ID from data attribute
+const currentUserId = parseInt(document.body.dataset.userId || '1');
 
 document.getElementById('composeMessageForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -243,7 +918,7 @@ document.getElementById('replyForm').addEventListener('submit', function(e) {
     const formData = new FormData();
     formData.append('recipient_id', currentConversationId);
     formData.append('content', messageContent);
-    formData.append('subject', 'Re: ' + (document.getElementById('conversationHeader').textContent || ''));
+    formData.append('subject', 'Message'); // Default subject
     
     fetch('/api/messages', {
         method: 'POST',
@@ -297,9 +972,14 @@ function loadConversation(userId) {
 }
 
 function displayMessages(messages) {
+    console.log('Displaying messages:', messages.length);
     const messageThread = document.getElementById('messageThread');
     
-    if (messages.length === 0) {
+    // Filter out deleted messages
+    const activeMessages = messages.filter(message => !message.is_deleted);
+    console.log('Active messages:', activeMessages.length);
+    
+    if (activeMessages.length === 0) {
         messageThread.innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
@@ -311,19 +991,51 @@ function displayMessages(messages) {
     }
     
     let html = '';
-    messages.forEach(message => {
-        const isSent = message.sender_id === {{ current_user.id }};
+    activeMessages.forEach(message => {
+        const isSent = message.sender_id == currentUserId;
         const alignment = isSent ? 'text-end' : 'text-start';
         const bgColor = isSent ? 'bg-primary text-white' : 'bg-light';
         
+        console.log('Processing message:', message.id, 'isSent:', isSent, 'selectionMode:', selectionMode);
+        
         html += `
-            <div class="d-flex ${alignment} mb-3">
-                <div class="card ${bgColor}" style="max-width: 70%;">
-                    <div class="card-body py-2">
-                        <p class="mb-1">${message.content}</p>
-                        <small class="${isSent ? 'text-white-50' : 'text-muted'}">
-                            ${new Date(message.sent_at).toLocaleString()}
-                        </small>
+            <div class="d-flex ${alignment} mb-3 message-container" data-message-id="${message.id}">
+                ${selectionMode ? `
+                <div class="form-check me-2">
+                    <input class="form-check-input message-checkbox" type="checkbox" value="${message.id}" 
+                           ${!isSent ? 'disabled' : ''}>
+                </div>
+                ` : ''}
+                <div class="${isSent ? 'sent-message' : 'received-message'}">
+                    <div class="message-bubble ${isSent ? 'sent-bubble' : 'received-bubble'}">
+                        <div class="message-content">
+                            <p class="message-text">${message.content}</p>
+                            <div class="message-meta">
+                                <span class="message-time">
+                                    <i class="far fa-clock me-1"></i>
+                                    ${new Date(message.sent_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                                ${message.is_edited ? '<span class="message-edited"><i class="fas fa-edit me-1"></i>edited</span>' : ''}
+                                ${isSent && !selectionMode ? `
+                                <div class="message-actions">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm message-action-btn" data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="editMessage(${message.id}, '${message.content.replace(/'/g, "\\'")}')">
+                                                <i class="fas fa-edit me-2"></i>Edit
+                                            </a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteMessage(${message.id})">
+                                                <i class="fas fa-trash me-2"></i>Delete
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        ${isSent ? '<div class="message-status"><i class="fas fa-check-double"></i></div>' : ''}
                     </div>
                 </div>
             </div>
@@ -331,6 +1043,9 @@ function displayMessages(messages) {
     });
     
     messageThread.innerHTML = html;
+    console.log('Message HTML set, updating selection UI');
+    updateSelectionUI();
+    
     // Scroll to bottom
     messageThread.scrollTop = messageThread.scrollHeight;
 }
@@ -347,5 +1062,282 @@ function markAsRead(userId) {
 function replyToMessage() {
     document.getElementById('replyMessage').focus();
 }
+
+// Edit message function
+function editMessage(messageId, content) {
+    document.getElementById('editMessageId').value = messageId;
+    document.getElementById('editMessageContent').value = content;
+    
+    const modal = new bootstrap.Modal(document.getElementById('editMessageModal'));
+    modal.show();
+}
+
+// Delete message function
+function deleteMessage(messageId) {
+    if (confirm('Are you sure you want to delete this message? This cannot be undone.')) {
+        fetch(`/api/messages/${messageId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Reload conversation to show updated messages
+                if (currentConversationId) {
+                    loadConversation(currentConversationId);
+                }
+                showToast('success', 'Success', 'Message deleted successfully');
+            } else {
+                showToast('danger', 'Error', data.message || 'Failed to delete message');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting message:', error);
+            showToast('danger', 'Error', 'Failed to delete message');
+        });
+    }
+}
+
+// Handle edit message form submission
+const editMessageForm = document.getElementById('editMessageForm');
+if (editMessageForm) {
+    editMessageForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const messageId = formData.get('message_id');
+        const content = formData.get('content');
+        
+        fetch(`/api/messages/${messageId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                content: content
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('editMessageModal')).hide();
+                
+                // Reload conversation to show updated message
+                if (currentConversationId) {
+                    loadConversation(currentConversationId);
+                }
+                
+                showToast('success', 'Success', 'Message updated successfully');
+            } else {
+                showToast('danger', 'Error', data.message || 'Failed to update message');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating message:', error);
+            showToast('danger', 'Error', 'Failed to update message');
+        });
+    });
+}
+
+// Show toast notification helper
+function showToast(type, title, message) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <strong>${title}:</strong> ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+// Selection mode functions
+function toggleSelectionMode() {
+    console.log('Toggle selection mode called');
+    selectionMode = !selectionMode;
+    console.log('Selection mode now:', selectionMode);
+    const toolbar = document.getElementById('selectionToolbar');
+    const selectBtn = document.querySelector('[onclick="toggleSelectionMode()"]');
+    
+    console.log('Toolbar:', toolbar);
+    console.log('Select button:', selectBtn);
+    
+    if (selectionMode) {
+        if (toolbar) toolbar.style.display = 'flex';
+        if (selectBtn) {
+            selectBtn.innerHTML = '<i class="fas fa-times me-1"></i>Cancel Selection';
+            selectBtn.className = 'btn btn-sm btn-outline-danger me-2';
+        }
+        console.log('Entered selection mode');
+    } else {
+        if (toolbar) toolbar.style.display = 'none';
+        if (selectBtn) {
+            selectBtn.innerHTML = '<i class="fas fa-check-square me-1"></i>Select Messages';
+            selectBtn.className = 'btn btn-sm btn-outline-secondary me-2';
+        }
+        clearSelection();
+        console.log('Exited selection mode');
+    }
+    
+    // Refresh messages to update checkboxes
+    if (currentConversationId) {
+        console.log('Refreshing conversation:', currentConversationId);
+        loadConversation(currentConversationId);
+    }
+}
+
+function clearSelection() {
+    document.querySelectorAll('.message-checkbox').forEach(cb => cb.checked = false);
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+    console.log('Updating selection UI');
+    const checkboxes = document.querySelectorAll('.message-checkbox:checked');
+    const count = checkboxes.length;
+    const editBtn = document.getElementById('bulkEditBtn');
+    const deleteBtn = document.getElementById('bulkDeleteBtn');
+    const selectedCount = document.getElementById('selectedCount');
+    const selectAll = document.getElementById('selectAllMessages');
+    
+    console.log('Found checkboxes:', checkboxes.length);
+    console.log('Edit button:', editBtn);
+    console.log('Delete button:', deleteBtn);
+    console.log('Selected count element:', selectedCount);
+    
+    if (selectedCount) selectedCount.textContent = count;
+    if (editBtn) editBtn.disabled = count !== 1;
+    if (deleteBtn) deleteBtn.disabled = count === 0; // Enable for 1 or more messages
+    
+    console.log('Edit button disabled:', editBtn ? editBtn.disabled : 'N/A');
+    console.log('Delete button disabled:', deleteBtn ? deleteBtn.disabled : 'N/A');
+    
+    // Update select all checkbox
+    if (selectAll) {
+        const allCheckboxes = document.querySelectorAll('.message-checkbox:not(:disabled)');
+        const checkedBoxes = document.querySelectorAll('.message-checkbox:checked:not(:disabled)');
+        selectAll.checked = allCheckboxes.length > 0 && allCheckboxes.length === checkedBoxes.length;
+        selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < allCheckboxes.length;
+    }
+}
+
+// Handle select all checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up event listeners');
+    
+    const selectAll = document.getElementById('selectAllMessages');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            console.log('Select all changed');
+            const checkboxes = document.querySelectorAll('.message-checkbox:not(:disabled)');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateSelectionUI();
+        });
+    }
+    
+    // Handle individual checkbox changes
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('message-checkbox')) {
+            console.log('Message checkbox changed');
+            updateSelectionUI();
+        }
+    });
+    
+    // Handle bulk actions
+    const bulkEditBtn = document.getElementById('bulkEditBtn');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const cancelSelectionBtn = document.getElementById('cancelSelectionBtn');
+    
+    console.log('Setting up bulk action listeners');
+    console.log('Bulk edit btn:', bulkEditBtn);
+    console.log('Bulk delete btn:', bulkDeleteBtn);
+    console.log('Cancel selection btn:', cancelSelectionBtn);
+    
+    if (bulkEditBtn) {
+        bulkEditBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Bulk edit clicked');
+            const checkboxes = document.querySelectorAll('.message-checkbox:checked');
+            console.log('Selected checkboxes:', checkboxes.length);
+            
+            if (checkboxes.length === 1) {
+                const messageId = checkboxes[0].value;
+                const messageContainer = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (messageContainer) {
+                    const content = messageContainer.querySelector('.message-text').textContent.trim();
+                    console.log('Editing message:', messageId, content);
+                    editMessage(messageId, content);
+                } else {
+                    console.error('Message container not found for ID:', messageId);
+                }
+            } else {
+                alert('Please select exactly one message to edit.');
+            }
+        });
+    } else {
+        console.error('Bulk edit button not found!');
+    }
+    
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Bulk delete clicked');
+            const checkboxes = document.querySelectorAll('.message-checkbox:checked');
+            console.log('Selected checkboxes for delete:', checkboxes.length);
+            
+            if (checkboxes.length > 0) {
+                const messageIds = Array.from(checkboxes).map(cb => cb.value);
+                if (confirm(`Are you sure you want to delete ${messageIds.length} message(s)? This cannot be undone.`)) {
+                    console.log('Deleting messages:', messageIds);
+                    messageIds.forEach(messageId => {
+                        deleteMessage(messageId);
+                    });
+                    toggleSelectionMode(); // Exit selection mode
+                }
+            } else {
+                alert('Please select at least one message to delete.');
+            }
+        });
+    } else {
+        console.error('Bulk delete button not found!');
+    }
+    
+    if (cancelSelectionBtn) {
+        cancelSelectionBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Cancel selection clicked');
+            toggleSelectionMode();
+        });
+    } else {
+        console.error('Cancel selection button not found!');
+    }
+});
 </script>
 {% endblock %}
