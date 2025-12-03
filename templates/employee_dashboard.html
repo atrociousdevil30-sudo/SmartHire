@@ -1,961 +1,333 @@
-{% extends "employee_base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard - SmartHire</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-house-icon">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="sidebar-title">Employee Portal</div>
+                <div class="sidebar-subtitle">SmartHire System</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul class="sidebar-nav">
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('employee_dashboard') }}" class="sidebar-nav-link active">
+                            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('employee_profile') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-user"></i></span>
+                            My Profile
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('employee_mood_tracking') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-heart"></i></span>
+                            Mood Tracking
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('employee_interview') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-video"></i></span>
+                            Interviews
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('employee_messages') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+                            Messages
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('employee_documents') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-file-alt"></i></span>
+                            Documents
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <button class="sidebar-logout" onclick="window.location.href='{{ url_for('logout') }}';">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </aside>
 
-{% block title %}Employee Dashboard{% endblock %}
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- TOP HEADER -->
+            <header class="top-header">
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" placeholder="Search your tasks, messages, or documents...">
+                </div>
+                <div class="date-display" id="currentDate">
+                    Loading...
+                </div>
+            </header>
 
-{% block page_content %}
-<div class="container-fluid py-4">
-    <!-- Enhanced Welcome Section -->
-    <div class="dashboard-welcome mb-4">
-        <div class="card bg-dark bg-opacity-25 border-secondary">
-            <div class="card-body py-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
-                                <i class="fas fa-user fa-2x"></i>
+            <!-- ROOM ENERGY CARDS - Employee Stats -->
+            <section class="room-energy-cards">
+                <div class="room-card">
+                    <div class="room-header">
+                        <div class="room-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                    </div>
+                    <h3 class="room-name">My Tasks</h3>
+                    <div class="room-value">{{ pending_tasks or 5 }}</div>
+                    <div class="room-unit">Pending</div>
+                </div>
+                
+                <div class="room-card emphasized">
+                    <div class="room-header">
+                        <div class="room-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                    </div>
+                    <h3 class="room-name">Mood Score</h3>
+                    <div class="room-value">{{ mood_score or 8 }}</div>
+                    <div class="room-unit">Today</div>
+                </div>
+                
+                <div class="room-card">
+                    <div class="room-header">
+                        <div class="room-icon">
+                            <i class="fas fa-video"></i>
+                        </div>
+                    </div>
+                    <h3 class="room-name">Interviews</h3>
+                    <div class="room-value">{{ upcoming_interviews or 0 }}</div>
+                    <div class="room-unit">Scheduled</div>
+                </div>
+                
+                <div class="room-card">
+                    <div class="room-header">
+                        <div class="room-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                    </div>
+                    <h3 class="room-name">Messages</h3>
+                    <div class="room-value">{{ unread_messages or 2 }}</div>
+                    <div class="room-unit">Unread</div>
+                </div>
+            </section>
+
+            <!-- INFO WIDGETS -->
+            <section class="info-widgets">
+            </section>
+
+            <!-- EMPLOYEE SPECIFIC CONTENT -->
+            <section class="employee-content-section">
+                <!-- Welcome Section -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-3" style="width: 60px; height: 60px;">
+                                {{ user.full_name[0].upper() if user and user.full_name else 'E' }}
                             </div>
                             <div>
-                                <h2 class="text-light mb-1">Welcome back, {{ user.full_name or user.username }}! 👋</h2>
+                                <h4 class="mb-1">Welcome back, {{ user.full_name or user.username }}!</h4>
                                 <p class="text-muted mb-0">Here's what's happening with your onboarding journey today.</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 text-end">
-                        <div class="d-flex justify-content-end gap-2">
-                            <span class="badge bg-primary bg-opacity-25 text-primary">{{ user.role or 'Employee' }}</span>
-                            <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#helpModal">
-                                <i class="fas fa-question-circle me-1"></i> Need Help?
-                            </button>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <h5 class="text-primary mb-3">Quick Actions</h5>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <a href="{{ url_for('employee_mood_tracking') }}" class="btn btn-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-heart fa-2x mb-2"></i>
+                                    Mood Check
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="{{ url_for('employee_interview') }}" class="btn btn-success w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-video fa-2x mb-2"></i>
+                                    Interviews
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="{{ url_for('employee_messages') }}" class="btn btn-info w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-envelope fa-2x mb-2"></i>
+                                    Messages
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="{{ url_for('employee_documents') }}" class="btn btn-warning w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-file-alt fa-2x mb-2"></i>
+                                    Documents
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Quick Actions Section -->
-    <div class="quick-actions-section mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="text-light">
-                <i class="fas fa-bolt me-2 text-primary"></i>Quick Actions
-            </h5>
-        </div>
-        
-        <div class="row g-3">
-            <div class="col-md-3">
-                <a href="{{ url_for('employee_messages') }}" class="action-card primary touch-feedback">
-                    <div class="action-icon">
-                        <i class="fas fa-envelope"></i>
-                        {% if unread_messages_count > 0 %}
-                        <span class="notification-badge">{{ unread_messages_count }}</span>
-                        {% endif %}
-                    </div>
-                    <h6>Messages</h6>
-                    <small class="text-muted">Check for updates</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('employee_documents') }}" class="action-card success touch-feedback">
-                    <div class="action-icon">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <h6>My Documents</h6>
-                    <small class="text-muted">View & upload</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('employee_mood_tracking') }}" class="action-card info touch-feedback">
-                    <div class="action-icon">
-                        <i class="fas fa-heart-pulse"></i>
-                    </div>
-                    <h6>Mood Check-in</h6>
-                    <small class="text-muted">Daily wellness</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('employee_interview') }}" class="action-card warning touch-feedback">
-                    <div class="action-icon">
-                        <i class="fas fa-microphone"></i>
-                    </div>
-                    <h6>AI Interview</h6>
-                    <small class="text-muted">Practice skills</small>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Progress Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            {% if employee.status == 'Onboarding' %}
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
-                    <h6 class="text-light mb-0">Onboarding Progress</h6>
-                    <span class="text-primary">Day {{ employee.onboarding_progress.current_day }} of {{ employee.onboarding_progress.total_days }}</span>
-                </div>
-                <div class="card-body">
-                    <div class="progress mb-3" style="height: 20px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" 
-                             data-progress="{{ employee.onboarding_progress.percentage }}" aria-valuenow="{{ employee.onboarding_progress.percentage }}" aria-valuemin="0" aria-valuemax="100">{{ employee.onboarding_progress.percentage }}%</div>
-                    </div>
-                    <div class="text-center small">
-                        {% if employee.onboarding_progress and employee.onboarding_progress.tasks %}
-                            {% for task in employee.onboarding_progress.tasks %}
-                            <span class="me-3">
-                                <i class="bi bi-{% if task.status == 'completed' %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> 
-                                {{ task.title[:25] }}{% if task.title|length > 25 %}...{% endif %}
-                            </span>
-                            {% endfor %}
-                        {% else %}
-                            <span class="text-muted">No onboarding tasks available</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% elif employee.status == 'Offboarding' %}
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
-                    <h6 class="text-light mb-0">Offboarding Progress</h6>
-                    <span class="text-warning">Day {{ employee['offboarding_progress']['current_day'] }} of {{ employee['offboarding_progress']['total_days'] }}</span>
-                </div>
-                <div class="card-body">
-                    <div class="progress mb-3" style="height: 20px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" 
-                             data-progress="{{ employee['offboarding_progress']['percentage'] }}" aria-valuenow="{{ employee['offboarding_progress']['percentage'] }}" aria-valuemin="0" aria-valuemax="100">{{ employee['offboarding_progress']['percentage'] }}%</div>
-                    </div>
-                    <div class="text-center small">
-                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 20 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Handover Responsibilities</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 40 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Return Company Assets</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 60 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Exit Interview</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 80 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Final Documentation</span>
-                        <span class="me-3"><i class="bi bi-{% if employee['offboarding_progress']['percentage'] >= 100 %}check-circle text-success{% else %}clock text-warning{% endif %} me-1"></i> Account Closure</span>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-secondary">
-                    <h6 class="text-light mb-0">Welcome to Your Dashboard</h6>
-                </div>
-                <div class="card-body text-center">
-                    <p class="text-muted mb-0">You are an active employee. No onboarding or offboarding tasks are currently assigned.</p>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Main Content Tabs -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <!-- Tab Navigation -->
-                <div class="card-header bg-transparent border-secondary">
-                    <ul class="nav nav-tabs card-header-tabs" id="dashboardTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab">
-                                <i class="bi bi-list-task me-1"></i> Pending Tasks
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="journey-tab" data-bs-toggle="tab" data-bs-target="#journey" type="button" role="tab">
-                                <i class="bi bi-signpost-2 me-1"></i> My Journey
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="resources-tab" data-bs-toggle="tab" data-bs-target="#resources" type="button" role="tab">
-                                <i class="bi bi-book me-1"></i> Resources
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-                
-                <!-- Tab Content -->
-                <div class="card-body">
-                    <div class="tab-content" id="dashboardTabsContent">
-                        <!-- Pending Tasks Tab -->
-                        <div class="tab-pane fade show active" id="tasks" role="tabpanel">
-                            {% if employee_tasks %}
-                            <div class="list-group">
-                                {% for task in employee_tasks %}
-                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
-                                    <div class="d-flex w-100 justify-content-between align-items-start">
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <h6 class="mb-0 me-2 text-light">{{ task.title }}</h6>
-                                                <span class="badge bg-{{ 'danger' if task.priority == 'high' else 'warning' if task.priority == 'medium' else 'success' }} me-2">
-                                                    {{ task.priority.title() }}
-                                                </span>
-                                                <span class="badge bg-{{ 'success' if task.status == 'completed' else 'primary' if task.status == 'in_progress' else 'secondary' }}">
-                                                    {{ task.status.replace('_', ' ').title() }}
-                                                </span>
-                                            </div>
-                                            {% if task.description %}
-                                            <p class="mb-2 text-muted small">{{ task.description[:100] }}{% if task.description|length > 100 %}...{% endif %}</p>
-                                            {% endif %}
-                                            <div class="d-flex align-items-center">
-                                                {% if task.due_date %}
-                                                <small class="{% if task.is_overdue %}text-danger{% else %}text-info{% endif %} me-3">
-                                                    <i class="bi bi-calendar me-1"></i>{{ task.due_date.strftime('%Y-%m-%d') }}
-                                                    {% if task.is_overdue %}<span class="ms-1">(Overdue)</span>{% endif %}
-                                                </small>
-                                                {% endif %}
-                                                <small class="text-muted">
-                                                    <i class="bi bi-tag me-1"></i>{{ task.task_type.title() }}
-                                                </small>
-                                            </div>
+                <!-- Recent Activity & Tasks -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h5 class="text-primary mb-3">My Tasks</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    {% if onboarding_count and onboarding_count > 0 %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-person-plus text-warning me-2"></i>
+                                            Onboarding
                                         </div>
-                                        {% if task.status != 'completed' %}
-                                        <div class="btn-group btn-group-sm ms-2" role="group">
-                                            <button type="button" class="btn btn-outline-success" 
-                                                    data-task-id="{{ task.id }}" 
-                                                    data-status="completed" 
-                                                    onclick="updateTaskStatus(this)" 
-                                                    title="Mark as Complete">
-                                                <i class="bi bi-check"></i>
-                                            </button>
-                                            {% if task.status == 'pending' %}
-                                            <button type="button" class="btn btn-outline-primary" 
-                                                    data-task-id="{{ task.id }}" 
-                                                    data-status="in_progress" 
-                                                    onclick="updateTaskStatus(this)" 
-                                                    title="Start Task">
-                                                <i class="bi bi-play"></i>
-                                            </button>
-                                            {% endif %}
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            {% else %}
-                            <div class="text-center py-4">
-                                <i class="bi bi-check-circle fa-3x text-muted mb-3"></i>
-                                <h6 class="text-muted">No tasks assigned</h6>
-                                <p class="text-muted small">You don't have any tasks assigned to you right now.</p>
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <!-- Employee Journey Tab -->
-                        <div class="tab-pane fade" id="journey" role="tabpanel">
-                            <div class="timeline-vertical">
-                                <!-- Journey Items -->
-                                {% for step_name, step_data in employee_journey.items() %}
-                                <div class="timeline-item-vertical {% if step_data.completed %}completed{% endif %}">
-                                    <div class="timeline-marker-vertical {% if step_data.completed %}bg-success{% else %}bg-warning{% endif %}">
-                                        <i class="bi bi-{% if step_data.completed %}check{% else %}clock{% endif %}"></i>
-                                    </div>
-                                    <div class="timeline-content-vertical">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <h6 class="mb-1 text-light">{{ step_name.replace('_', ' ').title() }}</h6>
-                                                <p class="mb-1 small text-muted">{{ step_data.date or 'Pending' }}</p>
-                                                <p class="mb-1 small text-muted">{{ step_data.description or 'Step in your journey' }}</p>
-                                            </div>
-                                            {% if step_data.completed %}
-                                            <span class="badge bg-success">Completed</span>
-                                            {% else %}
-                                            <span class="badge bg-warning">Pending</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            {% if user.status in ['Offboarding', 'Pre-Offboarding', 'Pre Offboarding', 'pre_offboarding', 'offboarding'] %}
-                            <!-- Debug: User status is {{ user.status }} -->
-                            <div class="mt-4">
-                                <div class="card bg-dark bg-opacity-50 border-secondary">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 class="text-light mb-1">
-                                                    <i class="bi bi-box-arrow-right me-2"></i>Offboarding Tasks
-                                                </h6>
-                                                <p class="text-muted small mb-0">Manage your offboarding checklist and requirements</p>
-                                            </div>
-                                            <a href="{{ url_for('offboarding_tasks') }}" class="btn btn-outline-primary btn-sm">
-                                                <i class="bi bi-list-task me-1"></i>View Tasks
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% else %}
-                            <!-- Debug: User status is {{ user.status }} - not showing offboarding -->
-                            {% endif %}
-                        </div>
-                        
-                        <!-- Resources Tab -->
-                        <div class="tab-pane fade" id="resources" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6 class="text-light mb-3">HR Contact</h6>
-                                    <div class="card bg-dark bg-opacity-50 border-secondary mb-3">
-                                        <div class="card-body text-center">
-                                            <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
-                                                <i class="bi bi-person"></i>
-                                            </div>
-                                            <h6 class="text-light">{{ hr_contact.full_name if hr_contact else 'HR Department' }}</h6>
-                                            <p class="text-muted small">{{ hr_contact.position if hr_contact and hr_contact.position else 'HR Business Partner' }}</p>
-                                            <p class="mb-2">
-                                                <a href="mailto:{{ hr_contact.email if hr_contact else 'hr@company.com' }}" class="text-primary">
-                                                    <i class="bi bi-envelope me-1"></i>{{ hr_contact.email if hr_contact else 'hr@company.com' }}
-                                                </a>
-                                            </p>
-                                            <button class="btn btn-outline-primary btn-sm me-2" onclick="messageHR()">
-                                                <i class="bi bi-envelope me-1"></i> Message
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-6">
-                                    <h6 class="text-light mb-3">Buddy/Mentor</h6>
-                                    {% if buddy_mentor %}
-                                    <div class="card bg-dark bg-opacity-50 border-secondary mb-3">
-                                        <div class="card-body text-center">
-                                            <div class="avatar-sm bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
-                                                <i class="bi bi-people"></i>
-                                            </div>
-                                            {% set buddy_user = buddy_mentor.mentor if buddy_mentor.mentee_id == user.id else buddy_mentor.mentee %}
-                                            <h6 class="text-light">{{ buddy_user.full_name or buddy_user.username }}</h6>
-                                            <p class="text-muted small">{{ buddy_mentor.relationship_type.title() }}</p>
-                                            {% if buddy_mentor.program_name %}
-                                            <p class="text-muted small">{{ buddy_mentor.program_name }}</p>
-                                            {% endif %}
-                                            <p class="mb-2">
-                                                <a href="mailto:{{ buddy_user.email }}" class="text-success">
-                                                    <i class="bi bi-envelope me-1"></i>{{ buddy_user.email }}
-                                                </a>
-                                            </p>
-                                            <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-success" onclick="messageBuddy()">
-                                                    <i class="bi bi-envelope me-1"></i> Message
-                                                </button>
-                                                <button class="btn btn-outline-info" onclick="scheduleMeeting()">
-                                                    <i class="bi bi-calendar me-1"></i> Meet
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% else %}
-                                    <div class="card bg-dark bg-opacity-50 border-secondary mb-3">
-                                        <div class="card-body text-center">
-                                            <div class="avatar-sm bg-secondary bg-opacity-10 text-secondary rounded-circle mx-auto mb-2" style="width: 60px; height: 60px; line-height: 60px;">
-                                                <i class="bi bi-people"></i>
-                                            </div>
-                                            <h6 class="text-light">No Buddy/Mentor Assigned</h6>
-                                            <p class="text-muted small">A buddy or mentor will be assigned to you soon.</p>
-                                            <button class="btn btn-outline-secondary btn-sm" disabled>
-                                                <i class="bi bi-clock me-1"></i> Pending Assignment
-                                            </button>
-                                        </div>
+                                        <span class="text-warning fw-bold">{{ onboarding_count }}</span>
                                     </div>
                                     {% endif %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-video text-success me-2"></i>
+                                            Schedule technical interview
+                                        </div>
+                                        <span class="badge bg-info">Today</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-heart text-danger me-2"></i>
+                                            Submit daily mood check
+                                        </div>
+                                        <span class="badge bg-success">Done</span>
+                                    </div>
                                 </div>
-                                
-                                <div class="col-md-6">
-                                    <h6 class="text-light mb-3">HR Contact Information</h6>
-                                    <div class="list-group">
-                                        {% if hr_contacts %}
-                                            {% for hr_contact in hr_contacts[:3] %}
-                                                <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar-sm me-3">
-                                                            <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle" style="width: 32px; height: 32px; line-height: 32px;">
-                                                                {{ hr_contact.full_name|first|upper }}
-                                                            </div>
-                                                        </div>
-                                                        <div class="flex-grow-1">
-                                                            <h6 class="text-light mb-0">{{ hr_contact.full_name }}</h6>
-                                                            <small class="text-muted">{{ hr_contact.position or 'HR Representative' }}</small>
-                                                        </div>
-                                                        <div class="text-end">
-                                                            <a href="tel:{{ hr_contact.phone }}" class="btn btn-outline-primary btn-sm me-1" title="Call">
-                                                                <i class="fas fa-phone"></i>
-                                                            </a>
-                                                            <a href="https://wa.me/{{ hr_contact.phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '') }}" class="btn btn-outline-success btn-sm" target="_blank" title="WhatsApp">
-                                                                <i class="fab fa-whatsapp"></i>
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            {% endfor %}
-                                        {% else %}
-                                            <div class="list-group-item bg-dark bg-opacity-25 border-secondary text-center">
-                                                <i class="fas fa-users fa-2x text-muted mb-2"></i>
-                                                <p class="text-muted mb-0">HR Team information will be available soon</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5 class="text-primary mb-3">Recent Messages</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>HR Team</strong>
+                                                <div class="text-muted small">Welcome to SmartHire! Your onboarding process has begun.</div>
                                             </div>
-                                        {% endif %}
-                                        
-                                        {% if hr_contact %}
-                                            <div class="list-group-item bg-dark bg-opacity-25 border-secondary">
-                                                <div class="text-center">
-                                                    <small class="text-muted">Primary HR Contact</small>
-                                                    <div class="text-light mt-1">
-                                                        <i class="fas fa-envelope me-2"></i>{{ hr_contact.email }}
-                                                    </div>
-                                                </div>
+                                            <small class="text-muted">2h ago</small>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>Manager</strong>
+                                                <div class="text-muted small">Looking forward to working with you!</div>
                                             </div>
-                                        {% endif %}
+                                            <small class="text-muted">1d ago</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </section>
+        </main>
+
+        <!-- RIGHT SIDEBAR -->
+        <aside class="right-sidebar">
+            <!-- User Profile -->
+            <div class="user-profile">
+                <div class="user-avatar">
+                    {{ user.full_name[0].upper() if user and user.full_name else 'E' }}
+                </div>
+                <div class="user-greeting">Welcome {{ user.full_name.split(' ')[0] if user and user.full_name else 'Employee' }}!</div>
+                <div class="user-name">Employee</div>
             </div>
-        </div>
+            
+            <!-- My Tools -->
+            <div class="devices-section">
+                <h4 class="devices-title">My Tools</h4>
+                <div class="devices-grid">
+                    <div class="device-tile" onclick="window.location.href='{{ url_for('employee_mood_tracking') }}';">
+                        <div class="device-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div class="device-name">Mood</div>
+                    </div>
+                    <div class="device-tile" onclick="window.location.href='{{ url_for('employee_interview') }}';">
+                        <div class="device-icon">
+                            <i class="fas fa-video"></i>
+                        </div>
+                        <div class="device-name">Interview</div>
+                    </div>
+                    <div class="device-tile" onclick="window.location.href='{{ url_for('employee_messages') }}';">
+                        <div class="device-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="device-name">Messages</div>
+                    </div>
+                    <div class="device-tile" onclick="window.location.href='{{ url_for('employee_documents') }}';">
+                        <div class="device-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="device-name">Documents</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
     </div>
 
-    <!-- Mood Feedback -->
-    <div class="row mt-4">
-        <div class="col-12">
-            {% include 'includes/mood_feedback.html' %}
-        </div>
-    </div>
-</div>
-
-<style>
-/* Enhanced Employee Dashboard Styles - Matching HR Portal UX */
-
-/* Dashboard Welcome Section */
-.dashboard-welcome .card {
-    background: linear-gradient(135deg, rgba(123, 44, 191, 0.1) 0%, rgba(90, 24, 154, 0.1) 100%);
-    border: 1px solid rgba(123, 44, 191, 0.3);
-    transition: all 0.3s ease;
-}
-
-.dashboard-welcome .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(123, 44, 191, 0.2);
-    border-color: rgba(123, 44, 191, 0.5);
-}
-
-.avatar-lg {
-    background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
-    box-shadow: 0 4px 15px rgba(123, 44, 191, 0.3);
-}
-
-/* Quick Actions Cards */
-.quick-actions-section .action-card {
-    display: block;
-    padding: 1.5rem;
-    background: rgba(26, 26, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    text-decoration: none;
-    color: #f8f9fa;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.quick-actions-section .action-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.quick-actions-section .action-card:hover::before {
-    left: 100%;
-}
-
-.quick-actions-section .action-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    color: #f8f9fa;
-}
-
-.quick-actions-section .action-card.primary:hover {
-    border-color: #7b2cbf;
-    box-shadow: 0 10px 25px rgba(123, 44, 191, 0.3);
-}
-
-.quick-actions-section .action-card.success:hover {
-    border-color: #28a745;
-    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
-}
-
-.quick-actions-section .action-card.info:hover {
-    border-color: #17a2b8;
-    box-shadow: 0 10px 25px rgba(23, 162, 184, 0.3);
-}
-
-.quick-actions-section .action-card.warning:hover {
-    border-color: #ffc107;
-    box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
-}
-
-.action-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1rem;
-    font-size: 1.5rem;
-    position: relative;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.action-card.primary .action-icon {
-    background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
-    border-color: #7b2cbf;
-}
-
-.action-card.success .action-icon {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    border-color: #28a745;
-}
-
-.action-card.info .action-icon {
-    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-    border-color: #17a2b8;
-}
-
-.action-card.warning .action-icon {
-    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-    border-color: #ffc107;
-    color: #212529;
-}
-
-.notification-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: #dc3545;
-    color: white;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: bold;
-    border: 2px solid #1a1a1a;
-}
-
-/* Touch Feedback */
-.touch-feedback {
-    position: relative;
-    overflow: hidden;
-}
-
-.touch-feedback::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.3s ease, height 0.3s ease;
-}
-
-.touch-feedback:active::after {
-    width: 200px;
-    height: 200px;
-}
-
-/* Enhanced Progress Cards */
-.card.bg-dark.bg-opacity-25 {
-    background: rgba(26, 26, 26, 0.8) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-}
-
-.card.bg-dark.bg-opacity-25:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    border-color: rgba(123, 44, 191, 0.3);
-}
-
-/* Enhanced Tab Navigation */
-.nav-tabs .nav-link {
-    background: rgba(26, 26, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #adb5bd;
-    transition: all 0.3s ease;
-}
-
-.nav-tabs .nav-link:hover {
-    background: rgba(123, 44, 191, 0.1);
-    border-color: rgba(123, 44, 191, 0.3);
-    color: #f8f9fa;
-}
-
-.nav-tabs .nav-link.active {
-    background: linear-gradient(135deg, rgba(123, 44, 191, 0.2) 0%, rgba(90, 24, 154, 0.2) 100%);
-    border-color: #7b2cbf;
-    color: #f8f9fa;
-}
-
-/* Vertical Timeline Styles - Dark Theme */
-.timeline-vertical {
-    position: relative;
-    padding-left: 40px;
-}
-
-.timeline-vertical::before {
-    content: '';
-    position: absolute;
-    left: 15px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: linear-gradient(to bottom, #7b2cbf, #5a189a);
-}
-
-.timeline-item-vertical {
-    position: relative;
-    margin-bottom: 30px;
-}
-
-.timeline-item-vertical:last-child {
-    margin-bottom: 0;
-}
-
-.timeline-marker-vertical {
-    position: absolute;
-    left: -25px;
-    top: 5px;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 12px;
-    border: 2px solid #1a1a1a;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    z-index: 1;
-}
-
-.timeline-content-vertical {
-    background: rgba(26, 26, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 15px;
-    border-radius: 8px;
-    border-left: 3px solid #7b2cbf;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    transition: all 0.3s ease;
-}
-
-.timeline-content-vertical:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    transform: translateY(-2px);
-    border-color: #9d4edd;
-}
-
-.timeline-content-vertical h6 {
-    color: #f8f9fa !important;
-}
-
-.timeline-content-vertical p {
-    color: #adb5bd !important;
-}
-
-.timeline-item-vertical.completed .timeline-content-vertical {
-    border-left-color: #1cc88a;
-    background: rgba(28, 200, 138, 0.1);
-}
-
-.timeline-item-vertical.completed .timeline-marker-vertical {
-    background: #1cc88a !important;
-}
-
-/* Mobile Navigation Enhancement */
-@media (max-width: 768px) {
-    .quick-actions-section .row.g-3 > div {
-        margin-bottom: 1rem;
-    }
-    
-    .action-card {
-        padding: 1rem;
-    }
-    
-    .action-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.2rem;
-    }
-    
-    .dashboard-welcome .card-body {
-        padding: 1.5rem;
-    }
-    
-    .avatar-lg {
-        width: 50px !important;
-        height: 50px !important;
-    }
-}
-</style>
-
-<!-- Help Modal -->
-<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="helpModalLabel">Need Help?</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>If you need assistance with your onboarding process, please contact:</p>
-                <ul class="list-unstyled">
-                    <li><i class="fas fa-envelope me-2"></i>{{ hr_contact.email if hr_contact else 'hr@company.com' }}</li>
-                    <li><i class="fas fa-phone me-2"></i>{{ hr_contact.phone if hr_contact else 'Not available' }}</li>
-                </ul>
-                <p class="mb-0">Our HR team is available Monday-Friday, 9:00 AM - 5:00 PM EST.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-success" onclick="sendWhatsAppMessage()">
-                    <i class="fab fa-whatsapp me-1"></i> Send Message
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block extra_js %}
-{{ super() }}
-<script>
-// Profile Modal Functions
-function loadProfileModal() {
-    fetch('/api/employee/profile', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            document.getElementById('fullName').value = data.data.full_name;
-            document.getElementById('email').value = data.data.email;
-            document.getElementById('phone').value = data.data.phone;
-            document.getElementById('department').value = data.data.department;
-            document.getElementById('position').value = data.data.position;
-        }
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-function saveProfile() {
-    const formData = new FormData();
-    formData.append('phone', document.getElementById('phone').value);
-    formData.append('department', document.getElementById('department').value);
-    formData.append('position', document.getElementById('position').value);
-    
-    fetch('/api/employee/profile', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert('Profile updated successfully!');
-            bootstrap.Modal.getInstance(document.getElementById('profileModal')).hide();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to save profile');
-    });
-}
-
-// Documents Modal Functions
-function loadDocumentsModal() {
-    fetch('/api/employee/documents', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            const documentsList = document.getElementById('documentsList');
-            if (data.data.length === 0) {
-                documentsList.innerHTML = '<p class="text-muted">No documents uploaded yet.</p>';
-            } else {
-                let html = '<div class="list-group">';
-                data.data.forEach(doc => {
-                    html += `<div class="list-group-item"><strong>${doc.file_name}</strong> (${doc.document_type})</div>`;
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add interactivity for search
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('.search-input');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const searchTerm = e.target.value.toLowerCase();
+                        if (searchTerm.includes('mood')) {
+                            window.location.href = '{{ url_for("employee_mood_tracking") }}';
+                        } else if (searchTerm.includes('interview')) {
+                            window.location.href = '{{ url_for("employee_interview") }}';
+                        } else if (searchTerm.includes('message')) {
+                            window.location.href = '{{ url_for("employee_messages") }}';
+                        } else if (searchTerm.includes('document')) {
+                            window.location.href = '{{ url_for("employee_documents") }}';
+                        }
+                    }
                 });
-                html += '</div>';
-                documentsList.innerHTML = html;
             }
-        }
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-// Settings Modal Functions
-function loadSettingsModal() {
-    fetch('/api/employee/settings', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            document.getElementById('emailNotifications').checked = data.data.email_notifications;
-            document.getElementById('smsNotifications').checked = data.data.sms_notifications;
-            document.getElementById('notificationFrequency').value = data.data.notification_frequency;
-            document.getElementById('theme').value = data.data.theme;
-            document.getElementById('language').value = data.data.language;
-            document.getElementById('twoFactorAuth').checked = data.data.two_factor_enabled;
-        }
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-function saveSettings() {
-    const formData = new FormData();
-    formData.append('email_notifications', document.getElementById('emailNotifications').checked);
-    formData.append('sms_notifications', document.getElementById('smsNotifications').checked);
-    formData.append('notification_frequency', document.getElementById('notificationFrequency').value);
-    formData.append('theme', document.getElementById('theme').value);
-    formData.append('language', document.getElementById('language').value);
-    formData.append('two_factor_enabled', document.getElementById('twoFactorAuth').checked);
-    
-    fetch('/api/employee/settings', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert('Settings updated successfully!');
-            bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to save settings');
-    });
-}
-
-function messageHR() {
-    // Get HR email from the template
-    const hrEmail = '{{ hr_contact.email if hr_contact else "hr@company.com" }}';
-    const subject = encodeURIComponent('Employee Dashboard Inquiry');
-    const body = encodeURIComponent('Hi,\n\nI have a question regarding my onboarding/employment.\n\nThank you.');
-    
-    // Open Gmail compose in new tab
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${hrEmail}&su=${subject}&body=${body}`, '_blank');
-}
-
-function updateTaskStatus(button) {
-    const taskId = button.dataset.taskId;
-    const newStatus = button.dataset.status;
-    
-    fetch(`/api/employee/tasks/${taskId}/status`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify({
-            status: newStatus
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Reload the page to show updated status
-            location.reload();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to update task status');
-    });
-}
-
-function messageBuddy() {
-    // Get buddy email from the template
-    const buddyEmail = '{{ buddy_user.email if buddy_mentor else "" }}';
-    const subject = encodeURIComponent('Check-in / Question');
-    const body = encodeURIComponent('Hi,\n\nI wanted to connect and check in. I have a few questions I\'d love to discuss when you have time.\n\nThanks!');
-    
-    // Open Gmail compose in new tab
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${buddyEmail}&su=${subject}&body=${body}`, '_blank');
-}
-
-function scheduleMeeting() {
-    // Get buddy email for calendar invite
-    const buddyEmail = '{{ buddy_user.email if buddy_mentor else "" }}';
-    const subject = encodeURIComponent('Buddy/Mentor Check-in Meeting');
-    const body = encodeURIComponent('Let\'s schedule a check-in meeting to discuss progress and any questions.');
-    
-    // Open Google Calendar to create event
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() + 1); // Tomorrow
-    const dateStr = startDate.toISOString().split('T')[0];
-    
-    window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${subject}&details=${body}&add=${buddyEmail}&dates=${dateStr}T100000/${dateStr}T110000`, '_blank');
-}
-
-function sendWhatsAppMessage() {
-    // Get HR phone from the template exactly as shown
-    let hrPhone = '{{ hr_contact.phone if hr_contact else "+1 (555) 123-4567" }}';
-    
-    // Remove all non-digit characters for WhatsApp URL
-    hrPhone = hrPhone.replace(/\D/g, '');
-    
-    // Predefined message
-    const message = encodeURIComponent('Hi, I need assistance with my onboarding process. Could you please help me?');
-    
-    // Open WhatsApp with the HR contact's phone number
-    window.open(`https://wa.me/${hrPhone}?text=${message}`, '_blank');
-}
-
-// Set progress bar widths from data attributes
-document.addEventListener('DOMContentLoaded', function() {
-    const progressBars = document.querySelectorAll('[data-progress]');
-    progressBars.forEach(bar => {
-        const progress = bar.getAttribute('data-progress');
-        if (progress) {
-            bar.style.width = progress + '%';
-        }
-    });
-});
-</script>
-{% endblock %}
+            
+            // Update date in real-time
+            function updateDate() {
+                const now = new Date();
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                const dateString = now.toLocaleDateString('en-US', options);
+                const dateElement = document.getElementById('currentDate');
+                if (dateElement) {
+                    dateElement.textContent = dateString;
+                }
+            }
+            
+            // Update date immediately and then every minute
+            updateDate();
+            setInterval(updateDate, 60000); // Update every minute
+        });
+    </script>
+</body>
+</html>

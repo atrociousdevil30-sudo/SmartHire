@@ -1,1522 +1,379 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartHire HR Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-house-icon">
+                    <i class="fas fa-home"></i>
+                </div>
+                <div class="sidebar-title">SmartHire</div>
+                <div class="sidebar-subtitle">HR Management System</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul class="sidebar-nav">
+                    <li class="sidebar-nav-item">
+                        <a href="#" class="sidebar-nav-link active">
+                            <span class="sidebar-nav-icon"><i class="fas fa-tachometer-alt"></i></span>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('list_employees') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-users"></i></span>
+                            Employees
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('onboarding') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-door-open"></i></span>
+                            Onboarding
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('interview') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-video"></i></span>
+                            Interviews
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('hr_templates') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-file-alt"></i></span>
+                            Documents
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('mood_analytics') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-chart-line"></i></span>
+                            Analytics
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{{ url_for('hr_messages') }}" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+                            Messages
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <button class="sidebar-logout" onclick="window.location.href='{{ url_for('logout') }}';">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </aside>
 
-{% block title %}HR Dashboard - SmartHire AI{% endblock %}
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- TOP HEADER -->
+            <header class="top-header">
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" placeholder="Search employees, documents, or actions...">
+                </div>
+                <div class="date-display" id="currentDate">
+                    Loading...
+                </div>
+            </header>
 
-{% block content %}
-<!-- Include Phase 2 CSS -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/template-gallery.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-optimized.css') }}">
-
-<div class="container-fluid py-4">
-    <!-- Enhanced Welcome Section -->
-    <div class="dashboard-welcome mb-4">
-        <div class="card bg-dark bg-opacity-25 border-secondary">
-            <div class="card-body py-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px; background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%); border: 2px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 15px rgba(123, 44, 191, 0.3);">
-                                <i class="fas fa-user-tie fa-2x"></i>
-                            </div>
-                            <div>
-                                <h2 class="text-light mb-1">Welcome back, {{ user.full_name }}! 👋</h2>
-                                <p class="text-muted mb-0">Ready to make today productive? Here's what needs your attention.</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Enhanced Tour Controls -->
-                        <div class="tour-controls">
-                            <button class="btn btn-outline-primary btn-sm me-2 enhanced-button" onclick="tourManager.startTour('dashboard')">
-                                <i class="fas fa-play-circle me-1"></i>Start Dashboard Tour
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm enhanced-button" onclick="tourManager.resetProgress()">
-                                <i class="fas fa-redo me-1"></i>Reset All Tours
-                            </button>
+            <!-- ROOM ENERGY CARDS - HR Metrics -->
+            <section class="room-energy-cards">
+                <div class="room-card">
+                    <div class="room-header">
+                        <div class="room-icon">
+                            <i class="fas fa-users"></i>
                         </div>
                     </div>
-                    <div class="col-md-4 text-end">
-                        <div class="help-section">
-                            <div class="d-flex justify-content-end gap-2">
-                                <span class="badge bg-primary bg-opacity-25 text-primary hr-badge">HR Manager</span>
-                                <button class="btn btn-outline-light btn-sm help-button enhanced-button" onclick="toggleHelpPanel()">
-                                    <i class="fas fa-question-circle me-1"></i>Need Help?
-                                </button>
+                    <h3 class="room-name">Total Employees</h3>
+                    <div class="room-value">{{ total_employees or 0 }}</div>
+                    <div class="room-unit">Active Staff</div>
+                </div>
+                
+                <div class="room-card emphasized">
+                    <div class="room-header">
+                        <div class="room-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                    </div>
+                    <h3 class="room-name">Onboarding</h3>
+                    <div class="room-value">{{ onboarding_count or 0 }}</div>
+                    <div class="room-unit">New Hires</div>
+                </div>
+                
+                <div class="room-card">
+                    <div class="room-header">
+                        <div class="room-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                    </div>
+                    <h3 class="room-name">Tasks</h3>
+                    <div class="room-value">{{ pending_tasks or 0 }}</div>
+                    <div class="room-unit">Pending</div>
+                </div>
+                
+                <div class="room-card">
+                    <div class="room-header">
+                        <div class="room-icon">
+                            <i class="fas fa-video"></i>
+                        </div>
+                    </div>
+                    <h3 class="room-name">Interviews</h3>
+                    <div class="room-value">{{ completed_interviews or 0 }}</div>
+                    <div class="room-unit">Completed</div>
+                </div>
+            </section>
+
+            <!-- INFO WIDGETS -->
+            <section class="info-widgets">
+            </section>
+
+            <!-- SPENDING BAR CHART - HR Analytics -->
+            <section class="spending-chart">
+                <h3 class="chart-title">Weekly HR Activities</h3>
+                <div class="chart-container">
+                    <div class="chart-bars">
+                        <div class="day-group">
+                            <div class="day-bars">
+                                <div class="chart-bar electricity" style="height: 60%;"></div>
+                                <div class="chart-bar water" style="height: 40%;"></div>
+                                <div class="chart-bar gas" style="height: 30%;"></div>
                             </div>
+                            <div class="day-label">Mon</div>
+                        </div>
+                        <div class="day-group">
+                            <div class="day-bars">
+                                <div class="chart-bar electricity" style="height: 80%;"></div>
+                                <div class="chart-bar water" style="height: 50%;"></div>
+                                <div class="chart-bar gas" style="height: 45%;"></div>
+                            </div>
+                            <div class="day-label">Tue</div>
+                        </div>
+                        <div class="day-group">
+                            <div class="day-bars">
+                                <div class="chart-bar electricity" style="height: 70%;"></div>
+                                <div class="chart-bar water" style="height: 60%;"></div>
+                                <div class="chart-bar gas" style="height: 55%;"></div>
+                            </div>
+                            <div class="day-label">Wed</div>
+                        </div>
+                        <div class="day-group">
+                            <div class="day-bars">
+                                <div class="chart-bar electricity" style="height: 90%;"></div>
+                                <div class="chart-bar water" style="height: 70%;"></div>
+                                <div class="chart-bar gas" style="height: 60%;"></div>
+                            </div>
+                            <div class="day-label">Thu</div>
+                        </div>
+                        <div class="day-group">
+                            <div class="day-bars">
+                                <div class="chart-bar electricity" style="height: 85%;"></div>
+                                <div class="chart-bar water" style="height: 65%;"></div>
+                                <div class="chart-bar gas" style="height: 50%;"></div>
+                            </div>
+                            <div class="day-label">Fri</div>
+                        </div>
+                        <div class="day-group">
+                            <div class="day-bars">
+                                <div class="chart-bar electricity" style="height: 40%;"></div>
+                                <div class="chart-bar water" style="height: 30%;"></div>
+                                <div class="chart-bar gas" style="height: 25%;"></div>
+                            </div>
+                            <div class="day-label">Sat</div>
+                        </div>
+                        <div class="day-group">
+                            <div class="day-bars">
+                                <div class="chart-bar electricity" style="height: 30%;"></div>
+                                <div class="chart-bar water" style="height: 20%;"></div>
+                                <div class="chart-bar gas" style="height: 15%;"></div>
+                            </div>
+                            <div class="day-label">Sun</div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
+            </section>
 
-    <!-- Enhanced Smart Search Bar -->
-    <div class="smart-search-bar mb-4">
-        <div class="search-input-group">
-            <div class="input-group enhanced-search">
-                <span class="input-group-text bg-dark border-secondary text-light search-icon">
-                    <i class="fas fa-search"></i>
-                </span>
-                <input type="text" class="form-control bg-dark text-light border-secondary smart-search-input enhanced-input" 
-                       placeholder="What are you looking for? Try 'add employee' or 'generate document'">
-                <button class="btn btn-outline-secondary enhanced-button" type="button" onclick="clearSmartSearch()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Enhanced Priority Tasks Section -->
-    <div class="priority-tasks mb-4">
-        <div class="card bg-dark bg-opacity-25 border-secondary enhanced-card">
-            <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
-                <h5 class="text-light mb-0 d-flex align-items-center">
-                    <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Today's Priorities
-                    <span class="priority-indicator ms-2"></span>
-                </h5>
-                <span class="badge bg-warning priority-badge">4 Urgent</span>
-            </div>
-            <div class="card-body">
+            <!-- HR SPECIFIC CONTENT -->
+            <section class="hr-content-section">
                 <div class="row g-3">
-                    <div class="col-md-6 col-lg-3">
-                        <div class="priority-card urgent touch-feedback enhanced-priority-card">
-                            <div class="priority-header">
-                                <div class="priority-icon-wrapper urgent-icon">
-                                    <i class="fas fa-user-plus"></i>
-                                </div>
-                                <span class="priority-count">{{ onboarding_count or 2 }}</span>
+                    <!-- Quick Actions -->
+                    <div class="col-12">
+                        <h5 class="text-primary mb-3">Quick Actions</h5>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <a href="{{ url_for('add_employee') }}" class="btn btn-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-user-plus fa-2x mb-2"></i>
+                                    Add Employee
+                                </a>
                             </div>
-                            <h6>New Onboarding</h6>
-                            <p class="text-muted small">Employees waiting for onboarding setup</p>
-                            <button class="btn btn-warning btn-sm enhanced-action-button" onclick="navigateTo('/onboarding')">
-                                Start Now <i class="fas fa-arrow-right ms-1"></i>
-                            </button>
+                            <div class="col-md-3">
+                                <a href="{{ url_for('onboarding') }}" class="btn btn-success w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-door-open fa-2x mb-2"></i>
+                                    Onboarding
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="{{ url_for('interview') }}" class="btn btn-info w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-video fa-2x mb-2"></i>
+                                    Interviews
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="{{ url_for('hr_templates') }}" class="btn btn-warning w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-file-alt fa-2x mb-2"></i>
+                                    Documents
+                                </a>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="priority-card important touch-feedback enhanced-priority-card">
-                            <div class="priority-header">
-                                <div class="priority-icon-wrapper important-icon">
-                                    <i class="fas fa-file-signature"></i>
-                                </div>
-                                <span class="priority-count">1</span>
+                    
+                    <!-- Recent Activity -->
+                    <div class="col-md-6">
+                        <h5 class="text-primary mb-3">Recent Activity</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                {% if recent_activities %}
+                                    {% for activity in recent_activities[:5] %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div>
+                                            <strong>{{ activity.title }}</strong>
+                                            <div class="text-muted small">{{ activity.type|title }}</div>
+                                        </div>
+                                        <small class="text-muted">{{ activity.date }}</small>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted">No recent activity</p>
+                                {% endif %}
                             </div>
-                            <h6>Document Signature</h6>
-                            <p class="text-muted small">Policy acknowledgment pending</p>
-                            <button class="btn btn-info btn-sm enhanced-action-button" onclick="navigateTo('/hr/generated_documents')">
-                                Review <i class="fas fa-arrow-right ms-1"></i>
-                            </button>
                         </div>
                     </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="priority-card normal touch-feedback enhanced-priority-card">
-                            <div class="priority-header">
-                                <div class="priority-icon-wrapper normal-icon">
-                                    <i class="fas fa-video"></i>
+                    
+                    <!-- Upcoming Events -->
+                    <div class="col-md-6">
+                        <h5 class="text-primary mb-3">Upcoming Events</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                {% if onboarding_count and onboarding_count > 0 %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-user-plus"></i> {{ onboarding_count }} employees awaiting onboarding
                                 </div>
-                                <span class="priority-count">{{ completed_interviews or 3 }}</span>
-                            </div>
-                            <h6>Interview Results</h6>
-                            <p class="text-muted small">AI interviews need review</p>
-                            <button class="btn btn-primary btn-sm enhanced-action-button" onclick="navigateTo('/interview')">
-                                Review <i class="fas fa-arrow-right ms-1"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="priority-card low touch-feedback enhanced-priority-card">
-                            <div class="priority-header">
-                                <div class="priority-icon-wrapper low-icon">
-                                    <i class="fas fa-chart-line"></i>
+                                {% endif %}
+                                {% if pending_tasks and pending_tasks > 0 %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-tasks"></i> {{ pending_tasks }} pending tasks
                                 </div>
-                                <span class="priority-count">5</span>
+                                {% endif %}
+                                {% if not (onboarding_count and onboarding_count > 0 or pending_tasks and pending_tasks > 0) %}
+                                <p class="text-muted">No upcoming events</p>
+                                {% endif %}
                             </div>
-                            <h6>Weekly Reports</h6>
-                            <p class="text-muted small">Analytics ready to view</p>
-                            <button class="btn btn-success btn-sm enhanced-action-button" onclick="navigateTo('/analytics/mood')">
-                                View <i class="fas fa-arrow-right ms-1"></i>
-                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
+            </section>
+        </main>
 
-    <!-- Enhanced Quick Actions Section -->
-    <div class="quick-actions-section mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="text-light d-flex align-items-center">
-                <i class="fas fa-bolt me-2 text-primary"></i>Quick Actions
-                <span class="quick-actions-indicator ms-2"></span>
-            </h5>
-            <button class="btn btn-outline-light btn-sm enhanced-button" onclick="toggleAdvancedMode()">
-                <i class="fas fa-cog me-1"></i>Advanced
-            </button>
-        </div>
-        
-        <div class="row g-3">
-            <div class="col-md-3">
-                <a href="{{ url_for('add_employee') }}" class="action-card primary touch-feedback enhanced-action-card">
-                    <div class="action-icon enhanced-icon">
-                        <i class="fas fa-user-plus"></i>
-                    </div>
-                    <h6>Add Employee</h6>
-                    <small class="text-muted">Most popular</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('onboarding') }}" class="action-card success touch-feedback enhanced-action-card">
-                    <div class="action-icon enhanced-icon">
-                        <i class="fas fa-user-clock"></i>
-                    </div>
-                    <h6>Onboarding</h6>
-                    <small class="text-muted">{{ onboarding_count or 0 }} active</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('hr_templates') }}" class="action-card info touch-feedback enhanced-action-card">
-                    <div class="action-icon enhanced-icon">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <h6>Documents</h6>
-                    <small class="text-muted">12 templates</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('interview') }}" class="action-card warning touch-feedback enhanced-action-card">
-                    <div class="action-icon enhanced-icon">
-                        <i class="fas fa-video"></i>
-                    </div>
-                    <h6>Interviews</h6>
-                    <small class="text-muted">AI-powered</small>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Template Gallery Preview -->
-    <div class="template-gallery-preview mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="text-light">
-                <i class="fas fa-file-contract me-2 text-info"></i>Popular Templates
-            </h5>
-            <a href="{{ url_for('hr_templates') }}" class="btn btn-outline-info btn-sm">
-                View All <i class="fas fa-arrow-right ms-1"></i>
-            </a>
-        </div>
-        
-        <div class="template-grid">
-            <div class="template-card touch-feedback" onclick="previewTemplate('offer-letter')">
-                <div class="template-preview">
-                    <div class="template-preview-placeholder">
-                        <i class="fas fa-file-contract"></i>
-                        <h4>Offer Letter</h4>
-                        <p>Professional employment offer</p>
-                    </div>
-                    <span class="template-badge popular">Popular</span>
+        <!-- RIGHT SIDEBAR -->
+        <aside class="right-sidebar">
+            <!-- User Profile -->
+            <div class="user-profile">
+                <div class="user-avatar">
+                    {{ user.full_name[0].upper() if user.full_name else 'H' }}
                 </div>
-                <div class="template-info">
-                    <h4>Offer Letter</h4>
-                    <p>Standard employment offer template with customizable terms</p>
-                    <div class="template-stats">
-                        <span><i class="fas fa-users"></i> Used 23 times</span>
-                        <span><i class="fas fa-clock"></i> 2 min setup</span>
-                    </div>
-                    <div class="template-actions">
-                        <button class="template-btn primary">Use Template</button>
-                    </div>
-                </div>
+                <div class="user-greeting">Welcome {{ user.full_name.split(' ')[0] if user.full_name else 'HR Manager' }}!</div>
+                <div class="user-name">HR Manager</div>
             </div>
             
-            <div class="template-card touch-feedback" onclick="previewTemplate('welcome-package')">
-                <div class="template-preview" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <div class="template-preview-placeholder">
-                        <i class="fas fa-gift"></i>
-                        <h4>Welcome Package</h4>
-                        <p>New employee welcome kit</p>
+            <!-- My Devices - HR Tools -->
+            <div class="devices-section">
+                <h4 class="devices-title">HR Tools</h4>
+                <div class="devices-grid">
+                    <div class="device-tile" onclick="window.location.href='{{ url_for('add_employee') }}';">
+                        <div class="device-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="device-name">Add Staff</div>
                     </div>
-                    <span class="template-badge new">New</span>
-                </div>
-                <div class="template-info">
-                    <h4>Welcome Package</h4>
-                    <p>Complete onboarding welcome package for new hires</p>
-                    <div class="template-stats">
-                        <span><i class="fas fa-users"></i> Used 8 times</span>
-                        <span><i class="fas fa-clock"></i> 3 min setup</span>
+                    <div class="device-tile" onclick="window.location.href='{{ url_for('interview') }}';">
+                        <div class="device-icon">
+                            <i class="fas fa-video"></i>
+                        </div>
+                        <div class="device-name">Interviews</div>
                     </div>
-                    <div class="template-actions">
-                        <button class="template-btn primary">Use Template</button>
+                    <div class="device-tile" onclick="window.location.href='{{ url_for('hr_templates') }}';">
+                        <div class="device-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="device-name">Templates</div>
                     </div>
-                </div>
-            </div>
-            
-            <div class="template-card touch-feedback" onclick="previewTemplate('policy-acknowledgment')">
-                <div class="template-preview" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                    <div class="template-preview-placeholder">
-                        <i class="fas fa-file-contract"></i>
-                        <h4>Policy</h4>
-                        <p>Company policy acknowledgment</p>
-                    </div>
-                </div>
-                <div class="template-info">
-                    <h4>Policy Acknowledgment</h4>
-                    <p>Employee policy acknowledgment and consent form</p>
-                    <div class="template-stats">
-                        <span><i class="fas fa-users"></i> Used 15 times</span>
-                        <span><i class="fas fa-clock"></i> 1 min setup</span>
-                    </div>
-                    <div class="template-actions">
-                        <button class="template-btn primary">Use Template</button>
+                    <div class="device-tile" onclick="window.location.href='{{ url_for('mood_analytics') }}';">
+                        <div class="device-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="device-name">Analytics</div>
                     </div>
                 </div>
             </div>
-        </div>
+        </aside>
     </div>
 
-    <!-- Original Content Starts Here -->
-    <!-- Key Metrics (Simplified) -->
-    <div class="row mb-4" id="keyMetrics">
-        <div class="col-12">
-            <h5 class="text-light mb-3">Overview</h5>
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <div class="card card-simplified">
-                        <div class="card-body text-center p-3">
-                            <h3 class="text-light mb-1">{{ total_employees or 0 }}</h3>
-                            <small class="text-muted">Total Employees</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card card-simplified">
-                        <div class="card-body text-center p-3">
-                            <h3 class="text-success mb-1">{{ onboarding_count or 0 }}</h3>
-                            <small class="text-muted">Onboarding</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card card-simplified">
-                        <div class="card-body text-center p-3">
-                            <h3 class="text-warning mb-1">{{ pending_tasks or 0 }}</h3>
-                            <small class="text-muted">Pending Tasks</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card card-simplified">
-                        <div class="card-body text-center p-3">
-                            <h3 class="text-info mb-1">{{ completed_interviews or 0 }}</h3>
-                            <small class="text-muted">Interviews</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Charts and Analytics -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-secondary">
-                    <h6 class="text-light mb-0">Employee Distribution</h6>
-                </div>
-                <div class="card-body">
-                    <canvas id="employeeChart" width="400" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card bg-dark bg-opacity-25 border-secondary">
-                <div class="card-header bg-transparent border-secondary">
-                    <h6 class="text-light mb-0">Onboarding Progress</h6>
-                </div>
-                <div class="card-body">
-                    <canvas id="onboardingChart" width="400" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Advanced Section (Hidden by default) -->
-    <div id="advancedSection" style="display: none;">
-        <div class="row mb-4">
-            <div class="col-12">
-                <h5 class="text-light mb-3">HR Insights & Strategy</h5>
-                <div class="card bg-dark bg-opacity-25 border-secondary">
-                    <div class="card-body">
-                        <!-- Strategic Insights -->
-                        {% if strategic_insights %}
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h6 class="text-light mb-3">Strategic Insights</h6>
-                                {% for insight in strategic_insights %}
-                                <div class="alert alert-{{ 'warning' if insight.type == 'warning' else 'danger' if insight.type == 'alert' else 'info' }} bg-dark bg-opacity-25 border-{{ 'warning' if insight.type == 'warning' else 'danger' if insight.type == 'alert' else 'info' }} mb-2">
-                                    <h6 class="text-light mb-2">
-                                        <i class="bi bi-{{ 'exclamation-triangle' if insight.type == 'warning' else 'exclamation-circle' if insight.type == 'alert' else 'info-circle' }} text-{{ 'warning' if insight.type == 'warning' else 'danger' if insight.type == 'alert' else 'info' }} me-2"></i>
-                                        {{ insight.title }}
-                                    </h6>
-                                    <p class="text-muted mb-2">{{ insight.description }}</p>
-                                    <small class="text-{{ 'warning' if insight.type == 'warning' else 'danger' if insight.type == 'alert' else 'info' }}">
-                                        <i class="bi bi-lightbulb me-1"></i>{{ insight.action }}
-                                    </small>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="text-light mb-3">Recent Activity</h6>
-                                <div class="list-group list-group-flush">
-                                    {% if recent_activities %}
-                                        {% for activity in recent_activities[:3] %}
-                                        <div class="list-group-item bg-transparent border-secondary">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <span class="text-light">{{ activity.title }}</span>
-                                                    <div class="small text-muted mt-1">
-                                                        <i class="bi bi-{{ 'person-plus' if activity.type == 'hire' else 'chat-dots' if activity.type == 'interview' else 'heart' if activity.type == 'feedback' else 'clock' }} me-1"></i>
-                                                        {{ activity.type|title }}
-                                                    </div>
-                                                </div>
-                                                <div class="text-end">
-                                                    <small class="text-muted">{{ activity.date }}</small>
-                                                    {% if activity.priority == 'high' %}
-                                                        <div class="small text-danger mt-1">High Priority</div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    {% else %}
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-muted">No recent activity</span>
-                                            <small class="text-muted">-</small>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="text-light mb-3">Recent Interview Results</h6>
-                                <div class="list-group list-group-flush">
-                                    {% if interview_results %}
-                                        {% for interview in interview_results[:3] %}
-                                        <div class="list-group-item bg-transparent border-secondary">
-                                            <div class="d-flex justify-content-between align-items-start">
-                                                <div class="flex-grow-1">
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <span class="text-light fw-bold">{{ interview.candidate_name }}</span>
-                                                        <span class="badge bg-{{ 'success' if interview.score|float >= 7.5 else 'warning' if interview.score|float >= 6.0 else 'danger' }} rounded-pill">
-                                                            {{ interview.score }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="small text-muted mb-1">
-                                                        <i class="bi bi-briefcase me-1"></i>{{ interview.role }}
-                                                    </div>
-                                                    {% if interview.phone != 'N/A' %}
-                                                    <div class="small text-info mb-1">
-                                                        <i class="bi bi-telephone me-1"></i>{{ interview.phone }}
-                                                    </div>
-                                                    {% endif %}
-                                                    {% if interview.email != 'N/A' %}
-                                                    <div class="small text-muted mb-1">
-                                                        <i class="bi bi-envelope me-1"></i>{{ interview.email }}
-                                                    </div>
-                                                    {% endif %}
-                                                    <div class="small text-muted">
-                                                        <i class="bi bi-calendar me-1"></i>{{ interview.date }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    {% else %}
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="text-center text-muted py-2">
-                                            <i class="bi bi-clipboard-data fa-2x mb-2"></i><br>
-                                            No interview results yet
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="text-light mb-3">Upcoming Events & KPIs</h6>
-                                <div class="list-group list-group-flush">
-                                    <!-- Employee Status Summary -->
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-light">
-                                                <i class="bi bi-people text-success me-2"></i>
-                                                Total Employees
-                                            </span>
-                                            <span class="text-success fw-bold">{{ total_employees }}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-light">
-                                                <i class="bi bi-person-check text-info me-2"></i>
-                                                Active Employees
-                                            </span>
-                                            <span class="text-info fw-bold">{{ active_count }}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    {% if onboarding_count > 0 %}
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-light">
-                                                <i class="bi bi-person-plus text-warning me-2"></i>
-                                                Onboarding
-                                            </span>
-                                            <span class="text-warning fw-bold">{{ onboarding_count }}</span>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    
-                                    <!-- Upcoming Exit Interviews -->
-                                    {% if upcoming_exits %}
-                                        {% for exit in upcoming_exits[:2] %}
-                                        <div class="list-group-item bg-transparent border-secondary">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <span class="text-light">
-                                                        <i class="bi bi-door-open text-danger me-2"></i>
-                                                        Exit: {{ exit.name }}
-                                                    </span>
-                                                    <div class="small text-muted mt-1">Exit Interview Scheduled</div>
-                                                </div>
-                                                <small class="text-muted">
-                                                    {% if exit.days == 0 %}Today
-                                                    {% elif exit.days == 1 %}Tomorrow
-                                                    {% else %}In {{ exit.days }} days
-                                                    {% endif %}
-                                                </small>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    {% endif %}
-                                    
-                                    <!-- Pending Tasks -->
-                                    {% if pending_tasks_count > 0 %}
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-light">
-                                                <i class="bi bi-list-task text-warning me-2"></i>
-                                                Pending Tasks
-                                            </span>
-                                            <span class="text-warning fw-bold">{{ pending_tasks_count }}</span>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    
-                                    <!-- Unread Messages -->
-                                    {% if unread_messages_count > 0 %}
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-light">
-                                                <i class="bi bi-envelope text-primary me-2"></i>
-                                                Unread Messages
-                                            </span>
-                                            <span class="text-primary fw-bold">{{ unread_messages_count }}</span>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    
-                                    {% if upcoming_exits|length == 0 and onboarding_count == 0 and pending_tasks_count == 0 and unread_messages_count == 0 %}
-                                    <div class="list-group-item bg-transparent border-secondary">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-muted">No upcoming events</span>
-                                            <small class="text-muted">-</small>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Help Panel -->
-<div id="helpPanel" class="help-panel" style="display: none;">
-    <div class="help-content">
-        <div class="help-header">
-            <h4>How can we help you?</h4>
-            <button class="help-close" onclick="toggleHelpPanel()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="help-body">
-            <div class="help-section">
-                <h5>Quick Start Guide</h5>
-                <div class="help-links">
-                    <a href="#" onclick="startTour('dashboard')">
-                        <i class="fas fa-play-circle"></i>
-                        <span>Take Dashboard Tour</span>
-                    </a>
-                    <a href="#" onclick="showHelpArticle('add-employee')">
-                        <i class="fas fa-user-plus"></i>
-                        <span>Adding Your First Employee</span>
-                    </a>
-                    <a href="#" onclick="showHelpArticle('generate-document')">
-                        <i class="fas fa-file-alt"></i>
-                        <span>Generating Documents</span>
-                    </a>
-                </div>
-            </div>
-            <div class="help-section">
-                <h5>Common Questions</h5>
-                <div class="help-links">
-                    <a href="#" onclick="showHelpArticle('onboarding')">
-                        <i class="fas fa-question-circle"></i>
-                        <span>How does onboarding work?</span>
-                    </a>
-                    <a href="#" onclick="showHelpArticle('interviews')">
-                        <i class="fas fa-question-circle"></i>
-                        <span>AI Interview setup</span>
-                    </a>
-                    <a href="#" onclick="showHelpArticle('templates')">
-                        <i class="fas fa-question-circle"></i>
-                        <span>Customizing templates</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Mobile Navigation -->
-<nav class="mobile-nav d-md-none">
-    <a href="{{ url_for('hr_dashboard') }}" class="mobile-nav-item active">
-        <i class="fas fa-home"></i>
-        <span>Home</span>
-    </a>
-    <a href="{{ url_for('list_employees') }}" class="mobile-nav-item">
-        <i class="fas fa-users"></i>
-        <span>Employees</span>
-    </a>
-    <a href="{{ url_for('hr_templates') }}" class="mobile-nav-item">
-        <i class="fas fa-file-alt"></i>
-        <span>Documents</span>
-    </a>
-    <a href="{{ url_for('interview') }}" class="mobile-nav-item">
-        <i class="fas fa-video"></i>
-        <span>Interviews</span>
-    </a>
-</nav>
-
-<!-- Floating Action Button (Mobile) -->
-<div class="fab-container d-md-none">
-    <div class="fab-menu" id="fabMenu">
-        <a href="{{ url_for('add_employee') }}" class="fab-menu-item">
-            <i class="fas fa-user-plus"></i>
-            <span>Add Employee</span>
-        </a>
-        <a href="{{ url_for('hr_templates') }}" class="fab-menu-item">
-            <i class="fas fa-file-alt"></i>
-            <span>Document</span>
-        </a>
-        <a href="{{ url_for('onboarding') }}" class="fab-menu-item">
-            <i class="fas fa-user-clock"></i>
-            <span>Onboarding</span>
-        </a>
-    </div>
-    <button class="fab-button" onclick="toggleFabMenu()">
-        <i class="fas fa-plus"></i>
-    </button>
-</div>
-
-<!-- Include Phase 2 JavaScript -->
-<script src="{{ url_for('static', filename='js/tour-system.js') }}"></script>
-<script src="{{ url_for('static', filename='js/smart-search.js') }}"></script>
-
-<style>
-/* Dashboard-specific styles */
-.dashboard-welcome {
-    animation: fadeInUp 0.6s ease;
-}
-
-.priority-card {
-    background: rgba(45, 45, 45, 0.9);
-    border: 1px solid #444;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.priority-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-}
-
-.priority-card.urgent { border-left: 4px solid #ffc107; }
-.priority-card.important { border-left: 4px solid #17a2b8; }
-.priority-card.normal { border-left: 4px solid #7b2cbf; }
-.priority-card.low { border-left: 4px solid #28a745; }
-
-.priority-header {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.priority-header i {
-    font-size: 24px;
-}
-
-.priority-count {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.action-card {
-    display: block;
-    background: rgba(45, 45, 45, 0.9);
-    border: 1px solid #444;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    text-decoration: none;
-    color: #f8f9fa;
-    transition: all 0.3s ease;
-    height: 100%;
-}
-
-.action-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    text-decoration: none;
-    color: #f8f9fa;
-}
-
-.action-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 16px;
-    font-size: 24px;
-}
-
-.action-card.primary .action-icon { background: rgba(123, 44, 191, 0.2); color: #7b2cbf; }
-.action-card.success .action-icon { background: rgba(40, 167, 69, 0.2); color: #28a745; }
-.action-card.info .action-icon { background: rgba(23, 162, 184, 0.2); color: #17a2b8; }
-.action-card.warning .action-icon { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
-.action-card.secondary .action-icon { background: rgba(108, 117, 125, 0.2); color: #6c757d; }
-.action-card.dark .action-icon { background: rgba(33, 33, 33, 0.5); color: #f8f9fa; }
-
-.help-panel {
-    position: fixed;
-    top: 0;
-    right: -400px;
-    width: 400px;
-    height: 100%;
-    background: #1a1a1a;
-    border-left: 1px solid #444;
-    z-index: 9999;
-    transition: right 0.3s ease;
-}
-
-.help-panel.active {
-    right: 0;
-}
-
-.help-content {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-.help-header {
-    padding: 20px;
-    border-bottom: 1px solid #444;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.help-header h4 {
-    color: #f8f9fa;
-    margin: 0;
-}
-
-.help-close {
-    background: transparent;
-    border: none;
-    color: #6c757d;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-}
-
-.help-close:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.help-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-}
-
-.help-section {
-    margin-bottom: 32px;
-}
-
-.help-section h5 {
-    color: #7b2cbf;
-    margin: 0 0 16px;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.help-links {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.help-links a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: rgba(45, 45, 45, 0.9);
-    border: 1px solid #444;
-    border-radius: 8px;
-    color: #f8f9fa;
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
-
-.help-links a:hover {
-    background: rgba(123, 44, 191, 0.1);
-    border-color: #7b2cbf;
-    color: #f8f9fa;
-    text-decoration: none;
-}
-
-.help-links i {
-    width: 20px;
-    text-align: center;
-    color: #7b2cbf;
-}
-
-@media (max-width: 768px) {
-    .help-panel {
-        width: 100%;
-        right: -100%;
-    }
-    
-    .template-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .priority-tasks .row {
-        grid-template-columns: 1fr;
-    }
-    
-    .quick-actions-section .row {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-</style>
-
-<script>
-// Dashboard-specific JavaScript
-function toggleHelpPanel() {
-    const panel = document.getElementById('helpPanel');
-    panel.classList.toggle('active');
-}
-
-function toggleFabMenu() {
-    const menu = document.getElementById('fabMenu');
-    menu.classList.toggle('active');
-}
-
-function navigateTo(url) {
-    window.location.href = url;
-}
-
-function clearSmartSearch() {
-    const searchInput = document.querySelector('.smart-search-input');
-    if (searchInput) {
-        searchInput.value = '';
-        searchInput.focus();
-    }
-}
-
-function previewTemplate(templateId) {
-    // Navigate to template with preview
-    window.location.href = `/hr/templates#${templateId}`;
-}
-
-function startTour(page) {
-    if (window.tourManager) {
-        tourManager.startTour(page);
-    }
-    toggleHelpPanel();
-}
-
-function showHelpArticle(article) {
-    // Show specific help article
-    console.log('Show help article:', article);
-    toggleHelpPanel();
-}
-
-// Add touch feedback
-document.addEventListener('DOMContentLoaded', () => {
-    const touchElements = document.querySelectorAll('.touch-feedback');
-    
-    touchElements.forEach(element => {
-        element.addEventListener('touchstart', () => {
-            element.classList.add('active');
-        });
-        
-        element.addEventListener('touchend', () => {
-            setTimeout(() => {
-                element.classList.remove('active');
-            }, 150);
-        });
-    });
-    
-    // Auto-start tour for first-time users
-    const visitCount = localStorage.getItem('smarthire_dashboard_visits') || '0';
-    if (visitCount === '0') {
-        setTimeout(() => {
-            if (window.tourManager) {
-                tourManager.startTour('dashboard');
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add interactivity for search
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('.search-input');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const searchTerm = e.target.value.toLowerCase();
+                        if (searchTerm.includes('employee')) {
+                            window.location.href = '{{ url_for("list_employees") }}';
+                        } else if (searchTerm.includes('document') || searchTerm.includes('template')) {
+                            window.location.href = '{{ url_for("hr_templates") }}';
+                        } else if (searchTerm.includes('interview')) {
+                            window.location.href = '{{ url_for("interview") }}';
+                        } else if (searchTerm.includes('onboard')) {
+                            window.location.href = '{{ url_for("onboarding") }}';
+                        }
+                    }
+                });
             }
-        }, 3000);
-    }
-    localStorage.setItem('smarthire_dashboard_visits', parseInt(visitCount) + 1);
-});
-</script>
-
-<!-- JavaScript for advanced mode toggle and charts -->
-<script>
-    function toggleAdvancedMode() {
-        const advancedSection = document.getElementById('advancedSection');
-        const button = event.target.closest('button');
-        
-        if (advancedSection.style.display === 'none') {
-            advancedSection.style.display = 'block';
-            button.innerHTML = '<i class="fas fa-times me-1"></i>Simple';
-        } else {
-            advancedSection.style.display = 'none';
-            button.innerHTML = '<i class="fas fa-cog me-1"></i>Advanced';
-        }
-    }
-
-    // Initialize charts with real data
-    document.addEventListener('DOMContentLoaded', function() {
-        // Employee Distribution Chart
-        const employeeCtx = document.getElementById('employeeChart');
-        if (employeeCtx) {
-            try {
-                // Department data from server
-                const departmentData = JSON.parse('{{ departments|tojson|safe }}' || '[]');
-                console.log('Department data:', departmentData);
-                
-                // Use fallback data if no real data
-                let deptLabels, deptCounts;
-                if (departmentData && departmentData.length > 0) {
-                    deptLabels = departmentData.map(d => d[0] || 'Unassigned');
-                    deptCounts = departmentData.map(d => d[1]);
-                } else {
-                    // Fallback data
-                    deptLabels = ['No Data Available'];
-                    deptCounts = [1];
+            
+            // Update date in real-time
+            function updateDate() {
+                const now = new Date();
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                const dateString = now.toLocaleDateString('en-US', options);
+                const dateElement = document.getElementById('currentDate');
+                if (dateElement) {
+                    dateElement.textContent = dateString;
                 }
-                
-                console.log('Department labels:', deptLabels);
-                console.log('Department counts:', deptCounts);
-                
-                new Chart(employeeCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: deptLabels,
-                        datasets: [{
-                            data: deptCounts,
-                            backgroundColor: [
-                                '#FF6384',
-                                '#36A2EB',
-                                '#FFCE56',
-                                '#4BC0C0',
-                                '#9966FF',
-                                '#FF9F40',
-                                '#FF6384',
-                                '#C9CBCF'
-                            ],
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    color: '#fff',
-                                    padding: 10,
-                                    font: {
-                                        size: 11
-                                    }
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const label = context.label || '';
-                                        const value = context.parsed || 0;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = ((value / total) * 100).toFixed(1);
-                                        return `${label}: ${value} (${percentage}%)`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Error creating employee distribution chart:', error);
-                // Show error message on chart
-                employeeCtx.parentElement.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-chart-pie fa-2x mb-2"></i><br>Error loading department data</div>';
             }
-        }
+            
+            // Update date immediately and then every minute
+            updateDate();
+            setInterval(updateDate, 60000); // Update every minute
+        });
 
-        // Onboarding Progress Chart
-        const onboardingCtx = document.getElementById('onboardingChart');
-        if (onboardingCtx) {
-            try {
-                // Employee count data from server
-                const onboardingCount = parseInt('{{ onboarding_count }}') || 0;
-                const activeCount = parseInt('{{ active_count }}') || 0;
-                const totalEmployees = parseInt('{{ total_employees }}') || 0;
-                const otherCount = Math.max(0, totalEmployees - onboardingCount - activeCount);
-                
-                console.log('Employee counts:', { onboardingCount, activeCount, totalEmployees, otherCount });
-                
-                new Chart(onboardingCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Onboarding', 'Active', 'Other'],
-                        datasets: [{
-                            label: 'Employees',
-                            data: [onboardingCount, activeCount, otherCount],
-                            backgroundColor: [
-                                '#FF6384',
-                                '#36A2EB',
-                                '#FFCE56'
-                            ],
-                            borderWidth: 0,
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    color: '#fff',
-                                    stepSize: 1,
-                                    font: {
-                                        size: 11
-                                    }
-                                },
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                }
-                            },
-                            x: {
-                                ticks: {
-                                    color: '#fff',
-                                    font: {
-                                        size: 11
-                                    }
-                                },
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const value = context.parsed.y || 0;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                        return `Employees: ${value} (${percentage}%)`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Error creating onboarding progress chart:', error);
-                // Show error message on chart
-                onboardingCtx.parentElement.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-chart-bar fa-2x mb-2"></i><br>Error loading employee data</div>';
-            }
-        }
-    });
-</script>
-
-<!-- Enhanced HR Dashboard CSS Styles -->
-<style>
-/* Enhanced HR Dashboard Styles - Matching Employee Portal UX */
-
-/* Enhanced Welcome Section */
-.dashboard-welcome .card {
-    background: linear-gradient(135deg, rgba(123, 44, 191, 0.1) 0%, rgba(90, 24, 154, 0.1) 100%);
-    border: 1px solid rgba(123, 44, 191, 0.3);
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.dashboard-welcome .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(123, 44, 191, 0.2);
-    border-color: rgba(123, 44, 191, 0.5);
-}
-
-/* Enhanced Buttons */
-.enhanced-button {
-    background: rgba(26, 26, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.enhanced-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.enhanced-button:hover::before {
-    left: 100%;
-}
-
-.enhanced-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    border-color: rgba(123, 44, 191, 0.5);
-}
-
-/* HR Badge */
-.hr-badge {
-    background: linear-gradient(135deg, rgba(123, 44, 191, 0.25) 0%, rgba(90, 24, 154, 0.25) 100%);
-    border: 1px solid rgba(123, 44, 191, 0.3);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    animation: badgePulse 3s ease-in-out infinite;
-}
-
-@keyframes badgePulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
-}
-
-/* Enhanced Search Bar */
-.enhanced-search {
-    border: 1px solid rgba(123, 44, 191, 0.3);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    background: rgba(26, 26, 26, 0.8);
-    backdrop-filter: blur(10px);
-}
-
-.enhanced-search:focus-within {
-    border-color: #7b2cbf;
-    box-shadow: 0 0 20px rgba(123, 44, 191, 0.3);
-}
-
-.enhanced-input {
-    background: transparent !important;
-    border: none !important;
-    color: #f8f9fa !important;
-}
-
-.enhanced-input:focus {
-    box-shadow: none !important;
-    outline: none !important;
-}
-
-.search-icon {
-    background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%) !important;
-    border: none !important;
-}
-
-/* Enhanced Priority Cards */
-.enhanced-card {
-    background: rgba(26, 26, 26, 0.8) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-}
-
-.enhanced-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    border-color: rgba(123, 44, 191, 0.3);
-}
-
-.priority-badge {
-    animation: priorityPulse 2s infinite;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-@keyframes priorityPulse {
-    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
-}
-
-.priority-indicator {
-    width: 8px;
-    height: 8px;
-    background: #ffc107;
-    border-radius: 50%;
-    animation: indicatorBlink 2s infinite;
-}
-
-@keyframes indicatorBlink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-}
-
-/* Enhanced Priority Cards */
-.enhanced-priority-card {
-    background: rgba(26, 26, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 1.5rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.enhanced-priority-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-    transition: left 0.5s ease;
-}
-
-.enhanced-priority-card:hover::before {
-    left: 100%;
-}
-
-.enhanced-priority-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-}
-
-.enhanced-priority-card.urgent:hover {
-    border-color: #ffc107;
-    box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
-}
-
-.enhanced-priority-card.important:hover {
-    border-color: #17a2b8;
-    box-shadow: 0 10px 25px rgba(23, 162, 184, 0.3);
-}
-
-.enhanced-priority-card.normal:hover {
-    border-color: #7b2cbf;
-    box-shadow: 0 10px 25px rgba(123, 44, 191, 0.3);
-}
-
-.enhanced-priority-card.low:hover {
-    border-color: #28a745;
-    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
-}
-
-/* Priority Icon Wrappers */
-.priority-icon-wrapper {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1rem;
-    font-size: 1.2rem;
-    position: relative;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.urgent-icon {
-    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-    border-color: #ffc107;
-    color: #212529;
-}
-
-.important-icon {
-    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-    border-color: #17a2b8;
-}
-
-.normal-icon {
-    background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
-    border-color: #7b2cbf;
-}
-
-.low-icon {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    border-color: #28a745;
-}
-
-/* Enhanced Action Buttons */
-.enhanced-action-button {
-    background: rgba(26, 26, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.enhanced-action-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.enhanced-action-button:hover::before {
-    left: 100%;
-}
-
-.enhanced-action-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* Enhanced Quick Actions */
-.quick-actions-indicator {
-    width: 6px;
-    height: 6px;
-    background: #7b2cbf;
-    border-radius: 50%;
-    animation: quickActionsPulse 3s infinite;
-}
-
-@keyframes quickActionsPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-}
-
-/* Enhanced Action Cards */
-.enhanced-action-card {
-    display: block;
-    padding: 1.5rem;
-    background: rgba(26, 26, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    text-decoration: none;
-    color: #f8f9fa;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: blur(10px);
-}
-
-.enhanced-action-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.enhanced-action-card:hover::before {
-    left: 100%;
-}
-
-.enhanced-action-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    color: #f8f9fa;
-}
-
-.enhanced-action-card.primary:hover {
-    border-color: #7b2cbf;
-    box-shadow: 0 10px 25px rgba(123, 44, 191, 0.3);
-}
-
-.enhanced-action-card.success:hover {
-    border-color: #28a745;
-    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
-}
-
-.enhanced-action-card.info:hover {
-    border-color: #17a2b8;
-    box-shadow: 0 10px 25px rgba(23, 162, 184, 0.3);
-}
-
-.enhanced-action-card.warning:hover {
-    border-color: #ffc107;
-    box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
-}
-
-.enhanced-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1rem;
-    font-size: 1.5rem;
-    position: relative;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-}
-
-.enhanced-action-card:hover .enhanced-icon {
-    transform: scale(1.1);
-}
-
-.enhanced-action-card.primary .enhanced-icon {
-    background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
-    border-color: #7b2cbf;
-}
-
-.enhanced-action-card.success .enhanced-icon {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    border-color: #28a745;
-}
-
-.enhanced-action-card.info .enhanced-icon {
-    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-    border-color: #17a2b8;
-}
-
-.enhanced-action-card.warning .enhanced-icon {
-    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-    border-color: #ffc107;
-    color: #212529;
-}
-
-/* Touch Feedback */
-.touch-feedback {
-    position: relative;
-    overflow: hidden;
-}
-
-.touch-feedback::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.3s ease, height 0.3s ease;
-}
-
-.touch-feedback:active::after {
-    width: 200px;
-    height: 200px;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
-    .enhanced-priority-card {
-        padding: 1rem;
-    }
-    
-    .enhanced-action-card {
-        padding: 1rem;
-    }
-    
-    .enhanced-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.2rem;
-    }
-    
-    .priority-icon-wrapper {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
-    }
-    
-    .dashboard-welcome .card-body {
-        padding: 1.5rem;
-    }
-}
-</style>
-
-    {% endblock %}
+        // Animate charts on load
+        window.addEventListener('load', function() {
+            const bars = document.querySelectorAll('.chart-bar');
+            bars.forEach((bar, index) => {
+                setTimeout(() => {
+                    bar.style.transition = 'all 0.5s ease';
+                }, index * 50);
+            });
+        });
+    </script>
+</body>
+</html>

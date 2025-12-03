@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartHire AI - Select Your Role</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="role-selection">
+    <div class="dashboard-container">
+        <main class="main-content">
+            <div class="role-selection-header">
+                <h1>Welcome to SmartHire AI</h1>
+                <p>Choose your role to get started with our comprehensive HR management platform</p>
+            </div>
+            
+            <div class="role-selection-container">
+                <!-- HR Portal Card -->
+                <div class="role-card">
+                    <div class="role-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <h2 class="role-title">HR Professional</h2>
+                    <p class="role-description">Manage your entire HR workflow with AI-powered tools and analytics</p>
+                    <ul class="role-features">
+                        <li>Employee management and onboarding</li>
+                        <li>AI-powered interview training</li>
+                        <li>Advanced analytics and insights</li>
+                        <li>Document generation templates</li>
+                        <li>Knowledge transfer management</li>
+                    </ul>
+                    <a href="{{ url_for('login', role='hr') }}" class="role-btn">Continue as HR</a>
+                </div>
+                
+                <!-- Employee Portal Card -->
+                <div class="role-card">
+                    <div class="role-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h2 class="role-title">Employee</h2>
+                    <p class="role-description">Access your personalized dashboard and manage your professional journey</p>
+                    <ul class="role-features">
+                        <li>Personalized dashboard</li>
+                        <li>Mood tracking and feedback</li>
+                        <li>Interview participation</li>
+                        <li>Document access</li>
+                        <li>Team messaging</li>
+                    </ul>
+                    <a href="{{ url_for('login', role='employee') }}" class="role-btn">Continue as Employee</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

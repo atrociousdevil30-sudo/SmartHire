@@ -2,6 +2,25 @@
 
 {% block title %}{{ role }} Login{% endblock %}
 
+{% block extra_css %}
+<style>
+.sidebar, .right-sidebar {
+    display: none !important;
+}
+.main-content {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+.top-header {
+    display: none !important;
+}
+.dashboard-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="row justify-content-center mt-5">
